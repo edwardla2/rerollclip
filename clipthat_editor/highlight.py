@@ -1,0 +1,271 @@
+"""Highlight: Reroll's automatic edit for one gameplay clip.
+
+analyze -> decide -> render, one background job, no user input:
+
+1. Analyze: the per-frame interest score from `analysis.score_clip` (audio loudness +
+   visual change). For a clip saved by voice or hotkey the moment sits shortly before
+   the trigger, so the trigger offset (when known) limits the search.
+2. Decide: an edit decision list (EDL).
+   - a window around the peak (peak ~70% in, setup before it, reaction after);
+   - jump cuts: long low-energy stretches inside the window shrink to a short sliver,
+     except right around the peak;
+   - the peak itself plays at half speed with a slight punch-in zoom.
+3. Render: one FFmpeg pass. 9:16 centre crop by default (the crosshair is the centre in a
+   shooter), blur fill as an option; loudness normalised for short-form platforms;
+   hardware H.264 encoder when the machine has one, x264 otherwise.
+
+Every number here is a starting point to be tuned on real Medal clips. Nothing here is
+machine learning; the per-game kill-feed signal comes later, only if it beats this.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass, asdict
+import json
+from pathlib import Path
+import subprocess
+import time
+from typing import Any
+
+from .analysis import STEP, AnalysisError, score_clip, suggest_window
+from .engine import EditorError, require_tool
+
+TARGET_LENGTH = 14.0      # seconds of source the window covers before cuts
+MIN_RESULT = 5.0          # never cut the edit shorter than this
+DEAD_FRACTION = 0.25      # a frame is "dead" below this share of the peak's score
+DEAD_MIN_RUN = 1.5        # only stretches at least this long get cut
+KEEP_EDGE = 0.3           # seconds kept either side of a cut, so cuts read as jump cuts
+PROTECT_BEFORE = 2.0      # never cut this close before the peak...
+PROTECT_AFTER = 1.0       # ...or after it
+SLOW_HALF = 0.5           # slow motion covers peak +/- this
+SLOW_FACTOR = 0.5         # playback speed during slow motion
+ZOOM = 1.15               # punch-in during slow motion
+LOUDNESS = "loudnorm=I=-14:TP=-1.5:LRA=11"   # short-form platform target
+
+HW_ENCODERS = ["h264_nvenc", "h264_amf", "h264_qsv", "h264_videotoolbox"]
+
+
+@dataclass
+class Segment:
+    start: float          # seconds into the source
+    end: float
+    speed: float = 1.0    # 0.5 = half speed
+    zoom: float = 1.0
+
+    @property
+    def output_length(self) -> float:
+        return (self.end - self.start) / self.speed
+
+
+# ---------- decide ----------
+
+def decide(score: list[float], duration: float, *, length: float = TARGET_LENGTH,
+           trigger_offset: float | None = None) -> dict[str, Any]:
+    """Turns a score curve into the edit: a window, jump cuts and a slow-motion peak."""
+    window = suggest_window(score, duration, length, trigger_offset)
+    w0, w1, peak = window["start"], window["start"] + window["duration"], window["peak"]
+    strength = window["strength"]
+    threshold = DEAD_FRACTION * strength
+
+    # Find dead stretches inside the window, away from the peak.
+    cuts: list[tuple[float, float]] = []
+    run_start = None
+    first, last = int(w0 / STEP), min(len(score), int(w1 / STEP))
+    for i in range(first, last + 1):
+        t = i * STEP
+        dead = (i < last and score[i] < threshold
+                and not (peak - PROTECT_BEFORE <= t <= peak + PROTECT_AFTER))
+        if dead and run_start is None:
+            run_start = t
+        elif not dead and run_start is not None:
+            if t - run_start >= DEAD_MIN_RUN:
+                # Dead air at the window's edges is trimmed off; inside, it becomes a jump cut.
+                a = w0 if run_start <= w0 + STEP else run_start + KEEP_EDGE
+                b = w1 if i >= last else t - KEEP_EDGE
+                cuts.append((a, b))
+            run_start = None
+
+    # Don't cut below the minimum length: drop the smallest cuts first.
+    def kept_after(c: list[tuple[float, float]]) -> float:
+        return (w1 - w0) - sum(b - a for a, b in c)
+    cuts.sort(key=lambda c: c[1] - c[0], reverse=True)
+    while cuts and kept_after(cuts) < MIN_RESULT:
+        cuts.pop()
+    cuts.sort()
+
+    # Kept spans, then split the one holding the peak into normal / slow / normal.
+    spans, cursor = [], w0
+    for a, b in cuts:
+        spans.append((cursor, a))
+        cursor = b
+    spans.append((cursor, w1))
+    s0, s1 = max(w0, peak - SLOW_HALF), min(w1, peak + SLOW_HALF)
+    segments: list[Segment] = []
+    for a, b in spans:
+        if b - a < 0.05:
+            continue
+        if a <= s0 < b or a < s1 <= b:
+            lo, hi = max(a, s0), min(b, s1)
+            if lo - a >= 0.05:
+                segments.append(Segment(a, lo))
+            segments.append(Segment(lo, hi, SLOW_FACTOR, ZOOM))
+            if b - hi >= 0.05:
+                segments.append(Segment(hi, b))
+        else:
+            segments.append(Segment(a, b))
+    segments = [Segment(round(s.start, 3), round(s.end, 3), s.speed, s.zoom) for s in segments]
+    return {
+        "window": {"start": round(w0, 3), "end": round(w1, 3)},
+        "peak": peak,
+        "strength": strength,
+        "cuts": [{"start": round(a, 3), "end": round(b, 3)} for a, b in cuts],
+        "segments": [asdict(s) for s in segments],
+        "output_seconds": round(sum(s.output_length for s in segments), 3),
+    }
+
+
+# ---------- render ----------
+
+_encoder_cache: dict[str, bool] = {}
+
+
+def encoder_works(name: str) -> bool:
+    """True if this FFmpeg build can actually open the encoder on this machine."""
+    if name not in _encoder_cache:
+        probe = subprocess.run(
+            [require_tool("ffmpeg"), "-hide_banner", "-loglevel", "error", "-f", "lavfi",
+             "-i", "color=c=black:s=256x256:r=30:d=0.2", "-c:v", name, "-f", "null", "-"],
+            capture_output=True, text=True)
+        _encoder_cache[name] = probe.returncode == 0
+    return _encoder_cache[name]
+
+
+def pick_encoder(prefer: str = "auto") -> str:
+    if prefer not in ("auto", "libx264") and prefer not in HW_ENCODERS:
+        raise EditorError(f"Unknown encoder {prefer}")
+    if prefer == "libx264":
+        return "libx264"
+    candidates = HW_ENCODERS if prefer == "auto" else [prefer]
+    for name in candidates:
+        if encoder_works(name):
+            return name
+    return "libx264"
+
+
+def encoder_args(name: str) -> list[str]:
+    if name == "libx264":
+        return ["-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-profile:v", "high", "-threads", "4"]
+    if name == "h264_nvenc":
+        return ["-c:v", name, "-preset", "p4", "-rc", "vbr", "-cq", "21", "-b:v", "0", "-profile:v", "high"]
+    if name == "h264_amf":
+        return ["-c:v", name, "-quality", "balanced", "-rc", "cqp", "-qp_i", "21", "-qp_p", "23"]
+    if name == "h264_qsv":
+        return ["-c:v", name, "-preset", "medium", "-global_quality", "22"]
+    return ["-c:v", name, "-b:v", "12M"]  # videotoolbox
+
+
+def _probe_stream(path: Path) -> dict[str, Any]:
+    out = subprocess.run([require_tool("ffprobe"), "-v", "error", "-show_streams", "-show_format",
+                          "-of", "json", str(path)], capture_output=True, text=True)
+    if out.returncode:
+        raise EditorError(f"Can't read media {path.name}")
+    data = json.loads(out.stdout)
+    video = next((s for s in data.get("streams", []) if s.get("codec_type") == "video"), None)
+    if not video:
+        raise EditorError(f"No video stream in {path.name}")
+    num, _, den = (video.get("avg_frame_rate") or "30/1").partition("/")
+    fps = float(num) / float(den or 1) if float(den or 1) else 30.0
+    return {"width": int(video["width"]), "height": int(video["height"]), "fps": fps,
+            "has_audio": any(s.get("codec_type") == "audio" for s in data["streams"])}
+
+
+def build_filtergraph(segments: list[Segment], *, src_w: int, src_h: int, width: int, height: int,
+                      fps: int, layout: str, audio_input: str) -> str:
+    """One filtergraph: trim each segment, retime it, frame it 9:16, concatenate, normalise loudness."""
+    n = len(segments)
+    parts = [f"[0:v]split={n}" + "".join(f"[vs{i}]" for i in range(n)),
+             f"[{audio_input}]asplit={n}" + "".join(f"[as{i}]" for i in range(n))]
+    aspect = width / height
+    for i, s in enumerate(segments):
+        retime = f",setpts={1 / s.speed:.4f}*PTS" if s.speed != 1 else ""
+        if layout == "center_crop":
+            # Crop the 9:16 slice (narrower when zoomed) straight from the source, then scale once.
+            cw = f"trunc(min(iw\\,ih*{aspect:.6f})/{s.zoom:.4f}/2)*2"
+            ch = f"trunc(min(ih\\,iw/{aspect:.6f})/{s.zoom:.4f}/2)*2"
+            frame = f"crop={cw}:{ch},scale={width}:{height}:flags=bicubic,setsar=1"
+            parts.append(f"[vs{i}]trim={s.start}:{s.end},setpts=PTS-STARTPTS{retime},{frame},fps={fps}[v{i}]")
+        else:
+            zoom = (f",crop=trunc(iw/{s.zoom:.4f}/2)*2:trunc(ih/{s.zoom:.4f}/2)*2" if s.zoom != 1 else "")
+            # Cheap blur fill: blur a small copy, then scale it up behind the shot.
+            parts.append(
+                f"[vs{i}]trim={s.start}:{s.end},setpts=PTS-STARTPTS{retime}{zoom},split=2[f{i}][b{i}];"
+                f"[b{i}]scale={width // 8}:{height // 8}:force_original_aspect_ratio=increase,"
+                f"crop={width // 8}:{height // 8},boxblur=4:2,scale={width}:{height}[bb{i}];"
+                f"[f{i}]scale={width}:{height}:force_original_aspect_ratio=decrease[ff{i}];"
+                f"[bb{i}][ff{i}]overlay=(W-w)/2:(H-h)/2,setsar=1,fps={fps}[v{i}]")
+        if s.speed != 1:
+            # Pitch drops with the speed: the familiar heavy slow-motion sound.
+            atime = f",asetrate=48000*{s.speed},aresample=48000"
+        else:
+            atime = ""
+        parts.append(f"[as{i}]atrim={s.start}:{s.end},asetpts=PTS-STARTPTS,aresample=48000{atime}[a{i}]")
+    parts.append("".join(f"[v{i}][a{i}]" for i in range(n)) + f"concat=n={n}:v=1:a=1[vc][ac]")
+    parts.append("[vc]format=yuv420p[v]")
+    parts.append(f"[ac]{LOUDNESS},aresample=48000[a]")
+    return ";".join(parts)
+
+
+def auto_edit(source: Path, output: Path, *, trigger_offset: float | None = None,
+              length: float = TARGET_LENGTH, width: int = 1080, height: int = 1920,
+              fps: int | None = None, layout: str = "center_crop", encoder: str = "auto") -> dict[str, Any]:
+    """Edits one clip end to end. Returns the decisions and timings; writes `output`."""
+    source, output = Path(source).resolve(), Path(output).resolve()
+    if layout not in ("center_crop", "fit_blur"):
+        raise EditorError("layout must be center_crop or fit_blur")
+    began = time.monotonic()
+    info = _probe_stream(source)
+    scored = score_clip(source)
+    analyzed = time.monotonic()
+    if trigger_offset is not None:
+        trigger_offset = min(max(0.0, trigger_offset), scored["duration"])
+    plan = decide(scored["score"], scored["duration"], length=length, trigger_offset=trigger_offset)
+    segments = [Segment(**s) for s in plan["segments"]]
+    out_fps = fps or (60 if info["fps"] >= 50 else 30)
+    chosen = pick_encoder(encoder)
+
+    ffmpeg = require_tool("ffmpeg")
+    # Decode only the window: seek the input, and shift segment times to match.
+    offset = plan["window"]["start"]
+    span = plan["window"]["end"] - offset
+    segments = [Segment(round(s.start - offset, 3), round(s.end - offset, 3), s.speed, s.zoom) for s in segments]
+    args = [ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-ss", f"{offset:.3f}", "-t", f"{span:.3f}",
+            "-i", str(source)]
+    audio_input = "0:a:0"
+    if not info["has_audio"]:
+        args += ["-f", "lavfi", "-i", f"anullsrc=r=48000:cl=stereo:d={span:.3f}"]
+        audio_input = "1:a:0"
+    graph = build_filtergraph(segments, src_w=info["width"], src_h=info["height"], width=width,
+                              height=height, fps=out_fps, layout=layout, audio_input=audio_input)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    partial = output.with_name(output.stem + ".partial" + output.suffix)
+    tail = ["-filter_complex", graph, "-map", "[v]", "-map", "[a]", "-r", str(out_fps), "-pix_fmt", "yuv420p",
+            "-c:a", "aac", "-b:a", "160k", "-ar", "48000", "-ac", "2", "-movflags", "+faststart", str(partial)]
+    done = subprocess.run(args + encoder_args(chosen) + tail, capture_output=True, text=True)
+    if done.returncode and chosen != "libx264":
+        # A hardware encoder can fail mid-job (driver, session limit): fall back rather than fail.
+        chosen = "libx264"
+        done = subprocess.run(args + encoder_args(chosen) + tail, capture_output=True, text=True)
+    if done.returncode:
+        partial.unlink(missing_ok=True)
+        raise EditorError(f"Render failed: {done.stderr[-2000:]}")
+    partial.replace(output)  # watchers never see a half-written edit
+    finished = time.monotonic()
+    return {
+        "ok": True, "style": "highlight", "source": source.name, "output": str(output),
+        "width": width, "height": height, "fps": out_fps, "layout": layout, "encoder": chosen,
+        "signals": scored["signals"], "source_seconds": round(scored["duration"], 3), **plan,
+        "timings": {"analyze_s": round(analyzed - began, 2), "render_s": round(finished - analyzed, 2),
+                    "total_s": round(finished - began, 2)},
+    }
+
+
+__all__ = ["auto_edit", "decide", "pick_encoder", "Segment", "AnalysisError"]

@@ -163,7 +163,7 @@ def render(manifest_path: Path, output: Path) -> None:
 
 def main() -> int:
     from .analysis import AnalysisError
-    parser = argparse.ArgumentParser(description="Clip That local montage editor v0")
+    parser = argparse.ArgumentParser(description="Reroll local editor")
     sub = parser.add_subparsers(dest="command", required=True)
     validate_parser = sub.add_parser("validate", help="Check manifest JSON and input paths")
     validate_parser.add_argument("manifest", type=Path)
@@ -175,6 +175,16 @@ def main() -> int:
     analyze_parser.add_argument("--length", type=float, default=8.0, help="target window length in seconds")
     analyze_parser.add_argument("--trigger-offset", type=float, default=None,
                                 help="seconds into the clip where the user said 'Clip that'")
+    auto_parser = sub.add_parser("auto", help="Edit one gameplay clip automatically (Highlight style)")
+    auto_parser.add_argument("file", type=Path)
+    auto_parser.add_argument("--output", required=True, type=Path)
+    auto_parser.add_argument("--trigger-offset", type=float, default=None,
+                             help="seconds into the clip where the user asked for the edit, if known")
+    auto_parser.add_argument("--length", type=float, default=14.0, help="seconds of source to consider around the peak")
+    auto_parser.add_argument("--layout", choices=["center_crop", "fit_blur"], default="center_crop")
+    auto_parser.add_argument("--size", choices=["720", "1080"], default="1080")
+    auto_parser.add_argument("--fps", type=int, choices=[30, 60], default=None, help="default: 60 for 50+ fps sources")
+    auto_parser.add_argument("--encoder", default="auto", help="auto, libx264 or a hardware encoder name")
     opts = parser.parse_args()
     try:
         if opts.command == "validate":
@@ -183,6 +193,12 @@ def main() -> int:
         elif opts.command == "analyze":
             from .analysis import analyze
             print(json.dumps(analyze(opts.file, length=opts.length, trigger_offset=opts.trigger_offset)))
+        elif opts.command == "auto":
+            from .highlight import auto_edit
+            width, height = (720, 1280) if opts.size == "720" else (1080, 1920)
+            print(json.dumps(auto_edit(opts.file, opts.output, trigger_offset=opts.trigger_offset, length=opts.length,
+                                       width=width, height=height, fps=opts.fps, layout=opts.layout,
+                                       encoder=opts.encoder)))
         else:
             render(opts.manifest, opts.output)
         return 0

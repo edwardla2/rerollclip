@@ -171,12 +171,11 @@ def suggest_window(score: list[float], duration: float, length: float,
             "peak": round(peak, 3), "strength": round(score[peak_index] if score else 0.0, 3)}
 
 
-def analyze(path: Path, length: float = 8.0, trigger_offset: float | None = None) -> dict[str, Any]:
+def score_clip(path: Path) -> dict[str, Any]:
+    """Per-frame interest score (0..1, one value every STEP seconds) plus what it was built from."""
     path = Path(path)
     if not path.is_file():
         raise AnalysisError(f"File not found: {path}")
-    if not (0.5 <= length <= 120):
-        raise AnalysisError("length must be between 0.5 and 120 seconds")
     duration, has_audio = _probe(path)
     frames = max(1, math.ceil(duration / STEP))
     loud = _normalise(audio_loudness(path, frames), AUDIO_FLOOR_DB) if has_audio else []
@@ -187,10 +186,19 @@ def analyze(path: Path, length: float = 8.0, trigger_offset: float | None = None
     else:
         combined = motion
         signals = ["motion"]
-    score = _smooth(combined, SMOOTH_SECONDS)
+    return {"duration": duration, "has_audio": has_audio, "signals": signals,
+            "score": _smooth(combined, SMOOTH_SECONDS)}
+
+
+def analyze(path: Path, length: float = 8.0, trigger_offset: float | None = None) -> dict[str, Any]:
+    path = Path(path)
+    if not (0.5 <= length <= 120):
+        raise AnalysisError("length must be between 0.5 and 120 seconds")
+    scored = score_clip(path)
+    duration, score = scored["duration"], scored["score"]
     if trigger_offset is not None:
         trigger_offset = min(max(0.0, trigger_offset), duration)
     window = suggest_window(score, duration, length, trigger_offset)
-    return {"ok": True, "file": path.name, "duration": round(duration, 3), "signals": signals,
+    return {"ok": True, "file": path.name, "duration": round(duration, 3), "signals": scored["signals"],
             "suggested_start": window["start"], "suggested_duration": window["duration"],
             "peak_time": window["peak"], "strength": window["strength"]}
