@@ -45,18 +45,17 @@ struct CreateBetaInterest: AsyncMigration {
 }
 
 struct AddBetaTesterFields: AsyncMigration {
+    // SQLite adds one column per ALTER TABLE, so each column is its own update.
     func prepare(on database: any Database) async throws {
-        try await database.schema(BetaInterest.schema)
-            .field("game", .string)
-            .field("windows", .string)
-            .field("gpu", .string)
-            .update()
+        for key in ["game", "windows", "gpu"] {
+            try await database.schema(BetaInterest.schema).field(.string(key), .string).update()
+        }
     }
 
     func revert(on database: any Database) async throws {
-        try await database.schema(BetaInterest.schema)
-            .deleteField("game").deleteField("windows").deleteField("gpu")
-            .update()
+        for key in ["game", "windows", "gpu"] {
+            try await database.schema(BetaInterest.schema).deleteField(.string(key)).update()
+        }
     }
 }
 

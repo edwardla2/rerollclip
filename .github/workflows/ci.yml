@@ -78,6 +78,7 @@ jobs:
           status=${PIPESTATUS[0]}
           summary=$(grep -E "(Executed [0-9]+ tests|Test run with [0-9]+ tests|tests? (passed|failed))" test.log | tail -2 | tr "\n" " ")
           echo "::notice title=Linux Vapor::${summary:-no summary line}"
+          grep -E "error:|failed \(" test.log | grep -v "^Test Suite" | sort -u | head -8 | cut -c1-400 | while read -r line; do echo "::error title=Vapor test::${line}"; done
           exit $status
 
   macos:
