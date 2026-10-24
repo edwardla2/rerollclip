@@ -18,8 +18,8 @@ jobs:
     name: Renderer + web prototype (Python)
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-24.04
     container: swift:6.1-noble
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Tools for end-to-end tests
         run: apt-get update && apt-get install -y --no-install-recommends ffmpeg python3 libsqlite3-dev
       - name: ClipThatContracts
@@ -86,7 +86,7 @@ jobs:
     if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Select newest Xcode
         run: sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort -V | tail -1)" && xcodebuild -version
       - run: brew install xcodegen ffmpeg
@@ -119,10 +119,11 @@ jobs:
             -destination 'platform=macOS' -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" build | tee build.log | grep -E "error:|warning: .*ClipThat|BUILD (SUCCEEDED|FAILED)" || true
           echo "::notice title=Xcode build::$(grep -c ' warning: ' build.log) warnings, $(grep -c ' error: ' build.log) errors"
+          grep ' warning: ' build.log | sort -u | head -10 | while read -r line; do echo "::warning title=Xcode::${line}"; done
           grep -q "BUILD SUCCEEDED" build.log
       - name: Upload build log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: xcodebuild-log
           path: desktop/build.log
