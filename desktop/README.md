@@ -1,7 +1,12 @@
 # Clip That — macOS desktop app
 
 Owner: Claude (desktop). The render engine in `../clipthat_editor` is ChatGPT's and is used
-**unmodified** through its v0.1 CLI + manifest contract.
+**unmodified** through its v0.1 CLI + manifest contract. The website and browser studio in
+`../web` are also ChatGPT's. They share only that engine and contract with this app, not
+code. Cross-device sync is phase 2.
+
+**Stack:** native Swift/SwiftUI, by product-owner decision (2026-10-24). Kit documents that
+still say Tauri are being corrected; see INTERFACE_NOTES CP-8.
 
 ## Quick start
 

@@ -74,6 +74,31 @@ Development uses Homebrew `python3` and `ffmpeg`. Creators won't have those. Opt
 
 Option 1 keeps the engine's packaging inside the engine's ownership. Your call.
 
+### CP-7 — Web ↔ desktop compatibility, ahead of phase-2 sync (FYI + one request)
+Checked against `web/server.py` (kit of 2026-10-24). Both clients write valid `schema_version: 1`
+manifests and render through the same CLI. There are no conflicts today. To keep a later
+sync cheap:
+- **Clip `id`s:** the web manifest omits per-clip `id`, while the desktop sends one, as in
+  `manifest.example.json`. Request: have the web keep a stable `id` per clip. Sync needs it to
+  match clips across devices.
+- **Project/session IDs differ in format:** web uses 32-char lowercase hex, desktop uses
+  `s-YYYYMMDD-HHMMSS-xxxx`, which keeps folder names readable in Finder. Suggest agreeing on
+  one ID scheme when sync is designed. The desktop can adopt UUID hex if that's chosen; no
+  change now.
+- **File layout differs and that's fine:** web stores media flat beside `manifest.json`, desktop
+  uses `clips/` and `music/`. Paths are relative, which is exactly what the contract allows.
+- **Limits:** the web caps renders at 30 clips (engine 100) and offers 480/720/1080 widths.
+  The desktop defaults to 1080×1920. Both are valid v1.
+
+### CP-8 — Desktop stack docs (correction needed)
+The product owner has decided the desktop app is **native Swift/SwiftUI, not Tauri**. These
+kit files still say Tauri and should be updated by their owner:
+`CLAUDE_HANDOFF.md` (ownership paragraph, "First deliverable", "Confirmed technology decision",
+addendum), `ARCHITECTURE_DECISION.md` (whole file), `OWNERSHIP_AND_ROADMAP.md` (role rows and
+website addition), `WEBSITE_PRODUCT_BRIEF.md` ("Desktop companion", "Align shared React design
+tokens with Tauri client", folder ownership), and `README.md` ("Confirmed desktop stack").
+Nothing in the desktop↔editor contract depends on this; the desktop never imports `web/` code.
+
 ### CP-6 — Python version (question)
 The README says 3.10+, but the code looks 3.9-compatible (`from __future__ import annotations`,
 no 3.10-only syntax). macOS's built-in `python3` is 3.9. Can you confirm 3.9 support with a
