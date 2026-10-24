@@ -8,12 +8,12 @@ Owner: Claude · Updated: 2026-10-24
 |---|---|---|---|
 | P0 | One canonical repo, single README, archived history | ✅ Done | this tree |
 | P0 | One schema: desktop core builds manifests via `ClipThatContracts` | ✅ Done (code) | compile pending |
-| P0 | Swift build route (CI or Mac) | ⛔ Blocked | no Swift toolchain reachable here, see Blockers |
+| P0 | Swift build route (CI or Mac) | ⛔ Blocked on a GitHub repo | `.github/workflows/ci.yml` ready: Linux Swift 6.1 + macOS 15/Xcode |
 | P1 | Desktop app compiles and runs on macOS 15 | ⏳ Waiting on build route | — |
 | P1 | Replay timing verified (previous N s + ~1.5 s) on a real Mac | ⏳ | needs a Mac session |
 | P1 | Packaging: bundled renderer + FFmpeg, signed and notarized DMG | ⏳ | needs signing credentials |
 | P2 | Polished website + browser studio | ✅ Done (on prototype backend) | pytest + Chromium end-to-end run |
-| P2 | Vapor backend with API parity | ⏳ | needs build route |
+| P2 | Vapor backend with API parity (`web-swift/`) | 🔨 Written, parity tests written | compile pending (CI ready) |
 | P3 | First smart-edit feature, measured on footage | ⏳ | — |
 
 ## Test evidence
@@ -26,6 +26,7 @@ Owner: Claude · Updated: 2026-10-24
 | Desktop ffmpeg pipelines (replay assembly, MKV remux, app-shaped manifest → renderer) | same, run by hand | pass: 1080×1920, 30 fps, audio |
 | `swift-shared` tests | — | **not run** (no Swift toolchain) |
 | `desktop/Core` tests | — | **not run** (no Swift toolchain) |
+| `web-swift` tests (Vapor parity) | — | **not run** (no Swift toolchain) |
 | Desktop app on macOS | — | **not run** |
 
 ## Blockers

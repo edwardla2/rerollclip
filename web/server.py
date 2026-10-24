@@ -31,7 +31,7 @@ ALLOWED = {".mp4", ".mov", ".webm", ".mkv"}
 EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]{2,}$")
 
 app = FastAPI(title="Clip That web proof of concept", version="0.1.0", docs_url=None, redoc_url=None)
-app.mount("/assets", StaticFiles(directory=str(STATIC)), name="assets")
+app.mount("/assets", StaticFiles(directory=str(STATIC / "assets")), name="assets")
 
 
 class BetaInterest(BaseModel):

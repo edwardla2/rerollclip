@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: Renderer + web prototype (Python)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - run: python -m pip install -r web/requirements-dev.txt
+      - name: Renderer tests
+        run: python -m unittest discover -s tests -v
+      - name: Web tests
+        run: python -m pytest -q web/tests
+
+  swift-linux:
+    name: Swift on Linux (contracts, desktop core, Vapor)
+    runs-on: ubuntu-24.04
+    container: swift:6.1-noble
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tools for end-to-end tests
+        run: apt-get update && apt-get install -y --no-install-recommends ffmpeg python3 libsqlite3-dev
+      - name: ClipThatContracts
+        working-directory: swift-shared
+        run: swift test
+      - name: Desktop core
+        working-directory: desktop/Core
+        run: swift test
+      - name: Vapor backend
+        working-directory: web-swift
+        run: swift test
+
+  macos:
+    name: macOS app (Xcode build + core tests)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select newest Xcode
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort -V | tail -1)" && xcodebuild -version
+      - run: brew install xcodegen ffmpeg
+      - name: ClipThatContracts
+        working-directory: swift-shared
+        run: swift test
+      - name: Desktop core (includes end-to-end render through the real renderer)
+        working-directory: desktop/Core
+        run: swift test
+      - name: Generate Xcode project
+        working-directory: desktop
+        run: xcodegen generate
+      - name: Build app (unsigned in CI)
+        working-directory: desktop
+        run: |
+          set -o pipefail
+          xcodebuild -project ClipThat.xcodeproj -scheme ClipThat -configuration Debug \
+            -destination 'platform=macOS' -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" build | tee build.log | grep -E "error:|warning: .*ClipThat|BUILD (SUCCEEDED|FAILED)" || true
+          grep -q "BUILD SUCCEEDED" build.log
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-log
+          path: desktop/build.log
+          if-no-files-found: ignore
