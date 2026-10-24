@@ -188,6 +188,13 @@ def main() -> int:
     auto_parser.add_argument("--size", choices=["720", "1080"], default="1080")
     auto_parser.add_argument("--fps", type=int, choices=[30, 60], default=None, help="default: 60 for 50+ fps sources")
     auto_parser.add_argument("--encoder", default="auto", help="auto, libx264 or a hardware encoder name")
+    eval_parser = sub.add_parser("evaluate", help="Edit every clip in a folder and write a side-by-side review report")
+    eval_parser.add_argument("clips", type=Path)
+    eval_parser.add_argument("out", type=Path)
+    eval_parser.add_argument("--profile", choices=["generic", "valorant", "cs2", "fortnite", "roblox"], default="generic")
+    eval_parser.add_argument("--slow-motion", choices=["auto", "on", "off"], default="auto")
+    eval_parser.add_argument("--size", choices=["720", "1080"], default="1080")
+    eval_parser.add_argument("--encoder", default="auto")
     opts = parser.parse_args()
     try:
         if opts.command == "validate":
@@ -196,6 +203,10 @@ def main() -> int:
         elif opts.command == "analyze":
             from .analysis import analyze
             print(json.dumps(analyze(opts.file, length=opts.length, trigger_offset=opts.trigger_offset)))
+        elif opts.command == "evaluate":
+            from .evaluate import evaluate
+            print(json.dumps(evaluate(opts.clips, opts.out, profile=opts.profile, slow_motion=opts.slow_motion,
+                                      size=opts.size, encoder=opts.encoder)))
         elif opts.command == "auto":
             from .highlight import auto_edit
             width, height = (720, 1280) if opts.size == "720" else (1080, 1920)
