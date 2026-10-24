@@ -45,6 +45,8 @@ jobs:
 
   macos:
     name: macOS app (Xcode build + core tests)
+    # macOS runner minutes cost ~10x Linux on private repos: run on main and on demand only.
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
