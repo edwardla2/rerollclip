@@ -122,3 +122,20 @@ def test_upload_render_download_end_to_end(monkeypatch, tmp_path):
     streams = json.loads(probe.stdout)["streams"]
     assert {"codec_type": "video", "width": 480, "height": 852} in streams
     assert any(s["codec_type"] == "audio" for s in streams)
+
+
+@pytest.mark.skipif(subprocess.run(["which", "ffmpeg"], capture_output=True).returncode != 0, reason="FFmpeg required")
+def test_analyze_suggests_window_around_moment(monkeypatch, tmp_path):
+    from tests.test_analysis import make_clip
+    monkeypatch.setattr(server, "RUNTIME", tmp_path)
+    project_id = uuid.uuid4().hex
+    with tempfile.TemporaryDirectory() as src:
+        path = Path(src) / "moment.mp4"
+        make_clip(path, 20, [13.0])
+        uploaded = request("POST", f"/api/projects/{project_id}/clips", files={"file": ("moment.mp4", path.read_bytes(), "video/mp4")}).json()["file"]
+    result = request("POST", f"/api/projects/{project_id}/clips/{uploaded}/analyze", json={"length": 6})
+    assert result.status_code == 200, result.text
+    data = result.json()
+    assert data["suggested_start"] <= 13.0 <= data["suggested_start"] + data["suggested_duration"]
+    assert request("POST", f"/api/projects/{project_id}/clips/../x/analyze").status_code in (400, 404)
+    assert request("POST", f"/api/projects/{project_id}/clips/{uuid.uuid4().hex}.mp4/analyze").status_code == 404

@@ -206,6 +206,7 @@
   }
 
   function setTrim(item, start, length) {
+    item.suggested = false;
     const m = mediaOf(item);
     start = clamp(start, 0, Math.max(0, m.duration - MIN_LEN));
     length = clamp(length, MIN_LEN, maxLengthFor(item, start));
@@ -312,6 +313,7 @@
     renderTimeline();
     renderInspector();
     els.exportOpen.disabled = !state.items.length;
+    $('#auto-trim-all').disabled = !state.items.length;
     els.tcTotal.textContent = fmt(tot);
     if (!state.playing) seek(state.time);
   }
@@ -417,7 +419,7 @@
   function buildItem(item) {
     const m = mediaOf(item);
     const el = document.createElement('div');
-    el.className = 'item' + (item.id === state.selected ? ' is-selected' : '');
+    el.className = 'item' + (item.id === state.selected ? ' is-selected' : '') + (item.suggested ? ' is-suggested' : '');
     el.dataset.id = item.id;
     el.setAttribute('role', 'button');
     el.setAttribute('aria-label', `${m.name}, ${item.length.toFixed(1)} seconds`);
@@ -499,6 +501,7 @@
       if (!moved && Math.abs(dx) < 3) return;
       moved = true;
       const ds = dx / pps;
+      if (mode !== 'move') item.suggested = false;
       if (mode === 'trimL') {
         let newStart = clamp(orig.start + ds, 0, orig.start + orig.length - MIN_LEN);
         if (orig.start + orig.length - newStart > MAX_LEN) newStart = orig.start + orig.length - MAX_LEN;
@@ -650,6 +653,77 @@
       pause();
       seek(state.time + (e.key === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 5 : 0.5));
     }
+  });
+
+  // ---------- suggested trims ----------
+
+  async function analyzeMedia(m, length) {
+    m.analysis = m.analysis || {};
+    if (m.analysis[length]) return m.analysis[length];
+    if (!m.remote) await upload(m, () => {});
+    const response = await fetch(`/api/projects/${state.projectId}/clips/${m.remote}/analyze`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ length }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      if (response.status === 404) m.remote = null;
+      throw new Error(typeof data.detail === 'string' ? data.detail : 'Couldn’t analyze this clip.');
+    }
+    m.analysis[length] = data;
+    return data;
+  }
+
+  function applySuggestion(item, data) {
+    const m = mediaOf(item);
+    const start = clamp(data.suggested_start, 0, Math.max(0, m.duration - MIN_LEN));
+    item.start = start;
+    item.length = clamp(data.suggested_duration, MIN_LEN, maxLengthFor(item, start));
+    item.suggested = true;
+  }
+
+  async function withBusy(button, label, work) {
+    if (button.getAttribute('aria-busy') === 'true') return;
+    const original = button.textContent;
+    button.setAttribute('aria-busy', 'true');
+    button.textContent = label;
+    try { await work(); }
+    catch (error) { toast(String(error.message || error), true); }
+    finally { button.removeAttribute('aria-busy'); button.textContent = original; }
+  }
+
+  $('#suggest-trim').addEventListener('click', () => {
+    const item = selectedItem();
+    if (!item) return;
+    const length = Number($('#target-len').value);
+    withBusy($('#suggest-trim'), 'Analyzing…', async () => {
+      pause();
+      const data = await analyzeMedia(mediaOf(item), length);
+      applySuggestion(item, data);
+      changed();
+      await seek(startOf(state.items.indexOf(item)));
+      toast(`Trimmed to ${item.length.toFixed(1)} s around ${fmt(data.peak_time)}. “Use whole clip” undoes it.`);
+    });
+  });
+
+  $('#auto-trim-all').addEventListener('click', () => {
+    if (!state.items.length) return;
+    const length = Number($('#target-len').value);
+    withBusy($('#auto-trim-all'), 'Analyzing…', async () => {
+      pause();
+      // A file used more than once was split or duplicated on purpose; leave those alone.
+      const uses = new Map();
+      state.items.forEach((i) => uses.set(i.mediaId, (uses.get(i.mediaId) || 0) + 1));
+      const items = state.items.filter((i) => uses.get(i.mediaId) === 1);
+      const skipped = state.items.length - items.length;
+      for (const [n, item] of items.entries()) {
+        $('#auto-trim-all').textContent = `Analyzing ${n + 1} of ${items.length}…`;
+        applySuggestion(item, await analyzeMedia(mediaOf(item), length));
+      }
+      changed();
+      await seek(0);
+      const trimmed = `Trimmed ${items.length} ${items.length === 1 ? 'clip' : 'clips'} to about ${length} s each.`;
+      toast(skipped ? `${trimmed} Skipped ${skipped} that use the same file more than once.` : trimmed);
+    });
   });
 
   // ---------- export ----------

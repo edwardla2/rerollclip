@@ -31,6 +31,29 @@ struct RenderRequest: Content {
     var size: String?
 }
 
+struct AnalyzeRequest: Content {
+    var length: Double?
+}
+
+/// Output of `clipthat_editor analyze` (see clipthat_editor/analysis.py).
+struct AnalyzeResult: Content {
+    var ok: Bool
+    var file: String
+    var duration: Double
+    var signals: [String]
+    var suggestedStart: Double
+    var suggestedDuration: Double
+    var peakTime: Double
+    var strength: Double
+
+    enum CodingKeys: String, CodingKey {
+        case ok, file, duration, signals, strength
+        case suggestedStart = "suggested_start"
+        case suggestedDuration = "suggested_duration"
+        case peakTime = "peak_time"
+    }
+}
+
 struct RenderResult: Content {
     var ok = true
     var url: String
@@ -54,6 +77,7 @@ struct ProjectController: RouteCollection {
         let maxBody = ByteCount(value: config.maxUploadBytes + 1024 * 1024)
         project.on(.POST, "clips", body: .collect(maxSize: maxBody), use: upload)
         project.post("render", use: render)
+        project.post("clips", ":fileName", "analyze", use: analyze)
         project.get("output", use: output)
     }
 
@@ -130,6 +154,33 @@ struct ProjectController: RouteCollection {
         let bytes = (try? FileManager.default.attributesOfItem(atPath: outputPath)[.size] as? Int) ?? 0
         guard bytes > 0 else { throw Abort(.internalServerError, reason: "Renderer exited without a video") }
         return RenderResult(url: "/api/projects/\(projectID)/output", bytes: bytes)
+    }
+
+    /// Suggested trim window for one uploaded clip.
+    func analyze(req: Request) async throws -> AnalyzeResult {
+        let dir = try projectDirectory(req)
+        guard let fileName = req.parameters.get("fileName"), Self.isUploadName(fileName) else {
+            throw Abort(.badRequest, reason: "Invalid uploaded clip reference")
+        }
+        guard FileManager.default.fileExists(atPath: dir + fileName) else {
+            throw Abort(.notFound, reason: "Uploaded clip no longer exists")
+        }
+        let length = (try? req.content.decode(AnalyzeRequest.self))?.length ?? 8
+        guard (0.5...120).contains(length) else {
+            throw Abort(.unprocessableEntity, reason: "length must be between 0.5 and 120 seconds")
+        }
+        let result = try await EditorCLI(config: config).run(["analyze", dir + fileName, "--length", String(length)],
+                                                             timeoutSeconds: 180)
+        if result.timedOut { throw Abort(.gatewayTimeout, reason: "Analysis timed out") }
+        guard result.status == 0 else {
+            throw Abort(.unprocessableEntity,
+                        reason: "Analysis failed: \(EditorCLI.errorMessage(from: result.stderr, status: result.status))")
+        }
+        do {
+            return try JSONDecoder().decode(AnalyzeResult.self, from: Data(result.stdout.utf8))
+        } catch {
+            throw Abort(.internalServerError, reason: "The analyzer returned an unexpected result")
+        }
     }
 
     func output(req: Request) async throws -> Response {

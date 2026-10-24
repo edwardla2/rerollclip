@@ -73,6 +73,10 @@
             <label>Length<input id="f-length" type="number" min="0.2" max="120" step="0.1" inputmode="decimal" /></label>
           </div>
           <p class="muted tnum" id="clip-source-len"></p>
+          <div class="suggest">
+            <button type="button" class="btn btn-small btn-suggest" id="suggest-trim">Suggest trim</button>
+            <p class="muted" id="suggest-note">Finds the loudest, busiest moment and trims around it. Uploads this clip to analyze it.</p>
+          </div>
           <div class="row-actions">
             <button type="button" class="btn btn-small" id="split">Split at playhead</button>
             <button type="button" class="btn btn-small" id="reset-trim">Use whole clip</button>
@@ -111,6 +115,14 @@
   <section class="tl" aria-label="Timeline">
     <div class="tl-bar">
       <span class="tl-count tnum" id="tl-count">No clips</span>
+      <button type="button" class="btn btn-small btn-suggest" id="auto-trim-all" disabled>Auto-trim all</button>
+      <label class="target"><span>to</span>
+        <select id="target-len" aria-label="Auto-trim length">
+          <option value="5">5 s</option>
+          <option value="8" selected>8 s</option>
+          <option value="12">12 s</option>
+        </select>
+      </label>
       <span class="tl-keys">Space play · S split · Delete remove · drag clips to reorder, drag edges to trim</span>
       <label class="zoom"><span>Zoom</span><input id="zoom" type="range" min="8" max="120" value="36" aria-label="Timeline zoom" /></label>
     </div>

@@ -72,6 +72,27 @@ struct ClipInspectorView: View {
                             Spacer()
                             Button("Use Whole Clip") { model.resetSelection(clip.id, in: session.id) }
                         }
+                        HStack(spacing: 8) {
+                            Button {
+                                model.suggestTrim(clip.id, in: session.id)
+                            } label: {
+                                Label(model.analyzingClipIDs.contains(clip.id) ? "Analyzing…" : "Suggest Trim",
+                                      systemImage: "wand.and.rays")
+                            }
+                            .disabled(model.analyzingClipIDs.contains(clip.id))
+                            Picker("Length", selection: $model.autoTrimLength) {
+                                Text("5 s").tag(5.0)
+                                Text("8 s").tag(8.0)
+                                Text("12 s").tag(12.0)
+                            }
+                            .labelsHidden()
+                            .frame(width: 70)
+                            Text(clip.triggerOffset != nil
+                                 ? "Looks at the moment just before you said “Clip that.”"
+                                 : "Finds the loudest, busiest moment.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                         if let offset = clip.triggerOffset {
                             Text("Trigger heard at \(DurationFormat.short(offset)) into this clip.")
                                 .font(.caption)

@@ -248,4 +248,33 @@ final class EditorIntegrationTests: XCTestCase {
         XCTAssertGreaterThan(info.duration, 5.5)
         XCTAssertTrue(record.relativePath.hasPrefix("renders/"))
     }
+
+    /// Suggested trim on a replay-style clip: real moment at 20 s, "Clip that" at 24 s,
+    /// a decoy burst after the trigger at 28 s. The trigger-aware analyzer must pick 20 s.
+    func testSuggestedTrimRespectsTrigger() async throws {
+        let repoRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let tools = Toolchain.locate(bundledEditor: repoRoot)
+        try XCTSkipUnless(tools.isComplete, "needs python3, ffmpeg, ffprobe and clipthat_editor")
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("analyze-" + UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let clip = dir.appendingPathComponent("replay.mp4")
+        let moments = [20.0, 28.0]
+        let boxes = moments.map { "drawbox=enable='between(t,\($0),\($0 + 0.6))':color=red:t=fill" }.joined(separator: ",")
+        let envelope = moments.map { "between(t,\($0),\($0 + 0.6))" }.joined(separator: "+")
+        let r = try await ProcessRunner.run(tools.ffmpeg!, [
+            "-loglevel", "error", "-y",
+            "-f", "lavfi", "-i", "color=c=0x203050:s=320x180:r=30:d=31.5",
+            "-f", "lavfi", "-i", "anoisesrc=d=31.5:a=0.9:r=48000",
+            "-filter_complex", "[0:v]\(boxes)[v];[1:a]volume='if(\(envelope),1,0.02)':eval=frame[a]",
+            "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-t", "31.5", clip.path,
+        ])
+        XCTAssertEqual(r.status, 0, r.stderr)
+        let s = try await ClipAnalyzer.suggest(for: clip, length: 8, triggerOffset: 24, tools: tools)
+        XCTAssertLessThanOrEqual(s.suggestedStart, 20)
+        XCTAssertGreaterThanOrEqual(s.suggestedStart + s.suggestedDuration, 20.6)
+        XCTAssertLessThanOrEqual(s.suggestedStart + s.suggestedDuration, 25.51)
+    }
 }

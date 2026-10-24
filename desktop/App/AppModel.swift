@@ -97,6 +97,10 @@ final class AppModel: ObservableObject {
     @Published private(set) var bufferedSeconds: Double = 0
     @Published private(set) var savingClips = 0
     @Published private(set) var hotkeyRegistered = false
+    /// Clips currently being analyzed for a suggested trim.
+    @Published private(set) var analyzingClipIDs: Set<String> = []
+    /// Target length for suggested trims, in seconds.
+    @Published var autoTrimLength: Double = 8
     @Published var settings: AppSettings {
         didSet { settingsChanged(from: oldValue) }
     }
@@ -285,6 +289,52 @@ final class AppModel: ObservableObject {
             let sel = ClipSelection.defaultSelection(mediaDuration: session.clips[i].mediaDuration)
             session.clips[i].selectionStart = sel.start
             session.clips[i].selectionDuration = sel.duration
+        }
+    }
+
+    // MARK: Suggested trims
+
+    /// Trims a clip around its key moment. Replay clips pass their trigger time, so the
+    /// analyzer only searches the seconds before "Clip that" was said.
+    func suggestTrim(_ clipID: String, in sessionID: String) {
+        guard let session = session(sessionID), let clip = session.clips.first(where: { $0.id == clipID }),
+              !analyzingClipIDs.contains(clipID) else { return }
+        analyzingClipIDs.insert(clipID)
+        let url = store.url(for: clip, in: session)
+        let tools = self.tools
+        let length = autoTrimLength
+        Task {
+            defer { analyzingClipIDs.remove(clipID) }
+            do {
+                let s = try await ClipAnalyzer.suggest(for: url, length: length, triggerOffset: clip.triggerOffset, tools: tools)
+                setSelection(clipID, in: sessionID, start: s.suggestedStart, duration: s.suggestedDuration)
+                show("Trimmed to \(DurationFormat.short(s.suggestedDuration)) around \(DurationFormat.clock(s.peakTime)). “Use Whole Clip” undoes it.")
+            } catch {
+                show(error)
+            }
+        }
+    }
+
+    /// Suggested trims for every clip in the session, one at a time.
+    func autoTrimAll(in sessionID: String) {
+        guard let session = session(sessionID), analyzingClipIDs.isEmpty else { return }
+        let jobs = session.clips.map { ($0.id, store.url(for: $0, in: session), $0.triggerOffset) }
+        let tools = self.tools
+        let length = autoTrimLength
+        analyzingClipIDs = Set(jobs.map { $0.0 })
+        Task {
+            var done = 0
+            for (clipID, url, trigger) in jobs {
+                defer { analyzingClipIDs.remove(clipID) }
+                do {
+                    let s = try await ClipAnalyzer.suggest(for: url, length: length, triggerOffset: trigger, tools: tools)
+                    setSelection(clipID, in: sessionID, start: s.suggestedStart, duration: s.suggestedDuration)
+                    done += 1
+                } catch {
+                    show(error)
+                }
+            }
+            if done > 0 { show("Trimmed \(done) clip\(done == 1 ? "" : "s") to about \(Int(length)) s each.") }
         }
     }
 

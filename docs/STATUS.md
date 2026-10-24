@@ -14,7 +14,7 @@ Owner: Claude · Updated: 2026-10-24
 | P1 | Packaging: bundled renderer + FFmpeg, signed and notarized DMG | ⏳ | needs signing credentials |
 | P2 | Polished website + browser studio | ✅ Done (on prototype backend) | pytest + Chromium end-to-end run |
 | P2 | Vapor backend with API parity (`web-swift/`) | 🔨 Written, parity tests written | compile pending (CI ready) |
-| P3 | First smart-edit feature, measured on footage | ⏳ | — |
+| P3 | Suggested trims (audio + visual-change peak; trigger-aware for replay clips) in renderer, both backends, studio and Mac app | ✅ Built; verified on synthetic footage | 8 unit tests + 10/10 randomized sweep + browser run; **real-footage evaluation pending** |
 
 ## Test evidence
 
@@ -23,11 +23,21 @@ Owner: Claude · Updated: 2026-10-24
 | Renderer (`tests/`) | Linux workspace, Python 3.13, FFmpeg 6.1 | 5/5 pass |
 | Website (`web/tests`): claims guardrails, security, upload → render → download | same | 7/7 pass |
 | Studio in Chromium (`web/tests/e2e/drive_studio.py`): upload 3, split, drag-trim, drag-reorder, play, export | same | pass: 720×1280, 34.02 s = timeline length, audio, 0 console errors |
+| Suggested trims (`tests/test_analysis.py`) planted-moment ground truth incl. trigger decoys and silent clips | same | 8/8 pass; harder randomized sweep (moving background, music-like bed) 10/10 with and without trigger |
+| Studio Auto-trim in Chromium (`web/tests/e2e/drive_autotrim.py`) | same | pass: windows contain planted moments |
 | Desktop ffmpeg pipelines (replay assembly, MKV remux, app-shaped manifest → renderer) | same, run by hand | pass: 1080×1920, 30 fps, audio |
 | `swift-shared` tests | — | **not run** (no Swift toolchain) |
 | `desktop/Core` tests | — | **not run** (no Swift toolchain) |
 | `web-swift` tests (Vapor parity) | — | **not run** (no Swift toolchain) |
 | Desktop app on macOS | — | **not run** |
+
+## Suggested trims: what's verified and what isn't
+
+Verified on synthetic clips where the right answer is known. Not yet evaluated on real gameplay,
+where constant gunfire, music and voice chat make the loudest moment a weaker signal. Next step:
+score suggestions against hand-marked highlights in owner-provided footage (10–20 clips) and tune
+weights, then compare against manual edits. Until then the UI calls it a suggestion and the
+landing page calls it an early feature.
 
 ## Blockers
 

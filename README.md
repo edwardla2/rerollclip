@@ -18,7 +18,9 @@ ready-to-post edit, on a Mac or in the browser.
 | `swift-shared/` | **ClipThatContracts**: the schema-v1 manifest, the single definition used by the desktop app and the website | Swift package |
 | `clipthat_editor/` | Renderer: trims, orders, frames to 9:16 (blur-fill or crop), mixes music, writes MP4 | Python + FFmpeg |
 | `examples/manifest.example.json` | Reference schema-v1 manifest | JSON |
-| `web/` | Current website + browser editor prototype (being replaced by the Vapor app) | FastAPI · HTML/CSS/JS |
+| `web/static/` | Landing page + studio (shared by both backends) | HTML/CSS/JS |
+| `web-swift/` | Website backend (replaces `web/server.py`; compile pending) | Swift · Vapor 4 |
+| `web/server.py` | Prototype backend, kept as the reference until Vapor passes in CI | FastAPI |
 | `tests/` | Renderer tests | Python |
 | `docs/` | Handoff, status, history | Markdown |
 
@@ -26,7 +28,8 @@ ready-to-post edit, on a Mac or in the browser.
 
 **Working and tested in this repo:**
 - Renderer: schema-v1 manifest → portrait MP4, with or without source audio, optional music.
-- Website prototype: upload clips, trim and reorder, render, download; local-only beta-interest form.
+- Website + studio: landing page, browser editor (timeline trim/split/reorder, live 9:16 preview, export), beta-interest form.
+- Suggested trims: finds the loudest, visually busiest moment and trims around it (trigger-aware for replay clips). Verified on synthetic footage; real-footage evaluation pending.
 - Desktop pipelines run through the real renderer: replay-segment assembly, MKV remux import, manifest generation.
 
 **Written, awaiting first compile and test on macOS:**

@@ -31,6 +31,14 @@ struct RenderBar: View {
 
             musicControl
 
+            Button {
+                model.autoTrimAll(in: session.id)
+            } label: {
+                Label(model.analyzingClipIDs.isEmpty ? "Auto-trim" : "Analyzing…", systemImage: "wand.and.rays")
+            }
+            .disabled(session.clips.isEmpty || !model.analyzingClipIDs.isEmpty)
+            .help("Trim every clip to about \(Int(model.autoTrimLength)) s around its key moment")
+
             Spacer()
 
             status

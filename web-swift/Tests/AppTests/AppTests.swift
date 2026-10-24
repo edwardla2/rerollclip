@@ -208,6 +208,37 @@ final class AppTests: XCTestCase {
         }
     }
 
+    func testAnalyzeFindsPlantedMoment() async throws {
+        guard Self.which("ffmpeg"), Self.which("ffprobe"), Self.which("python3") else {
+            throw XCTSkip("needs ffmpeg, ffprobe and python3")
+        }
+        try await start()
+        let id = Self.newProjectID()
+        // 20 s clip: quiet noise + static frame, with a loud burst and a red flash at 13 s.
+        let src = runtime.appendingPathComponent("moment.mp4")
+        try Self.run(["ffmpeg", "-loglevel", "error", "-y",
+                      "-f", "lavfi", "-i", "color=c=0x203050:s=320x180:r=30:d=20",
+                      "-f", "lavfi", "-i", "anoisesrc=d=20:a=0.9:r=48000",
+                      "-filter_complex", "[0:v]drawbox=enable='between(t,13,13.6)':color=red:t=fill[v];[1:a]volume='if(between(t,13,13.6),1,0.02)':eval=frame[a]",
+                      "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-t", "20", src.path])
+        let data = try Data(contentsOf: src)
+        var uploaded = ""
+        try await app.test(.POST, "api/projects/\(id)/clips", beforeRequest: { req in
+            try req.content.encode(UploadForm(file: File(data: ByteBuffer(bytes: data), filename: "moment.mp4")), as: .formData)
+        }) { res async throws in uploaded = try res.content.decode(UploadResult.self).file }
+        try await app.test(.POST, "api/projects/\(id)/clips/\(uploaded)/analyze", beforeRequest: { req in
+            try req.content.encode(AnalyzeRequest(length: 6))
+        }) { res async throws in
+            XCTAssertEqual(res.status, .ok, res.body.string)
+            let result = try res.content.decode(AnalyzeResult.self)
+            XCTAssertLessThanOrEqual(result.suggestedStart, 13.0)
+            XCTAssertGreaterThanOrEqual(result.suggestedStart + result.suggestedDuration, 13.6)
+        }
+        try await app.test(.POST, "api/projects/\(id)/clips/\(Self.newProjectID()).mp4/analyze") { res async in
+            XCTAssertEqual(res.status, .notFound)
+        }
+    }
+
     // MARK: Helpers
 
     static func which(_ tool: String) -> Bool {

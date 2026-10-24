@@ -162,6 +162,7 @@ def render(manifest_path: Path, output: Path) -> None:
 
 
 def main() -> int:
+    from .analysis import AnalysisError
     parser = argparse.ArgumentParser(description="Clip That local montage editor v0")
     sub = parser.add_subparsers(dest="command", required=True)
     validate_parser = sub.add_parser("validate", help="Check manifest JSON and input paths")
@@ -169,14 +170,22 @@ def main() -> int:
     render_parser = sub.add_parser("render", help="Render a montage from the manifest")
     render_parser.add_argument("manifest", type=Path)
     render_parser.add_argument("--output", required=True, type=Path)
+    analyze_parser = sub.add_parser("analyze", help="Suggest a trim window around the clip's key moment")
+    analyze_parser.add_argument("file", type=Path)
+    analyze_parser.add_argument("--length", type=float, default=8.0, help="target window length in seconds")
+    analyze_parser.add_argument("--trigger-offset", type=float, default=None,
+                                help="seconds into the clip where the user said 'Clip that'")
     opts = parser.parse_args()
     try:
         if opts.command == "validate":
             data = parse_manifest(opts.manifest.resolve())
             print(json.dumps({"ok": True, "clips": len(data["clips"])}))
+        elif opts.command == "analyze":
+            from .analysis import analyze
+            print(json.dumps(analyze(opts.file, length=opts.length, trigger_offset=opts.trigger_offset)))
         else:
             render(opts.manifest, opts.output)
         return 0
-    except (EditorError, OSError, ValueError) as err:
+    except (EditorError, AnalysisError, OSError, ValueError) as err:
         print(json.dumps({"ok": False, "error": str(err)}), file=sys.stderr)
         return 1

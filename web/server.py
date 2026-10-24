@@ -178,6 +178,39 @@ async def render_project(project_id: str, request: RenderInput):
     return {"ok": True, "url": f"/api/projects/{project_id}/output", "bytes": output.stat().st_size}
 
 
+class AnalyzeInput(BaseModel):
+    length: float = Field(default=8.0, ge=0.5, le=120)
+
+
+@app.post("/api/projects/{project_id}/clips/{file_name}/analyze")
+async def analyze_clip(project_id: str, file_name: str, request: AnalyzeInput | None = None):
+    """Suggested trim for one uploaded clip (see clipthat_editor/analysis.py)."""
+    parent = project_dir(project_id)
+    if not FILE_RE.fullmatch(file_name):
+        raise HTTPException(400, "Invalid uploaded clip reference")
+    path = parent / file_name
+    if not path.is_file():
+        raise HTTPException(404, "Uploaded clip no longer exists")
+    length = (request or AnalyzeInput()).length
+    cmd = [sys.executable, "-m", "clipthat_editor", "analyze", str(path), "--length", str(length)]
+
+    def run_cli():
+        return subprocess.run(cmd, cwd=str(ROOT), capture_output=True, text=True, timeout=180)
+
+    try:
+        result = await run_in_threadpool(run_cli)
+    except subprocess.TimeoutExpired:
+        raise HTTPException(504, "Analysis timed out")
+    if result.returncode != 0:
+        details = result.stderr[-600:]
+        try:
+            details = json.loads(details).get("error", details)
+        except (ValueError, AttributeError):
+            pass
+        raise HTTPException(422, f"Analysis failed: {details}")
+    return json.loads(result.stdout)
+
+
 @app.get("/api/projects/{project_id}/output")
 def get_render(project_id: str):
     dest = project_dir(project_id) / "render.mp4"
