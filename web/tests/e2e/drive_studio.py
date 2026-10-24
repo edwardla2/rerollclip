@@ -28,20 +28,20 @@ with sync_playwright() as p:
     track=pg.locator('#track').bounding_box(); zoom=36
     pg.mouse.click(track['x']+6*zoom, track['y']+40)
     pg.keyboard.press('s'); pg.wait_for_timeout(300)
-    print('after split:', pg.inner_text('#tl-count'))
+    print('after split:', pg.locator('#track .item').count(), 'clips, total', pg.inner_text('#tc-total'))
 
     # trim: drag right handle of the selected (2nd half) item left by 2s
     sel=pg.locator('#track .item.is-selected .handle-r').bounding_box()
     pg.mouse.move(sel['x']+5, sel['y']+20); pg.mouse.down(); pg.mouse.move(sel['x']+5-2*zoom, sel['y']+20, steps=8); pg.mouse.up()
     pg.wait_for_timeout(300)
-    print('after trim:', pg.inner_text('#tl-count'), '| selected length field:', pg.input_value('#f-length'))
+    print('after trim: total', pg.inner_text('#tc-total'), '| selected length field:', pg.input_value('#f-length'))
 
     # reorder: drag last item to the front
-    names_before=pg.eval_on_selector_all('#track .item .item-label', 'els => els.map(e => e.textContent.slice(0,8))')
+    names_before=pg.eval_on_selector_all('#track .item', 'els => els.map(e => e.title.slice(0,8))')
     last=pg.locator('#track .item').last.bounding_box()
     pg.mouse.move(last['x']+last['width']/2, last['y']+40); pg.mouse.down()
     pg.mouse.move(track['x']+5, last['y']+40, steps=15); pg.mouse.up(); pg.wait_for_timeout(300)
-    names_after=pg.eval_on_selector_all('#track .item .item-label', 'els => els.map(e => e.textContent.slice(0,8))')
+    names_after=pg.eval_on_selector_all('#track .item', 'els => els.map(e => e.title.slice(0,8))')
     print('order before:', names_before); print('order after: ', names_after)
 
     # play a bit: the playhead must advance through the sequence
@@ -51,7 +51,7 @@ with sync_playwright() as p:
     print('timecode after 2.5s playing:', tnow)
 
     # crop layout + 720 output, then export
-    pg.click('.seg [data-layout="center_crop"]'); pg.select_option('#size','720')
+    pg.click('.rail-btn[data-pane="format"]'); pg.click('.seg [data-layout="center_crop"]'); pg.click('#size-seg [data-size="720"]')
     pg.click('#export-open')
     pg.wait_for_selector('#download:not([hidden])', timeout=180000)
     pg.wait_for_timeout(1500)

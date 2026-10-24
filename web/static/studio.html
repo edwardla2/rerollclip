@@ -3,162 +3,260 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#091322" />
-  <title>Web editor · Clip That</title>
-  <meta name="description" content="Trim, reorder and export your clips as one vertical video, right in the browser." />
+  <meta name="theme-color" content="#0d0e11" />
+  <title>Reroll Studio</title>
+  <meta name="description" content="Trim, reorder and export your gaming clips as one vertical video, right in the browser." />
   <link rel="preload" href="/assets/fonts/space-grotesk-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="/assets/tokens.css" />
   <link rel="stylesheet" href="/assets/studio.css" />
 </head>
 <body>
-  <header class="bar">
-    <a class="wordmark" href="/" aria-label="Clip That home"><span class="rec-dot" aria-hidden="true"></span>Clip That</a>
-    <label class="title-field">
-      <span class="visually-hidden">Project name</span>
-      <input id="project-title" type="text" value="Untitled edit" maxlength="80" spellcheck="false" />
-    </label>
-    <span class="bar-hint" id="bar-hint">Clips stay in this browser tab until you export.</span>
-    <div class="bar-actions">
-      <button type="button" class="btn btn-quiet" id="new-project">New edit</button>
-      <button type="button" class="btn btn-primary" id="export-open" disabled>Export</button>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+<!-- Icons: Lucide (ISC License, https://lucide.dev) -->
+<symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 3v12" /> <path d="m17 8-5-5-5 5" /> <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /></symbol>
+<symbol id="i-film" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2" /> <path d="M7 3v18" /> <path d="M3 7.5h4" /> <path d="M3 12h18" /> <path d="M3 16.5h4" /> <path d="M17 3v18" /> <path d="M17 7.5h4" /> <path d="M17 16.5h4" /></symbol>
+<symbol id="i-music" viewBox="0 0 24 24"><path d="M21 16V3a1 1 0 0 0-1.28-.96l-10 2.917a1 1 0 0 0-.72.96V19" /> <circle cx="18" cy="16" r="3" /> <circle cx="6" cy="19" r="3" /></symbol>
+<symbol id="i-type" viewBox="0 0 24 24"><path d="M12 4v16" /> <path d="M4 7V5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2" /> <path d="M9 20h6" /></symbol>
+<symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" /> <path d="M20 2v4" /> <path d="M22 4h-4" /> <circle cx="4" cy="20" r="2" /></symbol>
+<symbol id="i-scissors" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3" /> <path d="M8.12 8.12 12 12" /> <path d="M20 4 8.12 15.88" /> <circle cx="6" cy="18" r="3" /> <path d="M14.8 14.8 20 20" /></symbol>
+<symbol id="i-trash-2" viewBox="0 0 24 24"><path d="M10 11v6" /> <path d="M14 11v6" /> <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /> <path d="M3 6h18" /> <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></symbol>
+<symbol id="i-undo-2" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5" /> <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11" /></symbol>
+<symbol id="i-redo-2" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5" /> <path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13" /></symbol>
+<symbol id="i-zoom-in" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /> <line x1="21" x2="16.65" y1="21" y2="16.65" /> <line x1="11" x2="11" y1="8" y2="14" /> <line x1="8" x2="14" y1="11" y2="11" /></symbol>
+<symbol id="i-zoom-out" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /> <line x1="21" x2="16.65" y1="21" y2="16.65" /> <line x1="8" x2="14" y1="11" y2="11" /></symbol>
+<symbol id="i-play" viewBox="0 0 24 24"><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z" /></symbol>
+<symbol id="i-pause" viewBox="0 0 24 24"><rect x="14" y="3" width="5" height="18" rx="1" /> <rect x="5" y="3" width="5" height="18" rx="1" /></symbol>
+<symbol id="i-skip-back" viewBox="0 0 24 24"><path d="M17.971 4.285A2 2 0 0 1 21 6v12a2 2 0 0 1-3.029 1.715l-9.997-5.998a2 2 0 0 1-.003-3.432z" /> <path d="M3 20V4" /></symbol>
+<symbol id="i-skip-forward" viewBox="0 0 24 24"><path d="M21 4v16" /> <path d="M6.029 4.285A2 2 0 0 0 3 6v12a2 2 0 0 0 3.029 1.715l9.997-5.998a2 2 0 0 0 .003-3.432z" /></symbol>
+<symbol id="i-volume-2" viewBox="0 0 24 24"><path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z" /> <path d="M16 9a5 5 0 0 1 0 6" /> <path d="M19.364 18.364a9 9 0 0 0 0-12.728" /></symbol>
+<symbol id="i-layout-grid" viewBox="0 0 24 24"><rect width="7" height="7" x="3" y="3" rx="1" /> <rect width="7" height="7" x="14" y="3" rx="1" /> <rect width="7" height="7" x="14" y="14" rx="1" /> <rect width="7" height="7" x="3" y="14" rx="1" /></symbol>
+<symbol id="i-circle-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /> <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /> <path d="M12 17h.01" /></symbol>
+<symbol id="i-crop" viewBox="0 0 24 24"><path d="M6 2v14a2 2 0 0 0 2 2h14" /> <path d="M18 22V8a2 2 0 0 0-2-2H2" /></symbol>
+<symbol id="i-wand-sparkles" viewBox="0 0 24 24"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72" /> <path d="m14 7 3 3" /> <path d="M5 6v4" /> <path d="M19 14v4" /> <path d="M10 2v2" /> <path d="M7 8H3" /> <path d="M21 16h-4" /> <path d="M11 3H9" /></symbol>
+<symbol id="i-download" viewBox="0 0 24 24"><path d="M12 15V3" /> <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /> <path d="m7 10 5 5 5-5" /></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18" /> <path d="m6 6 12 12" /></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14" /> <path d="M12 5v14" /></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></symbol>
+<symbol id="i-sliders-horizontal" viewBox="0 0 24 24"><path d="M10 5H3" /> <path d="M12 19H3" /> <path d="M14 3v4" /> <path d="M16 17v4" /> <path d="M21 12h-9" /> <path d="M21 19h-5" /> <path d="M21 5h-7" /> <path d="M8 10v4" /> <path d="M8 12H3" /></symbol>
+<symbol id="i-maximize-2" viewBox="0 0 24 24"><path d="M15 3h6v6" /> <path d="m21 3-7 7" /> <path d="m3 21 7-7" /> <path d="M9 21H3v-6" /></symbol>
+<symbol id="i-audio-waveform" viewBox="0 0 24 24"><path d="M2 13a2 2 0 0 0 2-2V7a2 2 0 0 1 4 0v13a2 2 0 0 0 4 0V4a2 2 0 0 1 4 0v13a2 2 0 0 0 4 0v-4a2 2 0 0 1 2-2" /></symbol>
+<symbol id="i-rectangle-vertical" viewBox="0 0 24 24"><rect width="12" height="20" x="6" y="2" rx="2" /></symbol>
+<symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" /></symbol>
+<symbol id="i-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /> <circle cx="9" cy="9" r="2" /> <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></symbol>
+<symbol id="i-rotate-ccw" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /> <path d="M3 3v5h5" /></symbol>
+<symbol id="i-gauge" viewBox="0 0 24 24"><path d="m12 14 4-4" /> <path d="M3.34 19a10 10 0 1 1 17.32 0" /></symbol>
+</svg>
+<div class="app">
+  <aside class="rail" aria-label="Tools">
+    <a class="logo" href="/" aria-label="Reroll home">
+      <svg viewBox="0 0 32 32" class="logo-mark" aria-hidden="true">
+        <rect x="3" y="3" width="26" height="26" rx="8" fill="var(--gold)"/>
+        <circle cx="11" cy="11" r="2.6" fill="var(--ink-on-gold)"/>
+        <circle cx="21" cy="21" r="2.6" fill="var(--ink-on-gold)"/>
+        <circle cx="21" cy="11" r="2.6" fill="var(--ink-on-gold)" opacity=".35"/>
+      </svg>
+    </a>
+    <nav class="rail-nav" role="tablist" aria-label="Panels">
+      <button type="button" class="rail-btn is-active" role="tab" aria-selected="true" aria-controls="pane-media" data-pane="media"><svg class="i" aria-hidden="true"><use href="#i-film"/></svg><span>Media</span></button>
+      <button type="button" class="rail-btn" role="tab" aria-selected="false" aria-controls="pane-magic" data-pane="magic"><svg class="i" aria-hidden="true"><use href="#i-wand-sparkles"/></svg><span>Magic</span></button>
+      <button type="button" class="rail-btn" role="tab" aria-selected="false" aria-controls="pane-format" data-pane="format"><svg class="i" aria-hidden="true"><use href="#i-rectangle-vertical"/></svg><span>Format</span></button>
+    </nav>
+    <a class="rail-btn rail-foot" href="/#how" title="How Reroll works"><svg class="i" aria-hidden="true"><use href="#i-circle-help"/></svg><span>Help</span></a>
+  </aside>
+
+  <header class="top">
+    <div class="crumbs">
+      <span class="crumb-muted">My edits</span>
+      <span class="crumb-sep" aria-hidden="true">/</span>
+      <label class="title-field"><span class="visually-hidden">Project name</span>
+        <input id="project-title" type="text" value="Untitled edit" maxlength="80" spellcheck="false" />
+      </label>
+    </div>
+    <div class="top-actions">
+      <span class="save-state" id="bar-hint"><span class="dot" aria-hidden="true"></span>Kept in this tab until you export</span>
+      <button type="button" class="btn btn-ghost" id="new-project">New edit</button>
+      <button type="button" class="btn btn-primary btn-export" id="export-open" disabled><svg class="i" aria-hidden="true"><use href="#i-upload"/></svg>Export</button>
     </div>
   </header>
 
-  <main class="ws">
-    <aside class="bin" aria-labelledby="bin-title">
-      <div class="panel-head">
-        <h2 id="bin-title">Media</h2>
-        <button type="button" class="btn btn-small" id="upload-button">Upload</button>
+  <main class="work">
+    <section class="panel side" aria-label="Library">
+      <div class="pane" id="pane-media" role="tabpanel" data-pane="media">
+        <div class="pane-head">
+          <h2>Media</h2>
+          <span class="pane-count tnum" id="media-count"></span>
+        </div>
+        <input id="file-input" type="file" accept="video/mp4,video/quicktime,video/webm,video/x-matroska,.mp4,.mov,.webm,.mkv" multiple hidden />
+        <button type="button" class="btn btn-upload" id="upload-button"><svg class="i" aria-hidden="true"><use href="#i-upload"/></svg>Upload clips</button>
+        <div class="drop" id="drop" tabindex="0" role="button" aria-describedby="drop-help">
+          <span>or drop videos here</span>
+          <small id="drop-help">MP4, MOV, WebM, MKV · up to 250 MB</small>
+        </div>
+        <ul class="media-grid" id="media-list" aria-label="Uploaded media"></ul>
       </div>
-      <input id="file-input" type="file" accept="video/mp4,video/quicktime,video/webm,video/x-matroska,.mp4,.mov,.webm,.mkv" multiple hidden />
-      <div class="drop" id="drop" tabindex="0" role="button" aria-describedby="drop-help">
-        <strong>Drop videos here</strong>
-        <span id="drop-help">MP4, MOV, WebM or MKV, up to 250 MB each</span>
-      </div>
-      <ul class="media-list" id="media-list" aria-label="Uploaded media"></ul>
-    </aside>
 
-    <section class="stage" aria-label="Preview">
+      <div class="pane" id="pane-magic" role="tabpanel" data-pane="magic" hidden>
+        <div class="pane-head"><h2>Magic</h2><span class="pill-soon">Early</span></div>
+        <div class="card magic-card">
+          <div class="magic-icon"><svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg></div>
+          <h3>Auto-trim</h3>
+          <p>Finds the loudest, busiest moment in each clip and trims around it, so a long recording becomes a tight highlight.</p>
+          <div class="field-label">Length per clip</div>
+          <div class="segmented" role="radiogroup" aria-label="Auto-trim length" id="trim-length">
+            <button type="button" role="radio" aria-checked="false" data-len="5">5s</button>
+            <button type="button" role="radio" aria-checked="true" data-len="8">8s</button>
+            <button type="button" role="radio" aria-checked="false" data-len="12">12s</button>
+          </div>
+          <button type="button" class="btn btn-primary btn-block" id="auto-trim-run"><svg class="i" aria-hidden="true"><use href="#i-wand-sparkles"/></svg>Auto-trim all clips</button>
+          <p class="fine">Clips are uploaded to analyze them. Clips used twice on the timeline are left as you cut them.</p>
+        </div>
+      </div>
+
+      <div class="pane" id="pane-format" role="tabpanel" data-pane="format" hidden>
+        <div class="pane-head"><h2>Format</h2></div>
+        <div class="field-label">Vertical frame</div>
+        <div class="layout-tiles seg" role="radiogroup" aria-label="Layout">
+          <button type="button" role="radio" aria-checked="true" data-layout="fit_blur" class="tile">
+            <span class="tile-art tile-blur" aria-hidden="true"><i></i></span><span>Blur fill</span><small>Whole frame, blurred behind</small>
+          </button>
+          <button type="button" role="radio" aria-checked="false" data-layout="center_crop" class="tile">
+            <span class="tile-art tile-crop" aria-hidden="true"><i></i></span><span>Crop</span><small>Fills the frame, trims sides</small>
+          </button>
+        </div>
+        <div class="field-label">Resolution</div>
+        <div class="segmented" role="radiogroup" aria-label="Resolution" id="size-seg">
+          <button type="button" role="radio" aria-checked="false" data-size="480">480p</button>
+          <button type="button" role="radio" aria-checked="false" data-size="720">720p</button>
+          <button type="button" role="radio" aria-checked="true" data-size="1080">1080p</button>
+        </div>
+        <div class="field-label">Edit style</div>
+        <div class="chips" role="radiogroup" aria-label="Edit style" id="style-chips">
+          <button type="button" role="radio" aria-checked="true" data-style="clean">Clean</button>
+          <button type="button" role="radio" aria-checked="false" data-style="cinematic">Cinematic</button>
+          <button type="button" role="radio" aria-checked="false" data-style="high_energy">High energy</button>
+        </div>
+        <p class="fine">Styles are saved with your edit. Distinct looks for each style are coming.</p>
+      </div>
+    </section>
+
+    <section class="panel stage" aria-label="Preview">
+      <div class="stage-chip tnum" id="stage-format">9:16 · 1080p · Blur fill</div>
       <div class="frame-wrap">
         <div class="frame" id="frame" data-layout="fit_blur">
           <video id="v-bg" class="v-bg" muted playsinline preload="auto" aria-hidden="true" tabindex="-1"></video>
           <video id="v-fg" class="v-fg" playsinline preload="auto"></video>
           <div class="frame-empty" id="frame-empty">
-            <p><strong>Add a clip to start</strong></p>
-            <p>Upload videos on the left. They land on the timeline in order.</p>
+            <div class="empty-mark"><svg class="i" aria-hidden="true"><use href="#i-film"/></svg></div>
+            <p><strong>Your edit starts here</strong></p>
+            <p>Upload a few clips. They line up on the timeline in order.</p>
+            <button type="button" class="btn btn-upload btn-sm" id="empty-upload"><svg class="i" aria-hidden="true"><use href="#i-upload"/></svg>Upload clips</button>
           </div>
         </div>
-      </div>
-      <div class="transport">
-        <button type="button" class="icon-btn" id="to-start" aria-label="Go to start" title="Go to start (Home)">
-          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 5h2v14H6zM20 5v14L9 12z" fill="currentColor"/></svg>
-        </button>
-        <button type="button" class="icon-btn icon-btn-play" id="play" aria-label="Play" title="Play / pause (Space)">
-          <svg class="i-play" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M7 4v16l13-8z" fill="currentColor"/></svg>
-          <svg class="i-pause" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 4h4v16H6zM14 4h4v16h-4z" fill="currentColor"/></svg>
-        </button>
-        <span class="timecode tnum"><span id="tc-now">0:00.0</span> <span class="tc-sep">/</span> <span id="tc-total">0:00.0</span></span>
       </div>
     </section>
 
-    <aside class="inspector" aria-label="Edit settings">
-      <section class="insp-block" id="clip-panel" aria-labelledby="clip-panel-title">
-        <h2 id="clip-panel-title">Clip</h2>
-        <p class="muted" id="clip-empty">Select a clip on the timeline to trim it.</p>
-        <div id="clip-fields" hidden>
-          <p class="clip-name" id="clip-name"></p>
-          <div class="num-grid">
-            <label>Start<input id="f-start" type="number" min="0" step="0.1" inputmode="decimal" /></label>
-            <label>End<input id="f-end" type="number" min="0" step="0.1" inputmode="decimal" /></label>
-            <label>Length<input id="f-length" type="number" min="0.2" max="120" step="0.1" inputmode="decimal" /></label>
-          </div>
-          <p class="muted tnum" id="clip-source-len"></p>
-          <div class="suggest">
-            <button type="button" class="btn btn-small btn-suggest" id="suggest-trim">Suggest trim</button>
-            <p class="muted" id="suggest-note">Finds the loudest, busiest moment and trims around it. Uploads this clip to analyze it.</p>
-          </div>
-          <div class="row-actions">
-            <button type="button" class="btn btn-small" id="split">Split at playhead</button>
-            <button type="button" class="btn btn-small" id="reset-trim">Use whole clip</button>
-            <button type="button" class="btn btn-small btn-danger" id="remove-item">Remove</button>
+    <aside class="panel inspector" aria-label="Details">
+      <div id="clip-empty" class="insp-empty">
+        <div class="pane-head"><h2>Project</h2></div>
+        <dl class="stats">
+          <div><dt>Clips</dt><dd class="tnum" id="stat-clips">0</dd></div>
+          <div><dt>Length</dt><dd class="tnum" id="stat-length">0:00</dd></div>
+          <div><dt>Output</dt><dd class="tnum" id="stat-output">1080 × 1920</dd></div>
+        </dl>
+        <p class="hint">Select a clip on the timeline to trim it.</p>
+      </div>
+      <div id="clip-fields" hidden>
+        <div class="pane-head"><h2>Clip</h2></div>
+        <div class="clip-head">
+          <div class="clip-thumb" id="clip-thumb"></div>
+          <div class="clip-meta">
+            <p class="clip-name" id="clip-name"></p>
+            <p class="muted tnum" id="clip-source-len"></p>
           </div>
         </div>
-      </section>
-
-      <section class="insp-block" aria-labelledby="look-title">
-        <h2 id="look-title">Vertical frame</h2>
-        <div class="seg" role="radiogroup" aria-label="Layout">
-          <button type="button" role="radio" aria-checked="true" data-layout="fit_blur">Blur fill</button>
-          <button type="button" role="radio" aria-checked="false" data-layout="center_crop">Crop</button>
+        <div class="range" aria-hidden="true"><div class="range-sel" id="clip-range-sel"></div></div>
+        <div class="num-grid">
+          <label>Start<input id="f-start" type="number" min="0" step="0.1" inputmode="decimal" /></label>
+          <label>End<input id="f-end" type="number" min="0" step="0.1" inputmode="decimal" /></label>
+          <label>Length<input id="f-length" type="number" min="0.2" max="120" step="0.1" inputmode="decimal" /></label>
         </div>
-        <p class="muted" id="layout-help">Shows the whole frame with a blurred copy behind it.</p>
-
-        <label class="field">Resolution
-          <select id="size">
-            <option value="1080">1080 × 1920</option>
-            <option value="720">720 × 1280</option>
-            <option value="480">480 × 852</option>
-          </select>
-        </label>
-        <label class="field">Edit style
-          <select id="style">
-            <option value="clean">Clean</option>
-            <option value="cinematic">Cinematic</option>
-            <option value="high_energy">High energy</option>
-          </select>
-        </label>
-        <p class="muted">Styles are saved with your edit but don’t change the look yet.</p>
-      </section>
+        <div class="card magic-mini">
+          <button type="button" class="btn btn-magic btn-block" id="suggest-trim"><svg class="i" aria-hidden="true"><use href="#i-sparkles"/></svg>Suggest trim</button>
+          <p class="fine" id="suggest-note">Trims around this clip’s loudest, busiest moment. Uploads the clip to analyze it.</p>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm" id="reset-trim"><svg class="i" aria-hidden="true"><use href="#i-rotate-ccw"/></svg>Use whole clip</button>
+      </div>
     </aside>
   </main>
 
-  <section class="tl" aria-label="Timeline">
-    <div class="tl-bar">
-      <span class="tl-count tnum" id="tl-count">No clips</span>
-      <button type="button" class="btn btn-small btn-suggest" id="auto-trim-all" disabled>Auto-trim all</button>
-      <label class="target"><span>to</span>
-        <select id="target-len" aria-label="Auto-trim length">
-          <option value="5">5 s</option>
-          <option value="8" selected>8 s</option>
-          <option value="12">12 s</option>
-        </select>
-      </label>
-      <span class="tl-keys">Space play · S split · Delete remove · drag clips to reorder, drag edges to trim</span>
-      <label class="zoom"><span>Zoom</span><input id="zoom" type="range" min="8" max="120" value="36" aria-label="Timeline zoom" /></label>
+  <section class="panel tl" aria-label="Timeline">
+    <div class="tl-toolbar">
+      <div class="tool-group">
+        <button type="button" class="tool" id="split" title="Split at playhead (S)" aria-label="Split at playhead"><svg class="i" aria-hidden="true"><use href="#i-scissors"/></svg></button>
+        <button type="button" class="tool" id="remove-item" title="Delete clip (Delete)" aria-label="Delete selected clip"><svg class="i" aria-hidden="true"><use href="#i-trash-2"/></svg></button>
+        <span class="tool-sep" aria-hidden="true"></span>
+        <button type="button" class="tool tool-magic" id="auto-trim-all" title="Auto-trim all clips" aria-label="Auto-trim all clips" disabled><svg class="i" aria-hidden="true"><use href="#i-wand-sparkles"/></svg><span class="tool-label">Auto-trim</span></button>
+      </div>
+      <div class="transport">
+        <button type="button" class="tool" id="to-start" title="Go to start (Home)" aria-label="Go to start"><svg class="i" aria-hidden="true"><use href="#i-skip-back"/></svg></button>
+        <button type="button" class="play" id="play" aria-label="Play" title="Play / pause (Space)"><svg class="i i-play" aria-hidden="true"><use href="#i-play"/></svg><svg class="i i-pause" aria-hidden="true"><use href="#i-pause"/></svg></button>
+        <button type="button" class="tool" id="to-end" title="Go to end (End)" aria-label="Go to end"><svg class="i" aria-hidden="true"><use href="#i-skip-forward"/></svg></button>
+        <span class="timecode tnum"><span id="tc-now">0:00.0</span><span class="tc-total"> / <span id="tc-total">0:00.0</span></span></span>
+      </div>
+      <div class="tool-group tool-group-right">
+        <button type="button" class="tool" id="undo" title="Undo (⌘Z)" aria-label="Undo" disabled><svg class="i" aria-hidden="true"><use href="#i-undo-2"/></svg></button>
+        <button type="button" class="tool" id="redo" title="Redo (⇧⌘Z)" aria-label="Redo" disabled><svg class="i" aria-hidden="true"><use href="#i-redo-2"/></svg></button>
+        <span class="tool-sep" aria-hidden="true"></span>
+        <button type="button" class="tool" id="zoom-out" aria-label="Zoom out"><svg class="i" aria-hidden="true"><use href="#i-zoom-out"/></svg></button>
+        <input id="zoom" type="range" min="8" max="120" value="36" aria-label="Timeline zoom" />
+        <button type="button" class="tool" id="zoom-in" aria-label="Zoom in"><svg class="i" aria-hidden="true"><use href="#i-zoom-in"/></svg></button>
+      </div>
     </div>
-    <div class="tl-scroll" id="tl-scroll">
-      <div class="tl-inner" id="tl-inner">
-        <div class="ruler" id="ruler" aria-hidden="true"></div>
-        <div class="track" id="track"></div>
-        <div class="playhead" id="playhead" aria-hidden="true"></div>
+    <div class="tl-body">
+      <div class="tl-heads" aria-hidden="true">
+        <div class="head-ruler"><span class="tl-count tnum" id="tl-count">No clips</span></div>
+        <div class="head head-video"><svg class="i" aria-hidden="true"><use href="#i-film"/></svg></div>
+        <div class="head head-audio"><svg class="i" aria-hidden="true"><use href="#i-volume-2"/></svg></div>
+      </div>
+      <div class="tl-scroll" id="tl-scroll">
+        <div class="tl-inner" id="tl-inner">
+          <div class="ruler" id="ruler" aria-hidden="true"></div>
+          <div class="lane lane-video" id="track"></div>
+          <div class="lane lane-audio" id="audio-lane" aria-hidden="true"></div>
+          <div class="playhead" id="playhead" aria-hidden="true"></div>
+        </div>
       </div>
     </div>
   </section>
+</div>
 
-  <dialog class="export" id="export-dialog" aria-labelledby="export-title">
-    <form method="dialog" class="export-inner">
-      <h2 id="export-title">Export video</h2>
-      <div id="export-run">
-        <ol class="export-steps">
-          <li id="step-upload"><span class="step-label">Uploading clips</span><span class="step-detail tnum" id="upload-detail"></span>
-            <div class="meter"><div class="meter-fill" id="upload-meter"></div></div></li>
-          <li id="step-render"><span class="step-label">Rendering</span><span class="step-detail tnum" id="render-detail"></span></li>
-        </ol>
-        <p class="export-error" id="export-error" role="alert" hidden></p>
-      </div>
-      <div id="export-done" hidden>
-        <video id="result-video" class="result-video" controls playsinline></video>
-        <p class="muted tnum" id="result-meta"></p>
-      </div>
-      <div class="export-actions">
-        <button type="submit" class="btn btn-quiet" id="export-close">Close</button>
-        <a class="btn btn-primary" id="download" hidden download="clip-that-edit.mp4">Download MP4</a>
-      </div>
-    </form>
-  </dialog>
+<dialog class="export" id="export-dialog" aria-labelledby="export-title">
+  <form method="dialog" class="export-inner">
+    <div class="export-head">
+      <h2 id="export-title">Export</h2>
+      <span class="stage-chip tnum" id="export-format"></span>
+    </div>
+    <div id="export-run">
+      <ol class="export-steps">
+        <li id="step-upload"><span class="step-dot" aria-hidden="true"></span><span class="step-label">Uploading clips</span><span class="step-detail tnum" id="upload-detail"></span>
+          <div class="meter"><div class="meter-fill" id="upload-meter"></div></div></li>
+        <li id="step-render"><span class="step-dot" aria-hidden="true"></span><span class="step-label">Rendering your video</span><span class="step-detail tnum" id="render-detail"></span></li>
+      </ol>
+      <p class="export-error" id="export-error" role="alert" hidden></p>
+    </div>
+    <div id="export-done" hidden>
+      <video id="result-video" class="result-video" controls playsinline></video>
+      <p class="muted tnum" id="result-meta"></p>
+    </div>
+    <div class="export-actions">
+      <button type="submit" class="btn btn-ghost" id="export-close">Close</button>
+      <a class="btn btn-primary" id="download" hidden download="reroll-edit.mp4"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Download MP4</a>
+    </div>
+  </form>
+</dialog>
 
-  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
-  <div class="small-screen">The editor needs a wider window. Use a laptop or desktop browser to edit.</div>
-  <script src="/assets/studio.js" defer></script>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<div class="small-screen"><p><strong>Reroll Studio needs a wider screen.</strong></p><p>Open it on a laptop or desktop browser to edit.</p></div>
+<script src="/assets/studio.js" defer></script>
 </body>
 </html>
