@@ -1,12 +1,7 @@
 # Clip That — macOS desktop app
 
-Owner: Claude (desktop). The render engine in `../clipthat_editor` is ChatGPT's and is used
-**unmodified** through its v0.1 CLI + manifest contract. The website and browser studio in
-`../web` are also ChatGPT's. They share only that engine and contract with this app, not
-code. Cross-device sync is phase 2.
-
-**Stack:** native Swift/SwiftUI, by product-owner decision (2026-10-24). Kit documents that
-still say Tauri are being corrected; see INTERFACE_NOTES CP-8.
+Native SwiftUI app (macOS 15+). It renders through `../clipthat_editor` via the schema-v1
+manifest defined in `../swift-shared` (ClipThatContracts), the same contract the website uses.
 
 ## Quick start
 
@@ -50,7 +45,7 @@ Capture (the capture and voice gates):
 │  Renderer ── writes manifest.json (schema v1) ── runs `python3 -m clipthat_editor` ──┐ │
 └──────────────────────────────────────────────────────────────────────────────────────┼─┘
                                                                                        ▼
-                                              clipthat_editor (ChatGPT, bundled as-is) → 9:16 MP4
+                                              clipthat_editor (bundled renderer)  → 9:16 MP4
 ```
 
 * **`Core/` (Swift package `ClipThatCore`)** is Foundation-only and builds and tests on macOS
@@ -118,8 +113,8 @@ The build environment for this pass was Linux, so:
 * Captures the main display only; no window or display picker yet.
 * On a completely static screen, ScreenCaptureKit sends no frames, so a segment can run longer
   than 2 s and a clip may exceed 30 s. Gameplay is never static, so this rarely matters.
-* Rendering shows elapsed time only, because the editor doesn't report progress (see INTERFACE_NOTES CP-1).
-* Development builds use Homebrew's Python and FFmpeg. Shipping to creators needs those bundled (see CP-5).
+* Rendering shows elapsed time only, because the renderer doesn't report progress yet (backlog in docs/STATUS.md).
+* Development builds use Homebrew's Python and FFmpeg. Shipping to creators needs those bundled (docs/STATUS.md, packaging).
 * Hotkey presets only (⌃⌥C, ⌃⇧C, ⌥⇧C, F9); no custom recorder yet.
 * English (US) voice recognition only.
 
@@ -136,5 +131,4 @@ desktop/
   App/Hotkey/                GlobalHotkey
   App/Views/                 SwiftUI views
   scripts/                   bootstrap.sh, make_test_clips.sh
-  INTERFACE_NOTES.md         contract findings and change proposals for the editor team
 ```

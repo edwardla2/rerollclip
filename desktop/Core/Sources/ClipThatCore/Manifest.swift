@@ -1,17 +1,5 @@
 import Foundation
-
-/// Limits enforced by clipthat_editor/engine.py `parse_manifest` (schema_version 1).
-/// Mirrored here so the app can explain problems before invoking the renderer.
-public enum RendererLimits {
-    public static let schemaVersion = 1
-    public static let maxClips = 100
-    public static let maxClipSeconds = 120.0
-    /// engine.py accepts start + duration <= media duration + 0.25
-    public static let durationTolerance = 0.25
-    public static let minDimension = 240
-    public static let maxDimension = 3840
-    public static let fpsRange = 1...120
-}
+@_exported import ClipThatContracts
 
 public enum ClipSelection {
     /// Default in/out for a newly added clip. Whole clip when the editor can take it;
@@ -97,9 +85,8 @@ public enum ManifestBuilder {
         return problems
     }
 
-    public static func manifest(for session: Session) -> ManifestV1 {
-        ManifestV1(
-            schemaVersion: RendererLimits.schemaVersion,
+    public static func manifest(for session: Session) -> ClipThatManifest {
+        ClipThatManifest(
             sessionID: session.id,
             style: session.settings.style.rawValue,
             layout: session.settings.layout.rawValue,
@@ -114,61 +101,6 @@ public enum ManifestBuilder {
     }
 
     public static func manifestData(for session: Session) throws -> Data {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
-        return try encoder.encode(manifest(for: session))
-    }
-}
-
-/// Mirror of examples/manifest.example.json.
-public struct ManifestV1: Encodable, Equatable, Sendable {
-    public struct Output: Encodable, Equatable, Sendable {
-        public var width: Int
-        public var height: Int
-        public var fps: Int
-    }
-
-    public struct ClipEntry: Encodable, Equatable, Sendable {
-        public var id: String
-        public var file: String
-        public var startSeconds: Double
-        public var durationSeconds: Double
-
-        enum CodingKeys: String, CodingKey {
-            case id, file
-            case startSeconds = "start_seconds"
-            case durationSeconds = "duration_seconds"
-        }
-    }
-
-    public struct Music: Encodable, Equatable, Sendable {
-        public var file: String
-        public var volume: Double
-    }
-
-    public var schemaVersion: Int
-    public var sessionID: String
-    public var style: String
-    public var layout: String
-    public var output: Output
-    public var clips: [ClipEntry]
-    public var music: Music?
-
-    enum CodingKeys: String, CodingKey {
-        case schemaVersion = "schema_version"
-        case sessionID = "session_id"
-        case style, layout, output, clips, music
-    }
-
-    public func encode(to encoder: Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(schemaVersion, forKey: .schemaVersion)
-        try c.encode(sessionID, forKey: .sessionID)
-        try c.encode(style, forKey: .style)
-        try c.encode(layout, forKey: .layout)
-        try c.encode(output, forKey: .output)
-        try c.encode(clips, forKey: .clips)
-        // The example contract writes an explicit `"music": null`.
-        if let music { try c.encode(music, forKey: .music) } else { try c.encodeNil(forKey: .music) }
+        try manifest(for: session).jsonData(pretty: true)
     }
 }

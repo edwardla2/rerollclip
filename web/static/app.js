@@ -31,16 +31,43 @@
     $('#landing').classList.remove('is-hidden');
     document.querySelectorAll('.section, main footer').forEach((el) => el.classList.remove('is-hidden'));
     $('#editor').classList.add('is-hidden');
-    $('#nav-workspace').textContent = 'Workspace';
+    $('#nav-workspace').textContent = 'Web editor';
     scrollTo({ top: 0, behavior: 'instant' });
   }
   document.querySelectorAll('.nav-start').forEach((btn) => btn.addEventListener('click', openEditor));
   document.querySelectorAll('.nav-home').forEach((btn) => btn.addEventListener('click', openHome));
   $('#nav-workspace').addEventListener('click', openEditor);
   $('#nav-features').addEventListener('click', () => { openHome(); $('#features').scrollIntoView({ behavior: 'smooth' }); });
-  $('#how-it-works').addEventListener('click', () => $('#features').scrollIntoView({ behavior: 'smooth' }));
+  $('#how-it-works')?.addEventListener('click', () => $('#features').scrollIntoView({ behavior: 'smooth' }));
   $('#back-home').addEventListener('click', openHome);
-  $('#desktop-info').addEventListener('click', () => toast('The Tauri desktop companion is being developed separately.'));
+  function openBeta() {
+    openHome();
+    $('#beta-signup').scrollIntoView({ behavior: 'smooth' });
+    $('#beta-email').focus({ preventScroll: true });
+  }
+  document.querySelectorAll('.nav-beta').forEach((btn) => btn.addEventListener('click', openBeta));
+  $('#nav-beta').addEventListener('click', openBeta);
+
+  $('#beta-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const button = $('#beta-submit');
+    const output = $('#beta-status');
+    if (!$('#beta-consent').checked) { output.textContent = 'Please confirm your consent to register interest.'; return; }
+    button.disabled = true;
+    output.textContent = 'Saving your interest on this local demo server…';
+    try {
+      const response = await fetch('/api/beta-interest', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({email: $('#beta-email').value.trim(), consent: true, website: $('#beta-website').value})
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Could not save beta interest.');
+      output.textContent = 'Saved in this local demo. This is not a live public beta waitlist; no confirmation email will be sent.';
+      $('#beta-form').reset();
+    } catch (error) { output.textContent = String(error?.message || error); }
+    finally { button.disabled = false; }
+  });
   $('#tool-styles').addEventListener('click', () => { $('#preset-select').focus(); toast('Pick a style on the right. Advanced effects are still in development.'); });
   $('#tool-export').addEventListener('click', () => $('#render-button').focus());
 

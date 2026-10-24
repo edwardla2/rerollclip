@@ -44,3 +44,32 @@ def test_upload_limit_and_extension(monkeypatch, tmp_path):
     oversized = request("POST", f"/api/projects/{project_id}/clips", files={"file": ("test.mp4", b"123456", "video/mp4")})
     assert oversized.status_code == 413
     assert not list((tmp_path / project_id).glob("*.mp4"))
+
+
+def test_desktop_claims_and_beta_link():
+    landing = request("GET", "/").text
+    assert 'macOS 15 or later' in landing
+    assert 'plus about 1.5 seconds afterward' in landing
+    assert 'signed, notarized installer is not available yet' in landing
+    assert 'id="beta-form"' in landing
+    assert 'id="download-desktop"' not in landing
+    assert 'AI highlight detection or beat sync yet' in landing
+    assert 'No automatic upload' in landing
+
+
+def test_beta_interest_local_storage(monkeypatch, tmp_path):
+    import sqlite3
+    monkeypatch.setattr(server, "RUNTIME", tmp_path)
+    endpoint = "/api/beta-interest"
+    assert request("POST", endpoint, json={"email": "a@example.com", "consent": False}).status_code == 400
+    assert request("POST", endpoint, json={"email": "not valid", "consent": True}).status_code == 422
+    spam = request("POST", endpoint, json={"email": "spam@example.com", "consent": True, "website": "https://spam.example"})
+    assert spam.status_code == 200
+    assert not (tmp_path / "beta-interest.sqlite3").exists()
+    answer = request("POST", endpoint, json={"email": "Test@Example.Com", "consent": True})
+    assert answer.status_code == 200
+    assert answer.json()["email_sent"] is False
+    assert request("POST", endpoint, json={"email": "test@example.com", "consent": True}).status_code == 200
+    with sqlite3.connect(tmp_path / "beta-interest.sqlite3") as db:
+        entries = db.execute("SELECT email FROM beta_interest").fetchall()
+    assert entries == [("test@example.com",)]

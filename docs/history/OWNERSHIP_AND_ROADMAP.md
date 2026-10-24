@@ -1,3 +1,5 @@
+**LATEST STACK: SwiftUI desktop (Claude); Swift/Vapor website and Swift shared contracts (ChatGPT). See `SWIFT_STACK_DECISION.md`. Prior Tauri/React/Python references below describe the original v0 prototypes and are superseded as production architecture.**
+
 # Clip That — coordination and roadmap
 
 ## Project goal

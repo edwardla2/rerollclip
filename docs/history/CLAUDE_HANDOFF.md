@@ -1,3 +1,5 @@
+**LATEST DECISION (2026-10-24): Read `SWIFT_STACK_DECISION.md` first. Desktop is now native SwiftUI/AppKit on macOS 15+, NOT Tauri/React. Existing Tauri work should be used as a functional reference and ported carefully. Claude retains desktop/capture/voice/packaging ownership. The older details below are historical.**
+
 # CLAUDE HANDOFF — Clip That desktop MVP
 
 You are the desktop-app lead for **Clip That**, a creator tool for instantly capturing moments and turning them into ready-to-post edits. The user is the product owner. ChatGPT owns the editing engine, manifest contract, QA/test plans, and business/growth planning. **You own the macOS desktop client**: UI, recording, voice activation, clip intake, and editor integration. Do not rebuild the render engine; use the supplied Python CLI and jointly specified JSON manifest instead.

@@ -1,52 +1,65 @@
-# Clip That starter — editing engine + Claude handoff
+# Clip That
 
-This kit contains a working **v0 deterministic** video-editing CLI and a collaboration contract for the desktop client. It is **not** a full AI montage engine and does not capture or transcribe voice itself.
+Say **“Clip that”** and keep the moment you just had: the previous 30 seconds of your screen
+plus about 1.5 s after. Collect clips into a session and turn them into a vertical,
+ready-to-post edit, on a Mac or in the browser.
 
-## Run the editor
-Prerequisites: Python 3.10+ and `ffmpeg` / `ffprobe` on PATH.
+> One repository, one engineering owner (Claude). The active brief is
+> [`docs/SINGLE_OWNER_HANDOFF.md`](docs/SINGLE_OWNER_HANDOFF.md). Live status, test evidence and
+> blockers are in [`docs/STATUS.md`](docs/STATUS.md). Everything in `docs/history/` is superseded
+> context from the earlier two-team phase.
 
-From this directory:
+## Repository layout
 
-```bash
-python -m clipthat_editor validate examples/manifest.example.json
-python -m clipthat_editor render /path/to/session/manifest.json --output /path/to/session/output.mp4
-```
+| Path | What it is | Stack |
+|---|---|---|
+| `desktop/` | macOS app: replay buffer, “Clip that” voice + hotkey, folder imports, sessions, render/export | SwiftUI · ScreenCaptureKit · Speech (macOS 15+) |
+| `desktop/Core/` | Platform-independent app logic (sessions, imports, manifest, renderer bridge, replay bookkeeping) | Swift package |
+| `swift-shared/` | **ClipThatContracts**: the schema-v1 manifest, the single definition used by the desktop app and the website | Swift package |
+| `clipthat_editor/` | Renderer: trims, orders, frames to 9:16 (blur-fill or crop), mixes music, writes MP4 | Python + FFmpeg |
+| `examples/manifest.example.json` | Reference schema-v1 manifest | JSON |
+| `web/` | Current website + browser editor prototype (being replaced by the Vapor app) | FastAPI · HTML/CSS/JS |
+| `tests/` | Renderer tests | Python |
+| `docs/` | Handoff, status, history | Markdown |
 
-The sample manifest references placeholder clip files, so create a real session manifest with actual MP4 files before rendering.
+## What works today (and what doesn't)
 
-For a real example, copy `examples/manifest.example.json` beside your clips, change each `file` to a real relative path, and run `render`. Video output is portrait 1080×1920 at 30 fps by default.
+**Working and tested in this repo:**
+- Renderer: schema-v1 manifest → portrait MP4, with or without source audio, optional music.
+- Website prototype: upload clips, trim and reorder, render, download; local-only beta-interest form.
+- Desktop pipelines run through the real renderer: replay-segment assembly, MKV remux import, manifest generation.
 
-## Current rendering behavior
-- Trims selected moments, normalizes resolution/fps/audio, concatenates clips.
-- Two vertical layouts: blurred background preserving complete landscape footage (`fit_blur`), and center crop (`center_crop`).
-- Optional locally provided soundtrack mixed at configurable volume. **Use music you have rights to use.**
-- Preset names are accepted for app compatibility but do not yet implement ML selection, fancy transitions or automatic beat sync. Those are ChatGPT's planned subsequent features.
-- No network calls, account creation, automatic uploads, or background recording.
+**Written, awaiting first compile and test on macOS:**
+- The SwiftUI desktop app: replay buffer, voice and hotkey triggers, permissions, watched folders, library, export.
 
-## File map
-- `CLAUDE_HANDOFF.md` — exact brief to paste into Claude Code.
-- `OWNERSHIP_AND_ROADMAP.md` — roles, milestones, acceptance gates.
-- `examples/manifest.example.json` — desktop-to-editor data contract.
-- `clipthat_editor/` — render CLI.
-- `tests/` — validation tests.
+**Not built yet, so it isn't advertised anywhere:** AI highlight detection, beat sync, captions,
+Windows, social posting, cloud sync, and a signed desktop download.
 
-## Confirmed desktop stack
-Claude should build the desktop side in **Tauri 2 + React/TypeScript**, using a native **Swift ScreenCaptureKit** helper for macOS rolling capture. This keeps the UI reusable when Windows support is added. For the first demo, prioritize folder import and CLI render integration before capture/voice. See `CLAUDE_HANDOFF.md`.
-
-## Team integration
-Claude owns the desktop app. Keep that code in a sibling `desktop/` directory, and generate manifests compatible with this package. Do not duplicate the render core.
-
-## NEW: Website + browser editor (2026-10-24)
-
-The product now includes a CapCut-inspired website and a functional local browser editing prototype, owned by ChatGPT. See `WEBSITE_PRODUCT_BRIEF.md` and `web/README.md`.
-
-Run from repository root:
+## Run it
 
 ```bash
-python -m pip install -r web/requirements.txt
-python -m uvicorn web.server:app --host 127.0.0.1 --port 8765
+# Renderer tests
+python3 -m unittest discover -s tests
+
+# Website prototype (local only, binds to localhost)
+python3 -m pip install -r web/requirements-dev.txt
+python3 -m pytest -q
+python3 -m uvicorn web.server:app --host 127.0.0.1 --port 8765
+
+# Shared contracts and desktop core (needs Swift 6 / Xcode 16+)
+(cd swift-shared && swift test)
+(cd desktop/Core && swift test)
+
+# macOS app
+desktop/scripts/bootstrap.sh && open desktop/ClipThat.xcodeproj
 ```
 
-Open `http://127.0.0.1:8765` to access the landing page and browser studio. The browser uploads to the same local computer and invokes the existing renderer. It is not a public SaaS, cloud service, or trained AI editor.
+Requirements: Python 3.10+, FFmpeg/FFprobe on PATH; for Swift parts, macOS 15 + Xcode 16+.
 
-**Responsibility update:** Claude remains responsible for the `desktop/` app; ChatGPT owns the `web/` site and the shared renderer. Neither duplicates the other's system. For web-specific details, see `WEBSITE_PRODUCT_BRIEF.md`.
+## Principles
+
+- **Private by default.** Nothing records until you turn it on, speech is recognized
+  on-device, the replay buffer is deleted when it stops, and nothing is uploaded unless you
+  upload it yourself.
+- **Honest claims.** Marketing copy only describes what ships; tests enforce key claims on the landing page.
+- **One schema.** Every client builds its manifests through `ClipThatContracts`.

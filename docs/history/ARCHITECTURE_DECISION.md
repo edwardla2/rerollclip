@@ -1,3 +1,5 @@
+**SUPERSEDED 2026-10-24: See `SWIFT_STACK_DECISION.md`. Product owner selected SwiftUI desktop + Swift/Vapor website. This document is historical.**
+
 # Architecture decision: Tauri 2 + native capture helper
 
 Date: 2026-10-24

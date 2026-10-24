@@ -1,3 +1,5 @@
+**LATEST STACK (2026-10-24): Migrate website backend to Swift/Vapor; reuse current web HTML/CSS and minimal JS, and share Codable manifest via `swift-shared/`. The FastAPI site described below remains an existing local prototype. See `SWIFT_STACK_DECISION.md`.**
+
 # Clip That — CapCut-style web platform (scope addition)
 
 Date: 2026-10-24

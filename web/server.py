@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import re
+import sqlite3
 import subprocess
 import sys
 import uuid
@@ -27,9 +28,38 @@ MAX_UPLOAD_BYTES = 250 * 1024 * 1024
 PROJECT_RE = re.compile(r"^[0-9a-f]{32}$")
 FILE_RE = re.compile(r"^[0-9a-f]{32}\.(mp4|mov|webm|mkv)$")
 ALLOWED = {".mp4", ".mov", ".webm", ".mkv"}
+EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]{2,}$")
 
 app = FastAPI(title="Clip That web proof of concept", version="0.1.0", docs_url=None, redoc_url=None)
 app.mount("/assets", StaticFiles(directory=str(STATIC)), name="assets")
+
+
+class BetaInterest(BaseModel):
+    email: str = Field(min_length=5, max_length=254)
+    consent: bool = False
+    website: str = Field(default="", max_length=300)  # Honeypot; should remain empty.
+
+
+def save_beta_interest(email: str) -> None:
+    """Local-only prototype storage; do not deploy without anti-abuse, notice and retention review."""
+    RUNTIME.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(RUNTIME / "beta-interest.sqlite3", timeout=10) as db:
+        db.execute("CREATE TABLE IF NOT EXISTS beta_interest (email TEXT PRIMARY KEY, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)")
+        db.execute("INSERT OR IGNORE INTO beta_interest(email) VALUES (?)", (email,))
+        db.commit()
+
+
+@app.post("/api/beta-interest")
+async def beta_interest(request: BetaInterest):
+    if not request.consent:
+        raise HTTPException(400, "Please confirm consent to register beta interest")
+    email = request.email.strip().lower()
+    if not EMAIL_RE.fullmatch(email):
+        raise HTTPException(422, "Enter a valid email address")
+    if request.website:  # Accept honeypot quietly; avoids leaking anti-spam criteria.
+        return {"ok": True, "mode": "local-interest-only", "email_sent": False}
+    await run_in_threadpool(save_beta_interest, email)
+    return {"ok": True, "mode": "local-interest-only", "email_sent": False}
 
 
 class ClipInput(BaseModel):
