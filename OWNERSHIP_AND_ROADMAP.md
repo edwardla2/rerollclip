@@ -8,8 +8,8 @@ Turn any interesting on-screen moment into a creator-quality ready-to-post video
 |---|---|---|
 | Product scope, MVP acceptance, asset contracts | ChatGPT | This starter kit, schema and QA |
 | Local video-editing/rendering engine, iterative edit quality | ChatGPT | Python/FFmpeg CLI, presets, tests |
-| macOS desktop shell, onboarding and app UI | Claude | Desktop executable/app |
-| Explicit opt-in screen/audio replay recorder | Claude | Working last-30-sec buffer |
+| Tauri 2 cross-platform shell, macOS onboarding and React/TypeScript UI | Claude | macOS desktop executable/app |
+| Native Swift ScreenCaptureKit helper, explicit opt-in screen/audio replay recorder | Claude | Working last-30-sec buffer |
 | Keyword/keyboard trigger, folder watch/import | Claude | Local clip event pipeline |
 | Local session library + preview/export UX | Claude | Usable MVP |
 | Landing page, creator pilot assets, pricing experiments | ChatGPT | Later pilot package |
@@ -37,3 +37,11 @@ Turn any interesting on-screen moment into a creator-quality ready-to-post video
 
 ## First measurable milestone
 User imports their own gameplay moments, chooses a preset and generates an MP4 in under a minute of interaction (excluding device-dependent processing time). The video must play, be portrait-formatted, and keep usable audio.
+
+## Website addition — 2026-10-24
+
+**ChatGPT additionally owns `web/`**: public marketing page, local browser-based workspace, future authenticated cloud jobs, and integration with the same shared CLI. The existing website is a local MVP, not a deployment-ready cloud editor. Read `WEBSITE_PRODUCT_BRIEF.md`.
+
+**Claude continues to own `desktop/`**: Tauri app, capture helper, local voice command, watched folders, and desktop import/editor integration. Do not duplicate `web/` or `clipthat_editor/`.
+
+**Shared design principle:** Browser edits files the user uploads; desktop companion provides opted-in retrospective capture. Optional cloud sync is a separately designed later milestone.

@@ -30,5 +30,23 @@ For a real example, copy `examples/manifest.example.json` beside your clips, cha
 - `clipthat_editor/` — render CLI.
 - `tests/` — validation tests.
 
+## Confirmed desktop stack
+Claude should build the desktop side in **Tauri 2 + React/TypeScript**, using a native **Swift ScreenCaptureKit** helper for macOS rolling capture. This keeps the UI reusable when Windows support is added. For the first demo, prioritize folder import and CLI render integration before capture/voice. See `CLAUDE_HANDOFF.md`.
+
 ## Team integration
 Claude owns the desktop app. Keep that code in a sibling `desktop/` directory, and generate manifests compatible with this package. Do not duplicate the render core.
+
+## NEW: Website + browser editor (2026-10-24)
+
+The product now includes a CapCut-inspired website and a functional local browser editing prototype, owned by ChatGPT. See `WEBSITE_PRODUCT_BRIEF.md` and `web/README.md`.
+
+Run from repository root:
+
+```bash
+python -m pip install -r web/requirements.txt
+python -m uvicorn web.server:app --host 127.0.0.1 --port 8765
+```
+
+Open `http://127.0.0.1:8765` to access the landing page and browser studio. The browser uploads to the same local computer and invokes the existing renderer. It is not a public SaaS, cloud service, or trained AI editor.
+
+**Responsibility update:** Claude remains responsible for the `desktop/` app; ChatGPT owns the `web/` site and the shared renderer. Neither duplicates the other's system. For web-specific details, see `WEBSITE_PRODUCT_BRIEF.md`.

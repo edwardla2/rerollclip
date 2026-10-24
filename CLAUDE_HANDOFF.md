@@ -11,7 +11,7 @@ You are the desktop-app lead for **Clip That**, a creator tool for instantly cap
 - User values distinctive edit quality and creator-led distribution more than building an all-in-one general video editor.
 
 ## Ownership / nonoverlap
-**Claude develops:** macOS desktop React+TypeScript UI, optional Tauri 2 shell (or propose a better justified native stack), transparent microphone permissions, voice phrase detection, opt-in rolling recording buffer, clip folder watcher/import, local session library, rendering job UX, error handling, onboarding, wiring to CLI, packaging.
+**Claude develops:** a Tauri 2 desktop client (React + TypeScript UI and Rust command bridge) plus a native Swift 5 macOS ScreenCaptureKit capture helper; transparent microphone permissions, voice phrase detection, opt-in rolling recording buffer, clip folder watcher/import, local session library, rendering job UX, error handling, onboarding, wiring to CLI, packaging. This stack is CONFIRMED by the product owner coordination decision: do not use a pure SwiftUI desktop shell.
 
 **ChatGPT develops:** `clipthat_editor/` Python/FFmpeg CLI + presets and post-processing iterations, shared manifest format (contract below), editing-specific test cases, acceptance fixtures, product requirements, growth/pitch assets.
 
@@ -40,4 +40,20 @@ You are the desktop-app lead for **Clip That**, a creator tool for instantly cap
 - Communicate progress by reporting the app architecture, files created, command to run, integration demo, blockers, and exact changes to the JSON contract (propose changes; don't silently modify).
 
 ## First deliverable
-Create the executable macOS desktop skeleton with a session UI, folder import, render button wired to the manifest+CLI, and placeholder hotkey-based "Clip that" action. Then implement real replay buffer + opt-in voice trigger, preserving the API. Ensure these pieces work before adding custom UI polish.
+Create a Tauri 2 + React/TypeScript macOS desktop skeleton with a session UI, folder import, render button wired to the manifest+CLI through Rust process invocation, and placeholder hotkey-based "Clip that" action. Then implement real replay buffer + opt-in voice trigger, preserving the API. Ensure these pieces work before adding custom UI polish.
+
+## Confirmed technology decision (October 24, 2026)
+Use **Tauri 2 + React/TypeScript + Rust desktop bridge**, with a **separate native Swift ScreenCaptureKit helper** for opt-in macOS rolling capture. Windows is a future target, not part of the first demo. Keep capture behind a platform interface so a later Windows helper can be added. Start with folder imports and the rendering integration; don't block the demo on voice recognition or capture permissions.
+
+Developer note: the supplied editor uses Python and FFmpeg and is **not yet packaged as a macOS app sidecar**. In development, run the CLI with Python 3.10+ and FFmpeg/FFprobe on PATH; for release, coordinate bundling, codesigning, permissions and distribution. The desktop must not assume Python or FFmpeg will be preinstalled on end-user machines.
+
+## ADDENDUM 2026-10-24 — Product owner requests a CapCut-style website
+
+Clip That is now a **website + browser editor + optional desktop companion**, not only a macOS/Windows app. ChatGPT has implemented an early local working website in `web/` and owns all website work. Read `WEBSITE_PRODUCT_BRIEF.md` and `web/README.md`.
+
+### Your scope is unchanged:
+- Build Tauri 2 desktop client and the opt-in replay-buffer/voice capture system in `desktop/`.
+- Integrate only with the existing manifest v1 and CLI. Do not rebuild the renderer or independently build the web editor.
+- Keep project/clip naming compatible, and propose schema changes rather than silently modifying the contract.
+- The browser editor works with uploaded media; the desktop captures moments before the command. Sync between them is **phase 2** and not required for desktop acceptance.
+- The website is not public production SaaS; avoid claiming it has accounts, cloud sync, automatic AI effects or deployed hosting.
