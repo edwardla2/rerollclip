@@ -52,7 +52,8 @@ final class AppTests: XCTestCase {
         try await start()
         try await app.test(.GET, "/") { res async in
             XCTAssertEqual(res.status, .ok)
-            XCTAssertTrue(res.body.string.contains("Clip That"))
+            XCTAssertTrue(res.body.string.contains("Reroll"))
+            XCTAssertFalse(res.body.string.contains("Clip That"))
         }
         try await app.test(.GET, "studio") { res async in
             XCTAssertEqual(res.status, .ok)
@@ -67,18 +68,20 @@ final class AppTests: XCTestCase {
         }
     }
 
-    /// Guardrails: the landing page may only claim what ships.
+    /// Guardrails: the landing page may only claim what ships. Today that's a waitlist.
     func testLandingPageClaims() async throws {
         try await start()
         try await app.test(.GET, "/") { res async in
             let page = res.body.string
-            XCTAssertTrue(page.contains("macOS 15 or later"))
-            XCTAssertTrue(page.contains("plus about 1.5 seconds after"))
-            XCTAssertTrue(page.contains("signed, notarized installer is not available yet"))
+            XCTAssertTrue(page.contains("Windows beta coming soon"))
+            XCTAssertTrue(page.contains("not affiliated with or endorsed by Medal"))
+            XCTAssertTrue(page.contains("The Windows app is in development"))
+            XCTAssertTrue(page.contains("Illustration of the idea, not real output"))
             XCTAssertTrue(page.contains("id=\"beta-form\""))
-            XCTAssertFalse(page.contains("id=\"download-desktop\""))
-            XCTAssertTrue(page.contains("AI highlight detection or beat sync yet"))
-            XCTAssertTrue(page.contains("No automatic upload"))
+            let lowered = page.lowercased()
+            for claim in ["download now", "id=\"download", "anti-cheat", "macos", "mac app", "ai-powered", "guaranteed"] {
+                XCTAssertFalse(lowered.contains(claim), claim)
+            }
         }
     }
 
@@ -151,6 +154,18 @@ final class AppTests: XCTestCase {
         XCTAssertEqual(duplicate, .ok)
         let stored = try await BetaInterest.query(on: app.db).all().compactMap(\.id)
         XCTAssertEqual(stored, ["test@example.com"])
+        // Tester details: validated, and a later signup fills them in.
+        let badGame = try await post(["email": "test@example.com", "consent": true, "game": "minecraft"])
+        XCTAssertEqual(badGame, .unprocessableEntity)
+        let badWindows = try await post(["email": "test@example.com", "consent": true, "windows": "8"])
+        XCTAssertEqual(badWindows, .unprocessableEntity)
+        let details = try await post(["email": "test@example.com", "consent": true, "game": "roblox",
+                                      "windows": "11", "gpu": "  RTX   3060 "])
+        XCTAssertEqual(details, .ok)
+        let entry = try await BetaInterest.find("test@example.com", on: app.db)
+        XCTAssertEqual(entry?.game, "roblox")
+        XCTAssertEqual(entry?.windows, "11")
+        XCTAssertEqual(entry?.gpu, "RTX 3060")
     }
 
     func testEmailRule() {

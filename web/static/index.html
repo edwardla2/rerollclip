@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#0f1c30" />
-  <title>Clip That: say “Clip that,” keep the moment</title>
-  <meta name="description" content="Clip That saves the last 30 seconds of your screen when you say “Clip that,” then turns your clips into one vertical video. Edit in the browser today; the Mac app is in beta testing." />
+  <meta name="theme-color" content="#0d0e11" />
+  <title>Reroll: Medal captures the moment. Reroll makes it worth posting.</title>
+  <meta name="description" content="Reroll is a Windows companion for Medal that turns saved gameplay clips into edited vertical highlights automatically. Windows beta coming soon." />
   <link rel="preload" href="/assets/fonts/space-grotesk-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="/assets/tokens.css" />
   <link rel="stylesheet" href="/assets/site.css" />
@@ -14,153 +14,130 @@
   <a class="skip" href="#main">Skip to content</a>
   <header class="top">
     <nav class="nav" aria-label="Main">
-      <a class="wordmark" href="/" aria-label="Clip That home"><span class="rec-dot" aria-hidden="true"></span>Clip That</a>
+      <a class="wordmark" href="/" aria-label="Reroll home">
+        <svg viewBox="0 0 32 32" class="die" aria-hidden="true">
+          <rect x="3" y="3" width="26" height="26" rx="8" fill="var(--gold)"/>
+          <circle cx="11" cy="11" r="2.6" fill="var(--ink-on-gold)"/>
+          <circle cx="21" cy="21" r="2.6" fill="var(--ink-on-gold)"/>
+          <circle cx="21" cy="11" r="2.6" fill="var(--ink-on-gold)" opacity=".35"/>
+        </svg><span>reroll<span class="dot">.</span></span>
+      </a>
       <ul class="nav-links">
         <li><a href="#how">How it works</a></li>
-        <li><a href="#mac">Mac app</a></li>
-        <li><a href="#privacy">Privacy</a></li>
+        <li><a href="#local">On your PC</a></li>
+        <li><a href="#status">Status</a></li>
       </ul>
-      <div class="nav-cta">
-        <a class="btn btn-ghost" href="/studio">Open the editor</a>
-        <a class="btn btn-primary" href="#beta">Join the Mac beta</a>
-      </div>
+      <a class="btn btn-primary nav-cta" href="#beta">Join the beta</a>
     </nav>
   </header>
 
   <main id="main">
     <section class="hero" aria-labelledby="hero-title">
       <div class="hero-copy">
-        <h1 id="hero-title">Say “Clip that.”<br />Keep the last 30&nbsp;seconds.</h1>
-        <p class="lede">Clip That keeps a rolling replay of your screen while you play. When something happens, say the words or press a hotkey. It saves the 30 seconds before, plus about 1.5 seconds after, so your reaction makes the cut. Then turn your clips into one vertical video.</p>
+        <p class="eyebrow"><span class="pulse" aria-hidden="true"></span>Windows beta coming soon</p>
+        <h1 id="hero-title">Medal captures the moment. <span class="gold">Reroll makes it worth&nbsp;posting.</span></h1>
+        <p class="lede">Turn saved gameplay clips into vertical highlights automatically. No manual timeline editing.</p>
         <div class="hero-actions">
-          <a class="btn btn-primary btn-lg" href="/studio">Open the web editor</a>
-          <a class="btn btn-ghost btn-lg" href="#beta">Join the Mac beta</a>
+          <a class="btn btn-primary btn-lg" href="#beta">Join the beta</a>
+          <a class="btn btn-ghost btn-lg" href="#how">How it works</a>
         </div>
-        <p class="hero-note">The web editor works today with clips you upload. Voice capture is part of the Mac app, which is in beta testing.</p>
+        <p class="hero-note">Works with locally saved Medal clips. Independent software, not affiliated with or endorsed by Medal.</p>
       </div>
 
-      <figure class="buffer" aria-label="Illustration: a rolling 30-second buffer; saying Clip that saves it as a clip">
-        <div class="buffer-head">
-          <span class="buffer-live"><span class="rec-dot" aria-hidden="true"></span>Replay buffer</span>
-          <span class="tnum buffer-len">last 30 s</span>
+      <figure class="flow" aria-label="Illustration: a landscape Medal clip becomes a vertical highlight">
+        <div class="clip-raw">
+          <div class="shot shot-wide" aria-hidden="true"><span class="xhair"></span></div>
+          <div class="clip-meta"><span>Saved Medal clip</span><span class="tnum">0:30 · 16:9</span></div>
         </div>
-        <div class="strip" aria-hidden="true">
-          <div class="strip-frames"></div>
-          <div class="strip-keep"><span class="tnum">30 s</span><span class="strip-tail tnum">+1.5 s</span></div>
-          <div class="strip-now"></div>
-          <div class="speech">“Clip that”</div>
+        <div class="flow-arrow" aria-hidden="true"><span></span></div>
+        <div class="phone">
+          <div class="shot shot-tall" aria-hidden="true"><span class="xhair"></span></div>
+          <div class="beats" aria-hidden="true"><i class="b-cut"></i><i class="b-keep"></i><i class="b-peak"></i><i class="b-keep"></i></div>
+          <div class="clip-meta"><span>Reroll edit</span><span class="tnum">9:16</span></div>
         </div>
-        <div class="saved" aria-hidden="true">
-          <div class="saved-clip saved-1"><span class="tnum">0:31</span></div>
-          <div class="saved-clip saved-2"><span class="tnum">0:31</span></div>
-          <div class="saved-clip saved-new"><span class="tnum">0:31</span></div>
-        </div>
-        <figcaption>Illustration of the Mac app’s replay buffer, not a live recording.</figcaption>
+        <figcaption>Illustration of the idea, not real output. Real before-and-after edits come with the beta.</figcaption>
       </figure>
     </section>
 
+    <section class="intro" aria-labelledby="intro-title">
+      <h2 id="intro-title">Your gameplay clips shouldn’t sit in a folder forever.</h2>
+      <p>Reroll is a Windows companion for Medal that turns saved gameplay clips into edited vertical highlights, automatically.</p>
+    </section>
+
     <section class="how" id="how" aria-labelledby="how-title">
-      <h2 id="how-title">From moment to post in four steps</h2>
+      <h2 id="how-title">Made for your next highlight</h2>
       <ol class="steps">
-        <li>
-          <h3>Turn on the replay buffer</h3>
-          <p>Recording stays off until you switch it on. While it’s on, only the last 15, 30, 45 or 60 seconds are kept.</p>
-        </li>
-        <li>
-          <h3>Say “Clip that”</h3>
-          <p>Or press the hotkey, even over a full-screen game. The moment is saved to your current session.</p>
-        </li>
-        <li>
-          <h3>Collect a session</h3>
-          <p>Clips pile up as you play. You can also bring in exports from OBS or any recorder that saves to a folder.</p>
-        </li>
-        <li>
-          <h3>Export a vertical video</h3>
-          <p>Trim, reorder and pick a layout, then export a 9:16 MP4 ready to upload to TikTok, Reels or Shorts.</p>
-        </li>
+        <li><h3>Keep recording with Medal</h3><p>No new recorder, no new habits. Clip the way you already do.</p></li>
+        <li><h3>Reroll finds the clip</h3><p>It watches the capture folder you choose and picks up each clip once Medal has finished saving it.</p></li>
+        <li><h3>Get a 9:16 edit</h3><p>Reroll trims to the moment and frames it vertically. You don’t build a timeline.</p></li>
+        <li><h3>Review and export</h3><p>Watch the edit, then export the MP4 for TikTok, YouTube Shorts or Instagram Reels.</p></li>
       </ol>
     </section>
 
-    <section class="ways" id="mac" aria-labelledby="ways-title">
-      <h2 id="ways-title" class="visually-hidden">Two ways to use Clip That</h2>
-      <article class="way way-mac">
-        <header>
-          <h3>Clip That for Mac</h3>
-          <p class="way-status way-status-beta">In beta testing</p>
-        </header>
-        <p>Hands-free capture while you play. With the replay buffer on, saying “Clip that” saves the previous 30 seconds <strong>plus about 1.5 seconds after</strong>.</p>
-        <ul class="facts">
-          <li>Works over full-screen games</li>
-          <li>Voice trigger or hotkey, with 15, 30, 45 or 60 second replays</li>
-          <li>Imports MP4, MOV and MKV files your recorder saves to a watched folder (it reads the files; it doesn’t control the recorder)</li>
-          <li>Sessions, trimming, reordering and 9:16 MP4 export</li>
-          <li>macOS 15 or later. Windows isn’t supported yet.</li>
-        </ul>
-        <p class="availability">A signed, notarized installer is not available yet, so there’s no download. Join the beta to hear when there is.</p>
-      </article>
-      <article class="way way-web">
-        <header>
-          <h3>Web editor</h3>
-          <p class="way-status way-status-live">Available now</p>
-        </header>
-        <p>No install. Upload clips you already have and cut them into one vertical video.</p>
-        <ul class="facts">
-          <li>MP4, MOV, WebM or MKV, up to 250 MB each</li>
-          <li>Trim on the timeline, drag to reorder, preview the whole sequence</li>
-          <li>Suggest trim: an early feature that finds the loudest, busiest moment in each clip and trims around it</li>
-          <li>Blur-fill or crop for 9:16, exported at 720p or 1080p</li>
-          <li>Your files are sent to the server only when you press Export</li>
-        </ul>
-        <a class="btn btn-primary" href="/studio">Open the web editor</a>
-      </article>
-    </section>
-
-    <section class="privacy" id="privacy" aria-labelledby="privacy-title">
-      <div class="privacy-intro">
-        <h2 id="privacy-title">Your screen stays yours</h2>
-        <p>The Mac app is built so that nothing leaves your computer unless you send it.</p>
+    <section class="local" id="local" aria-labelledby="local-title">
+      <div class="local-intro">
+        <h2 id="local-title">Built to run on your PC</h2>
+        <p>This is how the Windows app is being built. We’ll confirm each point on real gaming PCs before the beta ships.</p>
       </div>
-      <dl class="privacy-list">
-        <div><dt>Off until you turn it on</dt><dd>The replay buffer only runs while you’ve switched it on, with a visible indicator.</dd></div>
-        <div><dt>Speech stays on your Mac</dt><dd>“Clip that” is recognized on-device. If that isn’t available, voice capture stays off rather than using a server.</dd></div>
-        <div><dt>The buffer is temporary</dt><dd>Buffered footage is deleted when you stop recording or quit.</dd></div>
-        <div><dt>Exclude apps, pause any time</dt><dd>Keep a password manager or banking window out of every recording.</dd></div>
-        <div><dt>No automatic upload</dt><dd>Captures stay on your Mac. No account needed.</dd></div>
+      <dl class="local-list">
+        <div><dt>Clips stay on your computer</dt><dd>Edits are made locally from the files Medal already saved. No upload, no account needed for editing.</dd></div>
+        <div><dt>It reads files, nothing more</dt><dd>Reroll reads your saved clips. It doesn’t connect to Medal’s app or your game.</dd></div>
+        <div><dt>Light while you play</dt><dd>Editing runs at low priority in the background. We’re measuring the impact on frame rate before we make any promises.</dd></div>
       </dl>
     </section>
 
-    <section class="notyet" aria-labelledby="notyet-title">
-      <h2 id="notyet-title">What isn’t here yet</h2>
-      <p>We’d rather tell you now. Clip That doesn’t do AI highlight detection or beat sync yet. Edit styles are names only for the moment, and these aren’t available:</p>
-      <ul class="notyet-list">
-        <li>Automatic captions</li>
-        <li>Posting straight to TikTok, Instagram or YouTube</li>
-        <li>Windows</li>
-        <li>Accounts and cloud sync between the Mac app and the web editor</li>
+    <section class="status" id="status" aria-labelledby="status-title">
+      <h2 id="status-title">Where Reroll is today</h2>
+      <ul class="status-list">
+        <li><span class="tag tag-dev">In development</span>The Windows app. There’s no download yet.</li>
+        <li><span class="tag tag-dev">Being validated</span>Editing quality and compatibility, on real clips and real hardware, before the beta.</li>
+        <li><span class="tag tag-no">Not planned for the beta</span>Mac, cloud storage, subscriptions, posting straight to social apps.</li>
       </ul>
     </section>
 
     <section class="beta" id="beta" aria-labelledby="beta-title">
       <div class="beta-copy">
-        <h2 id="beta-title">Get the Mac app when it’s ready</h2>
-        <p>Leave your email and we’ll tell you when the signed beta build is available. We won’t use it for anything else.</p>
+        <h2 id="beta-title">Join the Windows beta</h2>
+        <p>We’ll invite testers in small groups. Your game and hardware help us pick a mix of setups. We’ll only use your email to invite you.</p>
       </div>
       <form class="beta-form" id="beta-form" novalidate>
         <label for="beta-email">Email address</label>
-        <div class="beta-row">
-          <input id="beta-email" type="email" name="email" placeholder="you@example.com" autocomplete="email" maxlength="254" required />
-          <button type="submit" class="btn btn-primary" id="beta-submit">Join the Mac beta</button>
+        <input id="beta-email" type="email" name="email" placeholder="you@example.com" autocomplete="email" maxlength="254" required />
+        <div class="beta-grid">
+          <div>
+            <label for="beta-game">Main game</label>
+            <select id="beta-game" name="game">
+              <option value="">Choose one</option>
+              <option value="valorant">Valorant</option>
+              <option value="cs2">Counter-Strike 2</option>
+              <option value="fortnite">Fortnite</option>
+              <option value="roblox">Roblox</option>
+              <option value="other">Something else</option>
+            </select>
+          </div>
+          <div>
+            <label for="beta-windows">Windows version</label>
+            <select id="beta-windows" name="windows">
+              <option value="">Choose one</option>
+              <option value="11">Windows 11</option>
+              <option value="10">Windows 10</option>
+              <option value="unsure">Not sure</option>
+            </select>
+          </div>
         </div>
-        <label class="consent"><input type="checkbox" id="beta-consent" required /><span>Store my email so Clip That can tell me when the Mac beta is available.</span></label>
+        <label for="beta-gpu">Graphics card <span class="optional">(optional)</span></label>
+        <input id="beta-gpu" type="text" name="gpu" placeholder="e.g. RTX 3060, RX 6700 XT" maxlength="80" autocomplete="off" />
+        <label class="consent"><input type="checkbox" id="beta-consent" required /><span>Store my email and answers so Reroll can invite me to the Windows beta.</span></label>
         <div class="hp" aria-hidden="true"><label>Website <input type="text" name="website" id="beta-website" tabindex="-1" autocomplete="off" /></label></div>
+        <button type="submit" class="btn btn-primary btn-lg" id="beta-submit">Join the beta</button>
         <p id="beta-status" class="beta-status" role="status" aria-live="polite"></p>
       </form>
     </section>
   </main>
 
   <footer class="foot">
-    <span class="wordmark wordmark-sm"><span class="rec-dot" aria-hidden="true"></span>Clip That</span>
-    <span>Mac app in beta testing. Web editor available now.</span>
+    <span class="wordmark wordmark-sm"><span>reroll<span class="dot">.</span></span></span>
+    <p>Reroll is independent software, not affiliated with or endorsed by Medal. The Windows app is in development; editing quality and compatibility are being validated before the beta.</p>
   </footer>
   <script src="/assets/site.js" defer></script>
 </body>

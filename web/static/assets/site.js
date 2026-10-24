@@ -15,18 +15,24 @@
     event.preventDefault();
     const email = document.getElementById('beta-email').value.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { show('Enter a valid email address.', 'error'); return; }
-    if (!document.getElementById('beta-consent').checked) { show('Tick the box so we can store your email.', 'error'); return; }
+    if (!document.getElementById('beta-consent').checked) { show('Tick the box so we can store your details.', 'error'); return; }
     button.disabled = true;
     show('Saving…');
     try {
       const response = await fetch('/api/beta-interest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, consent: true, website: document.getElementById('beta-website').value })
+        body: JSON.stringify({
+          email, consent: true,
+          game: document.getElementById('beta-game').value,
+          windows: document.getElementById('beta-windows').value,
+          gpu: document.getElementById('beta-gpu').value.trim(),
+          website: document.getElementById('beta-website').value,
+        })
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Couldn’t save your email. Try again.');
-      show('You’re on the list. We’ll email you when the Mac beta is ready.', 'ok');
+      show('You’re on the list. We’ll email you when there’s a spot in the Windows beta.', 'ok');
       form.reset();
     } catch (error) {
       show(String(error.message || error), 'error');

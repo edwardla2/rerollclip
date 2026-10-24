@@ -51,18 +51,34 @@ app = FastAPI(title="Reroll web editor (local demo)", version="0.1.0", docs_url=
 app.mount("/assets", StaticFiles(directory=str(STATIC / "assets")), name="assets")
 
 
+GAMES = {"", "valorant", "cs2", "fortnite", "roblox", "other"}
+WINDOWS_VERSIONS = {"", "11", "10", "unsure"}
+
+
 class BetaInterest(BaseModel):
     email: str = Field(min_length=5, max_length=254)
     consent: bool = False
+    game: str = Field(default="", max_length=20)
+    windows: str = Field(default="", max_length=10)
+    gpu: str = Field(default="", max_length=80)
     website: str = Field(default="", max_length=300)  # Honeypot; should remain empty.
 
 
-def save_beta_interest(email: str) -> None:
-    """Local-only prototype storage; do not deploy without anti-abuse, notice and retention review."""
+def save_beta_interest(email: str, game: str = "", windows: str = "", gpu: str = "") -> None:
+    """Local-only prototype storage; do not deploy without anti-abuse, notice and retention review.
+
+    Signing up again keeps the email once and updates any answers given."""
     RUNTIME.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(RUNTIME / "beta-interest.sqlite3", timeout=10) as db:
         db.execute("CREATE TABLE IF NOT EXISTS beta_interest (email TEXT PRIMARY KEY, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)")
+        columns = {row[1] for row in db.execute("PRAGMA table_info(beta_interest)")}
+        for column in ("game", "windows", "gpu"):
+            if column not in columns:
+                db.execute(f"ALTER TABLE beta_interest ADD COLUMN {column} TEXT")
         db.execute("INSERT OR IGNORE INTO beta_interest(email) VALUES (?)", (email,))
+        for column, value in (("game", game), ("windows", windows), ("gpu", gpu)):
+            if value:
+                db.execute(f"UPDATE beta_interest SET {column} = ? WHERE email = ?", (value, email))
         db.commit()
 
 
@@ -73,9 +89,14 @@ async def beta_interest(request: BetaInterest):
     email = request.email.strip().lower()
     if not EMAIL_RE.fullmatch(email):
         raise HTTPException(422, "Enter a valid email address")
+    if request.game not in GAMES or request.windows not in WINDOWS_VERSIONS:
+        raise HTTPException(422, "Pick a game and Windows version from the list")
+    gpu = " ".join(request.gpu.split())
+    if any(not ch.isprintable() for ch in gpu):
+        raise HTTPException(422, "Graphics card: letters, numbers and spaces only")
     if request.website:  # Accept honeypot quietly; avoids leaking anti-spam criteria.
         return {"ok": True, "mode": "local-interest-only", "email_sent": False}
-    await run_in_threadpool(save_beta_interest, email)
+    await run_in_threadpool(save_beta_interest, email, request.game, request.windows, gpu)
     return {"ok": True, "mode": "local-interest-only", "email_sent": False}
 
 

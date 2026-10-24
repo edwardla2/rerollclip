@@ -2,15 +2,27 @@ import Fluent
 import Foundation
 import Vapor
 
-/// Mac beta interest list. Stores only the email and when it was added.
+/// Windows beta waitlist: the email, when it was added, and optional tester details
+/// (main game, Windows version, graphics card) used to recruit a mix of setups.
 final class BetaInterest: Model, @unchecked Sendable {
     static let schema = "beta_interest"
+    static let games: Set<String> = ["", "valorant", "cs2", "fortnite", "roblox", "other"]
+    static let windowsVersions: Set<String> = ["", "11", "10", "unsure"]
 
     @ID(custom: "email", generatedBy: .user)
     var id: String?
 
     @Timestamp(key: "created_at", on: .create)
     var createdAt: Date?
+
+    @OptionalField(key: "game")
+    var game: String?
+
+    @OptionalField(key: "windows")
+    var windows: String?
+
+    @OptionalField(key: "gpu")
+    var gpu: String?
 
     init() {}
 
@@ -32,9 +44,28 @@ struct CreateBetaInterest: AsyncMigration {
     }
 }
 
+struct AddBetaTesterFields: AsyncMigration {
+    func prepare(on database: any Database) async throws {
+        try await database.schema(BetaInterest.schema)
+            .field("game", .string)
+            .field("windows", .string)
+            .field("gpu", .string)
+            .update()
+    }
+
+    func revert(on database: any Database) async throws {
+        try await database.schema(BetaInterest.schema)
+            .deleteField("game").deleteField("windows").deleteField("gpu")
+            .update()
+    }
+}
+
 struct BetaInterestRequest: Content {
     var email: String
     var consent: Bool?
+    var game: String?
+    var windows: String?
+    var gpu: String?
     /// Honeypot: real people leave it empty.
     var website: String?
 }
@@ -67,12 +98,28 @@ struct BetaInterestController: RouteCollection {
         guard Self.isEmail(email) else {
             throw Abort(.unprocessableEntity, reason: "Enter a valid email address")
         }
+        let game = body.game ?? "", windows = body.windows ?? ""
+        guard BetaInterest.games.contains(game), BetaInterest.windowsVersions.contains(windows) else {
+            throw Abort(.unprocessableEntity, reason: "Pick a game and Windows version from the list")
+        }
+        let gpu = Self.cleanGPU(body.gpu ?? "")
+        guard gpu.count <= 80, gpu.unicodeScalars.allSatisfy({ !CharacterSet.controlCharacters.contains($0) }) else {
+            throw Abort(.unprocessableEntity, reason: "Graphics card: letters, numbers and spaces only")
+        }
         // Accept bots quietly so the anti-spam rule isn't revealed.
         if let website = body.website, !website.isEmpty { return BetaInterestResponse() }
-        if try await BetaInterest.find(email, on: req.db) == nil {
-            try await BetaInterest(email: email).create(on: req.db)
-        }
+        // Signing up again keeps the email once and fills in any answers given.
+        let entry = try await BetaInterest.find(email, on: req.db) ?? BetaInterest(email: email)
+        if !game.isEmpty { entry.game = game }
+        if !windows.isEmpty { entry.windows = windows }
+        if !gpu.isEmpty { entry.gpu = gpu }
+        try await entry.save(on: req.db)
         return BetaInterestResponse()
+    }
+
+    /// Collapses runs of whitespace, trims the ends.
+    static func cleanGPU(_ s: String) -> String {
+        s.split(whereSeparator: \.isWhitespace).joined(separator: " ")
     }
 
     /// Same rule as the browser: something@something.tld, no spaces.

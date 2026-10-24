@@ -81,6 +81,7 @@ func configure(_ app: Application, config: ClipThatConfig) async throws {
         app.databases.use(.sqlite(.memory), as: .sqlite)
     }
     app.migrations.add(CreateBetaInterest())
+    app.migrations.add(AddBetaTesterFields())
     try await app.autoMigrate()
 
     try routes(app)

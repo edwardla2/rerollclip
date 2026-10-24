@@ -20,7 +20,7 @@ def request(method: str, endpoint: str, **kwargs):
 
 def test_home_and_health():
     landing = request("GET", "/")
-    assert landing.status_code == 200 and b"Clip That" in landing.content
+    assert landing.status_code == 200 and b"Reroll" in landing.content and b"Clip That" not in landing.content
     health = request("GET", "/api/health")
     assert health.json()["cloud_saving"] is False
 
@@ -52,16 +52,17 @@ def test_studio_page_served():
     assert 'id="export-open"' in studio.text and 'id="track"' in studio.text
 
 
-def test_desktop_claims_and_beta_link():
-    """Guardrails: the landing page may only claim what ships."""
+def test_landing_claims_guardrails():
+    """Guardrails: the landing page may only claim what ships. Today that's a waitlist."""
     landing = request("GET", "/").text
-    assert 'macOS 15 or later' in landing
-    assert 'plus about 1.5 seconds after' in landing
-    assert 'signed, notarized installer is not available yet' in landing
+    assert "Windows beta coming soon" in landing
+    assert "not affiliated with or endorsed by Medal" in landing
+    assert "The Windows app is in development" in landing
+    assert "Illustration of the idea, not real output" in landing
     assert 'id="beta-form"' in landing
-    assert 'id="download-desktop"' not in landing
-    assert 'AI highlight detection or beat sync yet' in landing
-    assert 'No automatic upload' in landing
+    lowered = landing.lower()
+    for claim in ("download now", 'id="download', "anti-cheat", "macos", "mac app", "ai-powered", "guaranteed"):
+        assert claim not in lowered, claim
 
 
 def test_beta_interest_local_storage(monkeypatch, tmp_path):
@@ -80,6 +81,15 @@ def test_beta_interest_local_storage(monkeypatch, tmp_path):
     with sqlite3.connect(tmp_path / "beta-interest.sqlite3") as db:
         entries = db.execute("SELECT email FROM beta_interest").fetchall()
     assert entries == [("test@example.com",)]
+    # Tester details: validated, and a later signup fills them in.
+    assert request("POST", endpoint, json={"email": "test@example.com", "consent": True, "game": "minecraft"}).status_code == 422
+    assert request("POST", endpoint, json={"email": "test@example.com", "consent": True, "windows": "8"}).status_code == 422
+    again = request("POST", endpoint, json={"email": "test@example.com", "consent": True, "game": "roblox",
+                                            "windows": "11", "gpu": "  RTX   3060 "})
+    assert again.status_code == 200
+    with sqlite3.connect(tmp_path / "beta-interest.sqlite3") as db:
+        row = db.execute("SELECT email, game, windows, gpu FROM beta_interest").fetchall()
+    assert row == [("test@example.com", "roblox", "11", "RTX 3060")]
 
 
 def _make_clip(path: Path, color: str, audio: bool) -> None:
