@@ -1,0 +1,58 @@
+/* Clip That design tokens, shared by the landing page and the studio. */
+/* Space Grotesk is self-hosted (SIL OFL, fonts/OFL-SpaceGrotesk.txt): no third-party requests. */
+@font-face { font-family: "Space Grotesk"; font-style: normal; font-weight: 400; font-display: swap; src: url("/assets/fonts/space-grotesk-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Space Grotesk"; font-style: normal; font-weight: 500; font-display: swap; src: url("/assets/fonts/space-grotesk-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Space Grotesk"; font-style: normal; font-weight: 600; font-display: swap; src: url("/assets/fonts/space-grotesk-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "Space Grotesk"; font-style: normal; font-weight: 700; font-display: swap; src: url("/assets/fonts/space-grotesk-latin-700-normal.woff2") format("woff2"); }
+:root {
+  --night: #0f1c30;      /* primary dark surface */
+  --deep: #091322;       /* studio chrome, deepest surface */
+  --raise: #16263d;      /* raised panels on dark */
+  --line: #24364f;       /* hairlines on dark */
+  --slate: #8a9ab3;      /* secondary text on dark */
+  --mist: #c9d3e1;       /* primary text on dark (soft) */
+  --paper: #f2f4f7;      /* light content surface (cool, not cream) */
+  --ink: #0f1c30;        /* text on paper = night */
+  --ink-2: #4a5a72;      /* secondary text on paper */
+  --rec: #f0453a;        /* recording / capture signal only */
+  --clip: #4c7dff;       /* clips, selection, primary action */
+  --clip-2: #7da1ff;
+  --ok: #2fbf71;
+
+  --font: "Space Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Type scale (1.25, base 17px) */
+  --t-xs: 0.75rem;
+  --t-sm: 0.875rem;
+  --t-md: 1.0625rem;
+  --t-lg: 1.3125rem;
+  --t-xl: 1.65rem;
+  --t-2xl: 2.25rem;
+  --t-3xl: clamp(2.4rem, 5.2vw, 4.4rem);
+
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 16px;
+
+  --gutter: clamp(16px, 4vw, 48px);
+  --maxw: 1180px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; font-family: var(--font); font-size: var(--t-md); line-height: 1.5; }
+img, video, svg { display: block; max-width: 100%; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+.tnum { font-variant-numeric: tabular-nums; }
+
+:focus-visible { outline: 2px solid var(--clip-2); outline-offset: 2px; }
+
+.visually-hidden {
+  position: absolute !important; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+}

@@ -3,102 +3,164 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#0b0d13" />
-  <title>Clip That — Capture the moment. Create the edit.</title>
-  <meta name="description" content="Clip That helps creators save moments hands-free on macOS and arrange clips into vertical MP4 montages. Join the desktop beta or try the local browser editor." />
-  <link rel="stylesheet" href="/assets/styles.css" />
+  <meta name="theme-color" content="#0f1c30" />
+  <title>Clip That: say “Clip that,” keep the moment</title>
+  <meta name="description" content="Clip That saves the last 30 seconds of your screen when you say “Clip that,” then turns your clips into one vertical video. Edit in the browser today; the Mac app is in beta testing." />
+  <link rel="preload" href="/assets/fonts/space-grotesk-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="/assets/tokens.css" />
+  <link rel="stylesheet" href="/assets/site.css" />
 </head>
 <body>
-  <header class="nav-shell">
-    <nav class="navbar" aria-label="Primary navigation">
-      <button type="button" class="brand nav-home" aria-label="Clip That home"><span class="brand-icon">⌗</span> clip<span>that</span><span class="brand-dot">.</span></button>
-      <div class="nav-middle"><button type="button" class="nav-link nav-home">Home</button><button type="button" class="nav-link" id="nav-features">Features</button><button type="button" class="nav-link" id="nav-workspace">Web editor</button><button type="button" class="nav-link" id="nav-beta">Mac beta</button></div>
-      <div class="nav-actions"><span class="status-pill"><span class="status-dot"></span> Local preview</span><button type="button" class="nav-beta btn btn-primary">Join beta <span>↗</span></button></div>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="top">
+    <nav class="nav" aria-label="Main">
+      <a class="wordmark" href="/" aria-label="Clip That home"><span class="rec-dot" aria-hidden="true"></span>Clip That</a>
+      <ul class="nav-links">
+        <li><a href="#how">How it works</a></li>
+        <li><a href="#mac">Mac app</a></li>
+        <li><a href="#privacy">Privacy</a></li>
+      </ul>
+      <div class="nav-cta">
+        <a class="btn btn-ghost" href="/studio">Open the editor</a>
+        <a class="btn btn-primary" href="#beta">Join the Mac beta</a>
+      </div>
     </nav>
   </header>
-  <main>
-    <section id="landing" class="landing">
-      <div class="hero-layout">
-        <div class="hero-copy">
-          <div class="eyebrow"><span class="eyebrow-dot"></span> MAC DESKTOP V0.1 + LOCAL WEB EDITOR</div>
-          <h1>Clip the moment.<br /><em>Post the magic.</em></h1>
-          <p>Catch the moment with a voice command or hotkey on Mac. Collect your clips, trim and arrange the best parts, then export one vertical video. Advanced AI edits are still in development.</p>
-          <div class="hero-buttons"><button type="button" class="nav-beta btn btn-primary btn-big">Join Mac beta <span>↗</span></button><button type="button" class="nav-start btn btn-glass">Try local web editor <span>↘</span></button></div>
-          <div class="hero-note"><span class="avatar-stack"><span>G</span><span>C</span><span>▶</span></span><span>Gaming first. Chess, trading, and more later.</span></div>
+
+  <main id="main">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <h1 id="hero-title">Say “Clip that.”<br />Keep the last 30&nbsp;seconds.</h1>
+        <p class="lede">Clip That keeps a rolling replay of your screen while you play. When something happens, say the words or press a hotkey. It saves the 30 seconds before, plus about 1.5 seconds after, so your reaction makes the cut. Then turn your clips into one vertical video.</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary btn-lg" href="/studio">Open the web editor</a>
+          <a class="btn btn-ghost btn-lg" href="#beta">Join the Mac beta</a>
         </div>
-        <div class="showcase" aria-label="Illustrative editor preview">
-          <div class="showcase-top"><span class="window-circles"><i></i><i></i><i></i></span><span>clipthat / new edit</span><span class="preview-tag">CONCEPT UI</span></div>
-          <div class="showcase-inner">
-            <div class="mock-left"><span>⌂</span><span class="mock-active">▣</span><span>♫</span><span>✦</span></div>
-            <div class="mock-media"><div class="mock-section-title">Your moments <small>3 clips</small></div><div class="media-thumb"><span class="thumb-top">01</span><span class="thumb-image">✦</span><span class="thumb-bottom">Highlight #1</span></div><div class="media-thumb alt"><span class="thumb-top">02</span><span class="thumb-image">◈</span><span class="thumb-bottom">Highlight #2</span></div><div class="media-thumb alt2"><span class="thumb-top">03</span><span class="thumb-image">◆</span><span class="thumb-bottom">Highlight #3</span></div></div>
-            <div class="mock-preview"><div class="play-vertical"><div class="edit-text">YOUR<br />BEST<br /><span>MOMENTS.</span></div><div class="play-icon">▶</div><div class="edit-sub">gameplay / highlights</div></div></div>
-            <div class="mock-right"><div class="mock-section-title">Edit style</div><div class="mock-preset chosen">⚡&nbsp; High energy</div><div class="mock-preset">✧&nbsp; Cinematic</div><div class="mock-preset">⊙&nbsp; Clean</div><div class="mock-section-title mock-pad">Format</div><div class="mock-preset chosen">▯&nbsp; 9:16 vertical</div></div>
-          </div>
-          <div class="mock-timeline"><div class="timeline-head"><span>00:00</span><span>00:05</span><span>00:10</span><span>00:15</span><span>00:20</span></div><div class="timeline-blocks"><i>HIGHLIGHT 01</i><i>HIGHLIGHT 02</i><i>HIGHLIGHT 03</i></div><div class="timeline-audio">♪ &nbsp; AUDIO TRACK · WAVEFORM <span>▰▱▰▰▱▰▱▰▰▰▱▰</span></div></div>
-          <div class="showcase-overlay"><span class="sparkle">✦</span><div><strong>Every highlight, one edit.</strong><span>Simple enough to stay in the moment.</span></div></div>
+        <p class="hero-note">The web editor works today with clips you upload. Voice capture is part of the Mac app, which is in beta testing.</p>
+      </div>
+
+      <figure class="buffer" aria-label="Illustration: a rolling 30-second buffer; saying Clip that saves it as a clip">
+        <div class="buffer-head">
+          <span class="buffer-live"><span class="rec-dot" aria-hidden="true"></span>Replay buffer</span>
+          <span class="tnum buffer-len">last 30 s</span>
         </div>
-      </div>
-      <div class="hero-footer"><span>ONE WORKFLOW. ENDLESS MOMENTS.</span><span>SAVE → COLLECT → TRIM → EXPORT</span></div>
-    </section>
-    <section class="section features" id="features">
-      <div class="section-heading"><span class="eyebrow">BUILT AROUND YOU</span><h2>Less timeline.<br /><span>More highlight.</span></h2><p>Capture the moment without interrupting your game, or bring existing recordings into the editor. Today, editing is straightforward and manual; smarter AI tools come later.</p></div>
-      <div class="feature-grid">
-        <article class="feature-card"><div class="feature-icon">◈</div><h3>Drop in your clips</h3><p>On Mac, watch an export folder from OBS or another recorder that saves MP4, MOV or MKV. Files are imported, not controlled through an official integration.</p><span class="feature-index">01 / IMPORT</span></article>
-        <article class="feature-card accent"><div class="feature-icon">✦</div><h3>Make a montage</h3><p>Trim, reorder, and combine the moments you choose into a 9:16 montage. No AI highlight detection or beat sync yet.</p><span class="feature-index">02 / CREATE</span></article>
-        <article class="feature-card"><div class="feature-icon">↗</div><h3>Export and post</h3><p>Export a vertical MP4, review it, and manually upload it wherever you post. Direct publishing is not available yet.</p><span class="feature-index">03 / EXPORT</span></article>
-      </div>
-    </section>
-    <section class="section desktop-section" id="desktop-beta">
-      <div class="desktop-copy">
-        <span class="eyebrow">CLIP THAT FOR MAC · DESKTOP V0.1</span>
-        <h2>Say <em>“Clip that.”</em><br/>Keep playing.</h2>
-        <p>With replay recording enabled, say “Clip that” or use a hotkey to save the last 30 seconds <strong>plus about 1.5 seconds afterward</strong>, so your reaction stays in the clip. Choose a 15, 45, or 60-second replay length instead.</p>
-        <div class="desktop-highlights">
-          <div><span>↳</span> Captures over full-screen games</div>
-          <div><span>↳</span> Imports MP4, MOV and MKV from watched export folders</div>
-          <div><span>↳</span> Session library, trimming, reordering and 9:16 MP4 export</div>
-          <div><span>↳</span> macOS 15 or later · Windows not yet supported</div>
+        <div class="strip" aria-hidden="true">
+          <div class="strip-frames"></div>
+          <div class="strip-keep"><span class="tnum">30 s</span><span class="strip-tail tnum">+1.5 s</span></div>
+          <div class="strip-now"></div>
+          <div class="speech">“Clip that”</div>
         </div>
-        <button class="btn btn-primary nav-beta" type="button">Join the Mac beta <span>↗</span></button>
-        <div class="availability-line">Desktop v0.1 is in development/testing. A signed, notarized installer is not available yet.</div>
-      </div>
-      <div class="desktop-graphic" aria-label="Illustration of the Clip That voice capture trigger"><div class="mic-circle">⌁</div><div class="capture-wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><strong>“Clip that”</strong><span>30s before + ~1.5s after · Mac</span><small>Illustration · not a live capture session</small></div>
+        <div class="saved" aria-hidden="true">
+          <div class="saved-clip saved-1"><span class="tnum">0:31</span></div>
+          <div class="saved-clip saved-2"><span class="tnum">0:31</span></div>
+          <div class="saved-clip saved-new"><span class="tnum">0:31</span></div>
+        </div>
+        <figcaption>Illustration of the Mac app’s replay buffer, not a live recording.</figcaption>
+      </figure>
     </section>
-    <section class="section trust-section" id="privacy">
-      <div class="trust-head"><span class="eyebrow">DESKTOP PRIVACY BY DESIGN</span><h2>Your screen.<br/><span>Your choice.</span></h2><p>The Mac companion is local-first. Capture stays off until you enable it. These safeguards describe the desktop app, not a future hosted web editing service.</p></div>
-      <div class="trust-grid">
-        <div><span class="trust-icon">◎</span><strong>On-device speech</strong><p>Voice commands are recognized locally.</p></div>
-        <div><span class="trust-icon">▣</span><strong>Opt-in capture</strong><p>Recording starts only when you turn it on. You can exclude specific apps.</p></div>
-        <div><span class="trust-icon">⌫</span><strong>Temporary replay buffer</strong><p>The rolling buffer is deleted when recording stops.</p></div>
-        <div><span class="trust-icon">⇥</span><strong>No automatic upload</strong><p>Desktop captures remain on your machine. No account required.</p></div>
-      </div>
+
+    <section class="how" id="how" aria-labelledby="how-title">
+      <h2 id="how-title">From moment to post in four steps</h2>
+      <ol class="steps">
+        <li>
+          <h3>Turn on the replay buffer</h3>
+          <p>Recording stays off until you switch it on. While it’s on, only the last 15, 30, 45 or 60 seconds are kept.</p>
+        </li>
+        <li>
+          <h3>Say “Clip that”</h3>
+          <p>Or press the hotkey, even over a full-screen game. The moment is saved to your current session.</p>
+        </li>
+        <li>
+          <h3>Collect a session</h3>
+          <p>Clips pile up as you play. You can also bring in exports from OBS or any recorder that saves to a folder.</p>
+        </li>
+        <li>
+          <h3>Export a vertical video</h3>
+          <p>Trim, reorder and pick a layout, then export a 9:16 MP4 ready to upload to TikTok, Reels or Shorts.</p>
+        </li>
+      </ol>
     </section>
-    <section class="section beta-section" id="beta-signup">
-      <div class="beta-inner">
-        <div class="beta-copy"><span class="eyebrow">EARLY ACCESS</span><h2>Get first access to <em>Clip That.</em></h2><p>We’re preparing a signed and notarized macOS build. Leave your email to register interest in the beta. There is no public DMG or automatic updater to download yet.</p><div class="beta-tags"><span>macOS 15+</span><span>No account for desktop capture</span><span>Editing AI on the roadmap</span></div></div>
-        <form class="beta-form" id="beta-form">
-          <label for="beta-email">Email address</label>
+
+    <section class="ways" id="mac" aria-labelledby="ways-title">
+      <h2 id="ways-title" class="visually-hidden">Two ways to use Clip That</h2>
+      <article class="way way-mac">
+        <header>
+          <h3>Clip That for Mac</h3>
+          <p class="way-status way-status-beta">In beta testing</p>
+        </header>
+        <p>Hands-free capture while you play. With the replay buffer on, saying “Clip that” saves the previous 30 seconds <strong>plus about 1.5 seconds after</strong>.</p>
+        <ul class="facts">
+          <li>Works over full-screen games</li>
+          <li>Voice trigger or hotkey, with 15, 30, 45 or 60 second replays</li>
+          <li>Imports MP4, MOV and MKV files your recorder saves to a watched folder (it reads the files; it doesn’t control the recorder)</li>
+          <li>Sessions, trimming, reordering and 9:16 MP4 export</li>
+          <li>macOS 15 or later. Windows isn’t supported yet.</li>
+        </ul>
+        <p class="availability">A signed, notarized installer is not available yet, so there’s no download. Join the beta to hear when there is.</p>
+      </article>
+      <article class="way way-web">
+        <header>
+          <h3>Web editor</h3>
+          <p class="way-status way-status-live">Available now</p>
+        </header>
+        <p>No install. Upload clips you already have and cut them into one vertical video.</p>
+        <ul class="facts">
+          <li>MP4, MOV, WebM or MKV, up to 250 MB each</li>
+          <li>Trim on the timeline, drag to reorder, preview the whole sequence</li>
+          <li>Blur-fill or crop for 9:16, exported at 720p or 1080p</li>
+          <li>Your files are sent to the server only when you press Export</li>
+        </ul>
+        <a class="btn btn-primary" href="/studio">Open the web editor</a>
+      </article>
+    </section>
+
+    <section class="privacy" id="privacy" aria-labelledby="privacy-title">
+      <div class="privacy-intro">
+        <h2 id="privacy-title">Your screen stays yours</h2>
+        <p>The Mac app is built so that nothing leaves your computer unless you send it.</p>
+      </div>
+      <dl class="privacy-list">
+        <div><dt>Off until you turn it on</dt><dd>The replay buffer only runs while you’ve switched it on, with a visible indicator.</dd></div>
+        <div><dt>Speech stays on your Mac</dt><dd>“Clip that” is recognized on-device. If that isn’t available, voice capture stays off rather than using a server.</dd></div>
+        <div><dt>The buffer is temporary</dt><dd>Buffered footage is deleted when you stop recording or quit.</dd></div>
+        <div><dt>Exclude apps, pause any time</dt><dd>Keep a password manager or banking window out of every recording.</dd></div>
+        <div><dt>No automatic upload</dt><dd>Captures stay on your Mac. No account needed.</dd></div>
+      </dl>
+    </section>
+
+    <section class="notyet" aria-labelledby="notyet-title">
+      <h2 id="notyet-title">What isn’t here yet</h2>
+      <p>We’d rather tell you now. Clip That doesn’t do AI highlight detection or beat sync yet. Edit styles are names only for the moment, and these aren’t available:</p>
+      <ul class="notyet-list">
+        <li>Automatic captions</li>
+        <li>Posting straight to TikTok, Instagram or YouTube</li>
+        <li>Windows</li>
+        <li>Accounts and cloud sync between the Mac app and the web editor</li>
+      </ul>
+    </section>
+
+    <section class="beta" id="beta" aria-labelledby="beta-title">
+      <div class="beta-copy">
+        <h2 id="beta-title">Get the Mac app when it’s ready</h2>
+        <p>Leave your email and we’ll tell you when the signed beta build is available. We won’t use it for anything else.</p>
+      </div>
+      <form class="beta-form" id="beta-form" novalidate>
+        <label for="beta-email">Email address</label>
+        <div class="beta-row">
           <input id="beta-email" type="email" name="email" placeholder="you@example.com" autocomplete="email" maxlength="254" required />
-          <label class="consent-label"><input type="checkbox" id="beta-consent" required /><span>I agree to have my email stored for Clip That beta interest. This local prototype does not send emails.</span></label>
-          <div class="hp-field" aria-hidden="true"><label>Website<input type="text" name="website" id="beta-website" tabindex="-1" autocomplete="off" /></label></div>
-          <button type="submit" class="btn btn-primary btn-block" id="beta-submit">Register beta interest <span>↗</span></button>
-          <p id="beta-status" class="beta-status" role="status" aria-live="polite">Local prototype only: submissions are stored on this computer, not a live public waitlist.</p>
-        </form>
-      </div>
+          <button type="submit" class="btn btn-primary" id="beta-submit">Join the Mac beta</button>
+        </div>
+        <label class="consent"><input type="checkbox" id="beta-consent" required /><span>Store my email so Clip That can tell me when the Mac beta is available.</span></label>
+        <div class="hp" aria-hidden="true"><label>Website <input type="text" name="website" id="beta-website" tabindex="-1" autocomplete="off" /></label></div>
+        <p id="beta-status" class="beta-status" role="status" aria-live="polite"></p>
+      </form>
     </section>
-    <footer><span class="brand footer-brand"><span class="brand-icon">⌗</span> clip<span>that</span><span class="brand-dot">.</span></span><span>Desktop beta in development · Browser editor is a local prototype</span></footer>
   </main>
-  <section id="editor" class="editor is-hidden" aria-label="Clip That browser editor">
-    <div class="editor-head"><div><span class="breadcrumb">Workspace /</span> <strong>Untitled montage</strong><span class="autosave">● Unsaved session</span></div><div class="editor-head-actions"><button class="btn btn-subtle btn-small" id="back-home">← Home</button><button class="btn btn-primary btn-small" id="render-top">↗ Create montage</button></div></div>
-    <div class="editor-grid">
-      <aside class="side-tools"><div class="side-brand">⌗</div><button class="tool-tab active" title="Media">▣<span>Media</span></button><button class="tool-tab" title="Styles" id="tool-styles">✦<span>Styles</span></button><button class="tool-tab" title="Export" id="tool-export">↗<span>Export</span></button></aside>
-      <aside class="media-panel"><div class="panel-heading"><h3>Your media</h3><span id="media-count">0 clips</span></div><div class="add-media" id="drop-target" role="button" tabindex="0" aria-label="Upload video clips"><div class="add-icon">↑</div><strong>Upload videos</strong><span>MP4, MOV, WebM, MKV</span><small>or drag and drop files here</small></div><input id="file-input" type="file" accept="video/mp4,video/quicktime,video/webm,video/x-matroska,.mkv" multiple hidden/><div class="media-list" id="media-list"><div class="empty-library">Your uploaded clips will appear here.</div></div><div class="panel-bottom"><span>Up to 250 MB per video in this local preview.</span></div></aside>
-      <section class="preview-panel"><div class="preview-header"><span>Preview</span><span id="preview-label">9:16 vertical</span></div><div class="preview-surface"><div class="preview-phone"><div id="preview-empty" class="preview-empty"><div class="placeholder-icon">◈</div><strong>Your next edit starts here</strong><span>Upload a clip to preview it.</span></div><video id="preview-video" controls playsinline preload="metadata" class="is-hidden"></video></div></div><div class="preview-controls"><span>Use the media library to choose a clip</span><span>1080 × 1920</span></div></section>
-      <aside class="settings-panel"><div class="panel-heading"><h3>Create your edit</h3><span class="beta-pill">MVP</span></div><div class="settings-body"><label class="control-label" for="preset-select">Edit style</label><select id="preset-select"><option value="clean">Clean</option><option value="cinematic">Cinematic</option><option value="high_energy">High energy</option></select><p class="helper">Style labels do not change output yet. AI highlight detection, beat sync and captions are not available.</p><label class="control-label" for="layout-select">Video layout</label><select id="layout-select"><option value="fit_blur">Fit + blurred background</option><option value="center_crop">Center crop</option></select><label class="control-label" for="quality-select">Export resolution</label><select id="quality-select"><option value="720">720 × 1280</option><option value="1080">1080 × 1920</option><option value="480">480 × 852</option></select><div class="setting-divider"></div><label class="control-label">Selected clip trim</label><p class="helper">Choose a clip in the media library first.</p><div class="trim-fields"><label>Start (seconds)<input id="clip-start" type="number" value="0" min="0" step="0.5" disabled /></label><label>Length (seconds)<input id="clip-duration" type="number" value="5" min="0.1" max="120" step="0.5" disabled /></label></div><button class="btn btn-primary btn-block" type="button" id="render-button">✦ Create montage</button><div id="render-status" class="render-status" aria-live="polite">Add a clip to begin.</div><a id="download-button" class="btn btn-success btn-block is-hidden" download="clip-that-edit.mp4">↓ Download MP4</a></div></aside>
-      <div class="timeline-panel"><div class="timeline-toolbar"><div><strong>Timeline</strong> <small>↑ / ↓ reorder</small></div><span id="total-duration">00:00 total</span></div><div class="clip-track" id="clip-track"><div class="empty-track">Your clips will appear on the timeline.</div></div><div class="timeline-footer"><span>Clip That web MVP</span><span>Web clips are sent to your locally running demo server; no cloud hosting</span></div></div>
-    </div>
-  </section>
-  <div id="toast" class="toast is-hidden" role="status"></div>
-  <script src="/assets/app.js" defer></script>
+
+  <footer class="foot">
+    <span class="wordmark wordmark-sm"><span class="rec-dot" aria-hidden="true"></span>Clip That</span>
+    <span>Mac app in beta testing. Web editor available now.</span>
+  </footer>
+  <script src="/assets/site.js" defer></script>
 </body>
 </html>

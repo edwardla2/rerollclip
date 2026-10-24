@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#091322" />
+  <title>Web editor · Clip That</title>
+  <meta name="description" content="Trim, reorder and export your clips as one vertical video, right in the browser." />
+  <link rel="preload" href="/assets/fonts/space-grotesk-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="/assets/tokens.css" />
+  <link rel="stylesheet" href="/assets/studio.css" />
+</head>
+<body>
+  <header class="bar">
+    <a class="wordmark" href="/" aria-label="Clip That home"><span class="rec-dot" aria-hidden="true"></span>Clip That</a>
+    <label class="title-field">
+      <span class="visually-hidden">Project name</span>
+      <input id="project-title" type="text" value="Untitled edit" maxlength="80" spellcheck="false" />
+    </label>
+    <span class="bar-hint" id="bar-hint">Clips stay in this browser tab until you export.</span>
+    <div class="bar-actions">
+      <button type="button" class="btn btn-quiet" id="new-project">New edit</button>
+      <button type="button" class="btn btn-primary" id="export-open" disabled>Export</button>
+    </div>
+  </header>
+
+  <main class="ws">
+    <aside class="bin" aria-labelledby="bin-title">
+      <div class="panel-head">
+        <h2 id="bin-title">Media</h2>
+        <button type="button" class="btn btn-small" id="upload-button">Upload</button>
+      </div>
+      <input id="file-input" type="file" accept="video/mp4,video/quicktime,video/webm,video/x-matroska,.mp4,.mov,.webm,.mkv" multiple hidden />
+      <div class="drop" id="drop" tabindex="0" role="button" aria-describedby="drop-help">
+        <strong>Drop videos here</strong>
+        <span id="drop-help">MP4, MOV, WebM or MKV, up to 250 MB each</span>
+      </div>
+      <ul class="media-list" id="media-list" aria-label="Uploaded media"></ul>
+    </aside>
+
+    <section class="stage" aria-label="Preview">
+      <div class="frame-wrap">
+        <div class="frame" id="frame" data-layout="fit_blur">
+          <video id="v-bg" class="v-bg" muted playsinline preload="auto" aria-hidden="true" tabindex="-1"></video>
+          <video id="v-fg" class="v-fg" playsinline preload="auto"></video>
+          <div class="frame-empty" id="frame-empty">
+            <p><strong>Add a clip to start</strong></p>
+            <p>Upload videos on the left. They land on the timeline in order.</p>
+          </div>
+        </div>
+      </div>
+      <div class="transport">
+        <button type="button" class="icon-btn" id="to-start" aria-label="Go to start" title="Go to start (Home)">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 5h2v14H6zM20 5v14L9 12z" fill="currentColor"/></svg>
+        </button>
+        <button type="button" class="icon-btn icon-btn-play" id="play" aria-label="Play" title="Play / pause (Space)">
+          <svg class="i-play" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M7 4v16l13-8z" fill="currentColor"/></svg>
+          <svg class="i-pause" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 4h4v16H6zM14 4h4v16h-4z" fill="currentColor"/></svg>
+        </button>
+        <span class="timecode tnum"><span id="tc-now">0:00.0</span> <span class="tc-sep">/</span> <span id="tc-total">0:00.0</span></span>
+      </div>
+    </section>
+
+    <aside class="inspector" aria-label="Edit settings">
+      <section class="insp-block" id="clip-panel" aria-labelledby="clip-panel-title">
+        <h2 id="clip-panel-title">Clip</h2>
+        <p class="muted" id="clip-empty">Select a clip on the timeline to trim it.</p>
+        <div id="clip-fields" hidden>
+          <p class="clip-name" id="clip-name"></p>
+          <div class="num-grid">
+            <label>Start<input id="f-start" type="number" min="0" step="0.1" inputmode="decimal" /></label>
+            <label>End<input id="f-end" type="number" min="0" step="0.1" inputmode="decimal" /></label>
+            <label>Length<input id="f-length" type="number" min="0.2" max="120" step="0.1" inputmode="decimal" /></label>
+          </div>
+          <p class="muted tnum" id="clip-source-len"></p>
+          <div class="row-actions">
+            <button type="button" class="btn btn-small" id="split">Split at playhead</button>
+            <button type="button" class="btn btn-small" id="reset-trim">Use whole clip</button>
+            <button type="button" class="btn btn-small btn-danger" id="remove-item">Remove</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="insp-block" aria-labelledby="look-title">
+        <h2 id="look-title">Vertical frame</h2>
+        <div class="seg" role="radiogroup" aria-label="Layout">
+          <button type="button" role="radio" aria-checked="true" data-layout="fit_blur">Blur fill</button>
+          <button type="button" role="radio" aria-checked="false" data-layout="center_crop">Crop</button>
+        </div>
+        <p class="muted" id="layout-help">Shows the whole frame with a blurred copy behind it.</p>
+
+        <label class="field">Resolution
+          <select id="size">
+            <option value="1080">1080 × 1920</option>
+            <option value="720">720 × 1280</option>
+            <option value="480">480 × 852</option>
+          </select>
+        </label>
+        <label class="field">Edit style
+          <select id="style">
+            <option value="clean">Clean</option>
+            <option value="cinematic">Cinematic</option>
+            <option value="high_energy">High energy</option>
+          </select>
+        </label>
+        <p class="muted">Styles are saved with your edit but don’t change the look yet.</p>
+      </section>
+    </aside>
+  </main>
+
+  <section class="tl" aria-label="Timeline">
+    <div class="tl-bar">
+      <span class="tl-count tnum" id="tl-count">No clips</span>
+      <span class="tl-keys">Space play · S split · Delete remove · drag clips to reorder, drag edges to trim</span>
+      <label class="zoom"><span>Zoom</span><input id="zoom" type="range" min="8" max="120" value="36" aria-label="Timeline zoom" /></label>
+    </div>
+    <div class="tl-scroll" id="tl-scroll">
+      <div class="tl-inner" id="tl-inner">
+        <div class="ruler" id="ruler" aria-hidden="true"></div>
+        <div class="track" id="track"></div>
+        <div class="playhead" id="playhead" aria-hidden="true"></div>
+      </div>
+    </div>
+  </section>
+
+  <dialog class="export" id="export-dialog" aria-labelledby="export-title">
+    <form method="dialog" class="export-inner">
+      <h2 id="export-title">Export video</h2>
+      <div id="export-run">
+        <ol class="export-steps">
+          <li id="step-upload"><span class="step-label">Uploading clips</span><span class="step-detail tnum" id="upload-detail"></span>
+            <div class="meter"><div class="meter-fill" id="upload-meter"></div></div></li>
+          <li id="step-render"><span class="step-label">Rendering</span><span class="step-detail tnum" id="render-detail"></span></li>
+        </ol>
+        <p class="export-error" id="export-error" role="alert" hidden></p>
+      </div>
+      <div id="export-done" hidden>
+        <video id="result-video" class="result-video" controls playsinline></video>
+        <p class="muted tnum" id="result-meta"></p>
+      </div>
+      <div class="export-actions">
+        <button type="submit" class="btn btn-quiet" id="export-close">Close</button>
+        <a class="btn btn-primary" id="download" hidden download="clip-that-edit.mp4">Download MP4</a>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <div class="small-screen">The editor needs a wider window. Use a laptop or desktop browser to edit.</div>
+  <script src="/assets/studio.js" defer></script>
+</body>
+</html>

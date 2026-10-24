@@ -12,7 +12,7 @@ Owner: Claude · Updated: 2026-10-24
 | P1 | Desktop app compiles and runs on macOS 15 | ⏳ Waiting on build route | — |
 | P1 | Replay timing verified (previous N s + ~1.5 s) on a real Mac | ⏳ | needs a Mac session |
 | P1 | Packaging: bundled renderer + FFmpeg, signed and notarized DMG | ⏳ | needs signing credentials |
-| P2 | Polished website + browser studio | 🔨 In progress | — |
+| P2 | Polished website + browser studio | ✅ Done (on prototype backend) | pytest + Chromium end-to-end run |
 | P2 | Vapor backend with API parity | ⏳ | needs build route |
 | P3 | First smart-edit feature, measured on footage | ⏳ | — |
 
@@ -21,7 +21,8 @@ Owner: Claude · Updated: 2026-10-24
 | Suite | Where | Result |
 |---|---|---|
 | Renderer (`tests/`) | Linux workspace, Python 3.13, FFmpeg 6.1 | 5/5 pass |
-| Website prototype (`web/tests`) | same | see latest run below |
+| Website (`web/tests`): claims guardrails, security, upload → render → download | same | 7/7 pass |
+| Studio in Chromium (`web/tests/e2e/drive_studio.py`): upload 3, split, drag-trim, drag-reorder, play, export | same | pass: 720×1280, 34.02 s = timeline length, audio, 0 console errors |
 | Desktop ffmpeg pipelines (replay assembly, MKV remux, app-shaped manifest → renderer) | same, run by hand | pass: 1080×1920, 30 fps, audio |
 | `swift-shared` tests | — | **not run** (no Swift toolchain) |
 | `desktop/Core` tests | — | **not run** (no Swift toolchain) |

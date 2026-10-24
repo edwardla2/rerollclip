@@ -63,6 +63,7 @@ async def beta_interest(request: BetaInterest):
 
 
 class ClipInput(BaseModel):
+    id: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_-]{1,64}$")
     file: str
     start_seconds: float = Field(ge=0)
     duration_seconds: float = Field(gt=0, le=120)
@@ -86,6 +87,11 @@ def project_dir(project_id: str) -> Path:
 @app.get("/")
 def home():
     return FileResponse(STATIC / "index.html", media_type="text/html")
+
+
+@app.get("/studio")
+def studio():
+    return FileResponse(STATIC / "studio.html", media_type="text/html")
 
 
 @app.get("/api/health")
@@ -132,12 +138,14 @@ async def render_project(project_id: str, request: RenderInput):
     if request.size not in {"480", "720", "1080"}:
         raise HTTPException(400, "Unsupported resolution")
     clips = []
-    for clip in request.clips:
+    for index, clip in enumerate(request.clips):
         if not FILE_RE.fullmatch(clip.file):
             raise HTTPException(400, "Invalid uploaded clip reference")
         if not (parent / clip.file).is_file():
             raise HTTPException(404, "Uploaded clip no longer exists")
-        clips.append({"file": clip.file, "start_seconds": clip.start_seconds, "duration_seconds": clip.duration_seconds})
+        # schema v1 requires a clip id (ClipThatContracts); keep the client's id when given.
+        clips.append({"id": clip.id or f"clip-{index + 1}", "file": clip.file,
+                      "start_seconds": clip.start_seconds, "duration_seconds": clip.duration_seconds})
     height = int(request.size) * 16 // 9
     width = int(request.size)
     # output width is actually portrait's shorter side. 480 => 480x852 (even), 720=>720x1280, 1080=>1080x1920.
