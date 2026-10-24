@@ -139,3 +139,19 @@ def test_analyze_suggests_window_around_moment(monkeypatch, tmp_path):
     assert data["suggested_start"] <= 13.0 <= data["suggested_start"] + data["suggested_duration"]
     assert request("POST", f"/api/projects/{project_id}/clips/../x/analyze").status_code in (400, 404)
     assert request("POST", f"/api/projects/{project_id}/clips/{uuid.uuid4().hex}.mp4/analyze").status_code == 404
+
+
+def test_prune_removes_only_expired_projects(tmp_path, monkeypatch):
+    import os, time
+    monkeypatch.setattr(server, "RUNTIME", tmp_path)
+    old = server.RUNTIME / ("a" * 32)
+    fresh = server.RUNTIME / ("b" * 32)
+    for d in (old, fresh):
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "clip.mp4").write_bytes(b"x")
+    stale = time.time() - server.RETENTION_SECONDS - 60
+    for f in (old / "clip.mp4", old):
+        os.utime(f, (stale, stale))
+    server.prune_expired_projects()
+    assert not old.exists()
+    assert fresh.exists()

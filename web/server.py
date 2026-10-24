@@ -1,17 +1,22 @@
-"""Local-only Clip That web demo. Not a public production SaaS server.
+"""Local-only Reroll web demo. Not a public production SaaS server.
 
 From repository root:
     python -m uvicorn web.server:app --host 127.0.0.1 --port 8765
 """
 from __future__ import annotations
 
+import asyncio
+from contextlib import asynccontextmanager
+
 import json
 import os
 from pathlib import Path
 import re
+import shutil
 import sqlite3
 import subprocess
 import sys
+import time
 import uuid
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
@@ -29,8 +34,20 @@ PROJECT_RE = re.compile(r"^[0-9a-f]{32}$")
 FILE_RE = re.compile(r"^[0-9a-f]{32}\.(mp4|mov|webm|mkv)$")
 ALLOWED = {".mp4", ".mov", ".webm", ".mkv"}
 EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]{2,}$")
+RETENTION_SECONDS = float(os.environ.get("CLIPTHAT_RETENTION_HOURS", "24")) * 3600
 
-app = FastAPI(title="Clip That web proof of concept", version="0.1.0", docs_url=None, redoc_url=None)
+@asynccontextmanager
+async def lifespan(_app):
+    async def sweep():  # hourly, so files expire even when nobody uploads
+        while True:
+            await run_in_threadpool(prune_expired_projects)
+            await asyncio.sleep(3600)
+    task = asyncio.create_task(sweep())
+    yield
+    task.cancel()
+
+
+app = FastAPI(title="Reroll web editor (local demo)", version="0.1.0", docs_url=None, redoc_url=None, lifespan=lifespan)
 app.mount("/assets", StaticFiles(directory=str(STATIC / "assets")), name="assets")
 
 
@@ -76,6 +93,20 @@ class RenderInput(BaseModel):
     size: str = "720"
 
 
+def prune_expired_projects(now: float | None = None) -> int:
+    """Deletes uploaded clips and renders nobody has touched within the retention window."""
+    cutoff = (now or time.time()) - RETENTION_SECONDS
+    removed = 0
+    for path in RUNTIME.iterdir():
+        if not (path.is_dir() and PROJECT_RE.fullmatch(path.name)):
+            continue
+        newest = max([path.stat().st_mtime] + [f.stat().st_mtime for f in path.iterdir()])
+        if newest < cutoff:
+            shutil.rmtree(path, ignore_errors=True)
+            removed += 1
+    return removed
+
+
 def project_dir(project_id: str) -> Path:
     if not PROJECT_RE.fullmatch(project_id):
         raise HTTPException(400, "Invalid project ID")
@@ -101,6 +132,7 @@ def health():
 
 @app.post("/api/projects/{project_id}/clips")
 async def upload_clip(project_id: str, file: UploadFile = File(...)):
+    await run_in_threadpool(prune_expired_projects)
     parent = project_dir(project_id)
     suffix = Path(file.filename or "").suffix.lower()
     if suffix not in ALLOWED:
