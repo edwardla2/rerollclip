@@ -216,7 +216,7 @@ final class EditorIntegrationTests: XCTestCase {
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
             .deletingLastPathComponent().deletingLastPathComponent()
         let tools = Toolchain.locate(bundledEditor: repoRoot)
-        try XCTSkipUnless(tools.isComplete, "needs python3, ffmpeg, ffprobe and clipthat_editor: missing \(tools.missing)")
+        try requireTools(tools)
 
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("e2e-" + UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -256,7 +256,7 @@ final class EditorIntegrationTests: XCTestCase {
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
             .deletingLastPathComponent().deletingLastPathComponent()
         let tools = Toolchain.locate(bundledEditor: repoRoot)
-        try XCTSkipUnless(tools.isComplete, "needs python3, ffmpeg, ffprobe and clipthat_editor")
+        try requireTools(tools)
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("analyze-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: dir) }
@@ -276,5 +276,17 @@ final class EditorIntegrationTests: XCTestCase {
         XCTAssertLessThanOrEqual(s.suggestedStart, 20)
         XCTAssertGreaterThanOrEqual(s.suggestedStart + s.suggestedDuration, 20.6)
         XCTAssertLessThanOrEqual(s.suggestedStart + s.suggestedDuration, 25.51)
+    }
+
+    /// Skips locally when tools are missing; fails in CI (CLIPTHAT_REQUIRE_E2E=1) so a green
+    /// run always means the end-to-end tests really ran.
+    private func requireTools(_ tools: ToolLocations) throws {
+        if ProcessInfo.processInfo.environment["CLIPTHAT_REQUIRE_E2E"] == "1" {
+            guard tools.isComplete else {
+                XCTFail("CLIPTHAT_REQUIRE_E2E=1 but missing: \(tools.missing)")
+                throw XCTSkip("missing tools")
+            }
+        }
+        try XCTSkipUnless(tools.isComplete, "needs python3, ffmpeg, ffprobe and clipthat_editor: missing \(tools.missing)")
     }
 }

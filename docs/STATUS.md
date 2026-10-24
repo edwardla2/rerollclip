@@ -8,12 +8,13 @@ Owner: Claude · Updated: 2026-10-24
 |---|---|---|---|
 | P0 | One canonical repo, single README, archived history | ✅ Done | this tree |
 | P0 | One schema: desktop core builds manifests via `ClipThatContracts` | ✅ Done (code) | compile pending |
-| P0 | Swift build route (CI or Mac) | ⛔ Blocked on a GitHub repo | `.github/workflows/ci.yml` ready: Linux Swift 6.1 + macOS 15/Xcode |
-| P1 | Desktop app compiles and runs on macOS 15 | ⏳ Waiting on build route | — |
+| P0 | Swift build route (CI) | ✅ Done | GitHub Actions on edwardla2/rerollclip: Linux Swift 6.1 + macOS 15/Xcode |
+| P1 | Desktop app compiles on macOS 15 (Xcode, unsigned) | ✅ Compiles | CI run #1 |
+| P1 | Desktop app runs on a real Mac (capture, voice, hotkey, permissions) | ⏳ | needs the owner's Mac |
 | P1 | Replay timing verified (previous N s + ~1.5 s) on a real Mac | ⏳ | needs a Mac session |
 | P1 | Packaging: bundled renderer + FFmpeg, signed and notarized DMG | ⏳ | needs signing credentials |
 | P2 | Polished website + browser studio | ✅ Done (on prototype backend) | pytest + Chromium end-to-end run |
-| P2 | Vapor backend with API parity (`web-swift/`) | 🔨 Written, parity tests written | compile pending (CI ready) |
+| P2 | Vapor backend with API parity (`web-swift/`) | ✅ Compiles, tests pass | CI run #1 (Linux) |
 | P3 | Suggested trims (audio + visual-change peak; trigger-aware for replay clips) in renderer, both backends, studio and Mac app | ✅ Built; verified on synthetic footage | 8 unit tests + 10/10 randomized sweep + browser run; **real-footage evaluation pending** |
 
 ## Test evidence
@@ -26,9 +27,7 @@ Owner: Claude · Updated: 2026-10-24
 | Suggested trims (`tests/test_analysis.py`) planted-moment ground truth incl. trigger decoys and silent clips | same | 8/8 pass; harder randomized sweep (moving background, music-like bed) 10/10 with and without trigger |
 | Studio Auto-trim in Chromium (`web/tests/e2e/drive_autotrim.py`) | same | pass: windows contain planted moments |
 | Desktop ffmpeg pipelines (replay assembly, MKV remux, app-shaped manifest → renderer) | same, run by hand | pass: 1080×1920, 30 fps, audio |
-| `swift-shared` tests | — | **not run** (no Swift toolchain) |
-| `desktop/Core` tests | — | **not run** (no Swift toolchain) |
-| `web-swift` tests (Vapor parity) | — | **not run** (no Swift toolchain) |
+| `swift-shared`, `desktop/Core`, `web-swift` tests | GitHub Actions (Linux Swift 6.1; macOS 15) | pass (run #1); e2e tests now required, not skippable, in CI |
 | Desktop app on macOS | — | **not run** |
 
 ## Suggested trims: what's verified and what isn't
@@ -41,9 +40,7 @@ landing page calls it an early feature.
 
 ## Blockers
 
-1. **No Swift compiler in this workspace.** download.swift.org is blocked by the network
-   policy, Ubuntu has no Swift package, and the GitHub CLI token is invalid. Plan: GitHub
-   Actions (macOS 15 + Linux runners) on a repo the owner provides. Requested 2026-10-24.
+1. ~~No Swift compiler in this workspace~~ Resolved 2026-10-24: Swift builds run in GitHub Actions.
 2. **Real-Mac verification** of capture, permissions, voice and hotkey. Needs the owner to run
    builds, or a linked Mac session.
 3. **Signing/notarization** needs the owner's Apple Developer credentials. No DMG link will be

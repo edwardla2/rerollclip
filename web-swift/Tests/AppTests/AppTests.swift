@@ -164,9 +164,7 @@ final class AppTests: XCTestCase {
     // MARK: End to end (needs ffmpeg + python3)
 
     func testUploadRenderDownloadEndToEnd() async throws {
-        guard Self.which("ffmpeg"), Self.which("ffprobe"), Self.which("python3") else {
-            throw XCTSkip("needs ffmpeg, ffprobe and python3")
-        }
+        try Self.requireTools()
         try await start()
         let id = Self.newProjectID()
         var uploaded: [String] = []
@@ -209,9 +207,7 @@ final class AppTests: XCTestCase {
     }
 
     func testAnalyzeFindsPlantedMoment() async throws {
-        guard Self.which("ffmpeg"), Self.which("ffprobe"), Self.which("python3") else {
-            throw XCTSkip("needs ffmpeg, ffprobe and python3")
-        }
+        try Self.requireTools()
         try await start()
         let id = Self.newProjectID()
         // 20 s clip: quiet noise + static frame, with a loud burst and a red flash at 13 s.
@@ -240,6 +236,15 @@ final class AppTests: XCTestCase {
     }
 
     // MARK: Helpers
+
+    /// Skips locally when tools are missing; fails in CI (CLIPTHAT_REQUIRE_E2E=1).
+    static func requireTools() throws {
+        let ok = which("ffmpeg") && which("ffprobe") && which("python3")
+        if !ok && ProcessInfo.processInfo.environment["CLIPTHAT_REQUIRE_E2E"] == "1" {
+            XCTFail("CLIPTHAT_REQUIRE_E2E=1 but ffmpeg/ffprobe/python3 missing")
+        }
+        try XCTSkipUnless(ok, "needs ffmpeg, ffprobe and python3")
+    }
 
     static func which(_ tool: String) -> Bool {
         (try? run(["which", tool]))?.isEmpty == false
