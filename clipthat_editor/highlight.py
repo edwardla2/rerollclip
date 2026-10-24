@@ -29,19 +29,42 @@ from typing import Any
 from .analysis import STEP, AnalysisError, score_clip, suggest_window
 from .engine import EditorError, require_tool
 
-TARGET_LENGTH = 14.0      # seconds of source the window covers before cuts
 MIN_RESULT = 5.0          # never cut the edit shorter than this
-DEAD_FRACTION = 0.25      # a frame is "dead" below this share of the peak's score
-DEAD_MIN_RUN = 1.5        # only stretches at least this long get cut
 KEEP_EDGE = 0.3           # seconds kept either side of a cut, so cuts read as jump cuts
 PROTECT_BEFORE = 2.0      # never cut this close before the peak...
 PROTECT_AFTER = 1.0       # ...or after it
-SLOW_HALF = 0.5           # slow motion covers peak +/- this
-SLOW_FACTOR = 0.5         # playback speed during slow motion
-ZOOM = 1.15               # punch-in during slow motion
+SLOW_MIN_STRENGTH = 0.45  # slow motion only for a peak this strong...
+SLOW_MIN_PROMINENCE = 2.0 # ...that stands this many times above the window's typical level
 LOUDNESS = "loudnorm=I=-14:TP=-1.5:LRA=11"   # short-form platform target
 
 HW_ENCODERS = ["h264_nvenc", "h264_amf", "h264_qsv", "h264_videotoolbox"]
+
+
+@dataclass(frozen=True)
+class Profile:
+    """Per-game starting points. Hypotheses to test on real clips, not tuned values."""
+    name: str
+    length: float               # seconds of source the window covers before cuts
+    slow_motion: bool           # allowed at all; still needs a peak that stands out
+    slow_half: float = 0.5      # slow motion covers peak +/- this
+    slow_factor: float = 0.5    # playback speed during slow motion
+    zoom: float = 1.0           # punch-in during slow motion
+    layout: str = "center_crop"
+    dead_fraction: float = 0.25 # a frame is "dead" below this share of the peak's score
+    dead_min_run: float = 1.5   # only stretches at least this long get cut
+
+
+PROFILES = {
+    # A brief emphasis on the deciding elimination; keep the kill feed and the audio.
+    "valorant": Profile("valorant", length=13.0, slow_motion=True, slow_half=0.4, slow_factor=0.6, zoom=1.1),
+    # Sprays and rapid multi-kills keep their rhythm: no slow motion.
+    "cs2": Profile("cs2", length=12.0, slow_motion=False, dead_min_run=2.0),
+    # Build-up matters and building happens off-centre: longer window, whole frame.
+    "fortnite": Profile("fortnite", length=16.0, slow_motion=False, layout="fit_blur", dead_min_run=2.0),
+    # Quick setup and payoff; experiences vary, so keep the whole frame.
+    "roblox": Profile("roblox", length=10.0, slow_motion=False, layout="fit_blur"),
+    "generic": Profile("generic", length=14.0, slow_motion=True, zoom=1.15),
+}
 
 
 @dataclass
@@ -58,13 +81,23 @@ class Segment:
 
 # ---------- decide ----------
 
-def decide(score: list[float], duration: float, *, length: float = TARGET_LENGTH,
-           trigger_offset: float | None = None) -> dict[str, Any]:
-    """Turns a score curve into the edit: a window, jump cuts and a slow-motion peak."""
-    window = suggest_window(score, duration, length, trigger_offset)
+def decide(score: list[float], duration: float, *, profile: Profile | str = "generic",
+           length: float | None = None, trigger_offset: float | None = None,
+           slow_motion: str = "auto") -> dict[str, Any]:
+    """Turns a score curve into the edit: a window, jump cuts and, when earned, a slow-motion peak.
+
+    slow_motion: "auto" (the profile decides, and only for a peak that stands out), "on", "off".
+    """
+    if isinstance(profile, str):
+        if profile not in PROFILES:
+            raise EditorError(f"Unknown profile {profile}; choose from {', '.join(PROFILES)}")
+        profile = PROFILES[profile]
+    if slow_motion not in ("auto", "on", "off"):
+        raise EditorError("slow_motion must be auto, on or off")
+    window = suggest_window(score, duration, length or profile.length, trigger_offset)
     w0, w1, peak = window["start"], window["start"] + window["duration"], window["peak"]
     strength = window["strength"]
-    threshold = DEAD_FRACTION * strength
+    threshold = profile.dead_fraction * strength
 
     # Find dead stretches inside the window, away from the peak.
     cuts: list[tuple[float, float]] = []
@@ -77,7 +110,7 @@ def decide(score: list[float], duration: float, *, length: float = TARGET_LENGTH
         if dead and run_start is None:
             run_start = t
         elif not dead and run_start is not None:
-            if t - run_start >= DEAD_MIN_RUN:
+            if t - run_start >= profile.dead_min_run:
                 # Dead air at the window's edges is trimmed off; inside, it becomes a jump cut.
                 a = w0 if run_start <= w0 + STEP else run_start + KEEP_EDGE
                 b = w1 if i >= last else t - KEEP_EDGE
@@ -98,22 +131,38 @@ def decide(score: list[float], duration: float, *, length: float = TARGET_LENGTH
         spans.append((cursor, a))
         cursor = b
     spans.append((cursor, w1))
-    s0, s1 = max(w0, peak - SLOW_HALF), min(w1, peak + SLOW_HALF)
+    # Slow motion is earned, not automatic: the profile must allow it and the peak must stand out.
+    inside = sorted(score[first:last]) or [0.0]
+    typical = inside[len(inside) // 2]
+    prominence = strength / max(typical, 0.02)
+    if slow_motion == "on":
+        slow, reason = True, "requested"
+    elif slow_motion == "off":
+        slow, reason = False, "turned off"
+    elif not profile.slow_motion:
+        slow, reason = False, f"off for {profile.name}"
+    elif strength < SLOW_MIN_STRENGTH or prominence < SLOW_MIN_PROMINENCE:
+        slow, reason = False, "peak doesn't stand out enough"
+    else:
+        slow, reason = True, "peak stands out"
+    s0, s1 = max(w0, peak - profile.slow_half), min(w1, peak + profile.slow_half)
     segments: list[Segment] = []
     for a, b in spans:
         if b - a < 0.05:
             continue
-        if a <= s0 < b or a < s1 <= b:
+        if slow and (a <= s0 < b or a < s1 <= b):
             lo, hi = max(a, s0), min(b, s1)
             if lo - a >= 0.05:
                 segments.append(Segment(a, lo))
-            segments.append(Segment(lo, hi, SLOW_FACTOR, ZOOM))
+            segments.append(Segment(lo, hi, profile.slow_factor, profile.zoom))
             if b - hi >= 0.05:
                 segments.append(Segment(hi, b))
         else:
             segments.append(Segment(a, b))
     segments = [Segment(round(s.start, 3), round(s.end, 3), s.speed, s.zoom) for s in segments]
     return {
+        "profile": profile.name,
+        "slow_motion": {"applied": slow, "reason": reason, "prominence": round(prominence, 2)},
         "window": {"start": round(w0, 3), "end": round(w1, 3)},
         "peak": peak,
         "strength": strength,
@@ -214,11 +263,14 @@ def build_filtergraph(segments: list[Segment], *, src_w: int, src_h: int, width:
     return ";".join(parts)
 
 
-def auto_edit(source: Path, output: Path, *, trigger_offset: float | None = None,
-              length: float = TARGET_LENGTH, width: int = 1080, height: int = 1920,
-              fps: int | None = None, layout: str = "center_crop", encoder: str = "auto") -> dict[str, Any]:
+def auto_edit(source: Path, output: Path, *, profile: str = "generic", trigger_offset: float | None = None,
+              length: float | None = None, width: int = 1080, height: int = 1920, fps: int | None = None,
+              layout: str | None = None, slow_motion: str = "auto", encoder: str = "auto") -> dict[str, Any]:
     """Edits one clip end to end. Returns the decisions and timings; writes `output`."""
     source, output = Path(source).resolve(), Path(output).resolve()
+    if profile not in PROFILES:
+        raise EditorError(f"Unknown profile {profile}; choose from {', '.join(PROFILES)}")
+    layout = layout or PROFILES[profile].layout
     if layout not in ("center_crop", "fit_blur"):
         raise EditorError("layout must be center_crop or fit_blur")
     began = time.monotonic()
@@ -227,7 +279,8 @@ def auto_edit(source: Path, output: Path, *, trigger_offset: float | None = None
     analyzed = time.monotonic()
     if trigger_offset is not None:
         trigger_offset = min(max(0.0, trigger_offset), scored["duration"])
-    plan = decide(scored["score"], scored["duration"], length=length, trigger_offset=trigger_offset)
+    plan = decide(scored["score"], scored["duration"], profile=profile, length=length,
+                  trigger_offset=trigger_offset, slow_motion=slow_motion)
     segments = [Segment(**s) for s in plan["segments"]]
     out_fps = fps or (60 if info["fps"] >= 50 else 30)
     chosen = pick_encoder(encoder)
@@ -268,4 +321,4 @@ def auto_edit(source: Path, output: Path, *, trigger_offset: float | None = None
     }
 
 
-__all__ = ["auto_edit", "decide", "pick_encoder", "Segment", "AnalysisError"]
+__all__ = ["auto_edit", "decide", "pick_encoder", "Profile", "PROFILES", "Segment", "AnalysisError"]

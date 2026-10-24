@@ -7,7 +7,7 @@ import tempfile
 import unittest
 
 from clipthat_editor.analysis import STEP
-from clipthat_editor.highlight import (MIN_RESULT, SLOW_FACTOR, auto_edit, decide, encoder_works, pick_encoder)
+from clipthat_editor.highlight import (MIN_RESULT, PROFILES, auto_edit, decide, encoder_works, pick_encoder)
 from test_analysis import make_clip
 
 
@@ -27,7 +27,8 @@ class DecideTests(unittest.TestCase):
         plan = decide(curve(30, {18: 0.8}), 30)
         slow = [s for s in plan["segments"] if s["speed"] != 1]
         self.assertEqual(len(slow), 1)
-        self.assertEqual(slow[0]["speed"], SLOW_FACTOR)
+        self.assertEqual(slow[0]["speed"], PROFILES["generic"].slow_factor)
+        self.assertTrue(plan["slow_motion"]["applied"])
         self.assertGreater(slow[0]["zoom"], 1)
         self.assertLessEqual(slow[0]["start"], plan["peak"])
         self.assertGreaterEqual(slow[0]["end"], plan["peak"])
@@ -66,6 +67,34 @@ class DecideTests(unittest.TestCase):
         # The loudest moment is after the trigger, so it can't be the one the player meant.
         plan = decide(curve(30, {8: 0.5, 25: 0.9}), 30, trigger_offset=10.0)
         self.assertLess(plan["peak"], 10.0)
+
+    def test_slow_motion_is_earned_not_automatic(self):
+        # A peak barely above a busy background doesn't get slowed down.
+        plan = decide(curve(30, {t: 0.4 for t in range(2, 29, 2)} | {18: 0.5}, base=0.35), 30)
+        self.assertFalse(plan["slow_motion"]["applied"], plan["slow_motion"])
+        self.assertTrue(all(s["speed"] == 1 for s in plan["segments"]))
+
+    def test_profiles_set_slow_motion_and_length(self):
+        strong = curve(30, {18: 0.8})
+        cs2 = decide(strong, 30, profile="cs2")
+        self.assertFalse(cs2["slow_motion"]["applied"])
+        self.assertEqual(cs2["slow_motion"]["reason"], "off for cs2")
+        valorant = decide(strong, 30, profile="valorant")
+        self.assertTrue(valorant["slow_motion"]["applied"])
+        slow = [s for s in valorant["segments"] if s["speed"] != 1][0]
+        self.assertAlmostEqual(slow["end"] - slow["start"], 2 * PROFILES["valorant"].slow_half, delta=0.01)
+        w = decide(strong, 30, profile="fortnite")["window"]
+        self.assertAlmostEqual(w["end"] - w["start"], PROFILES["fortnite"].length, delta=0.01)
+
+    def test_slow_motion_override(self):
+        strong = curve(30, {18: 0.8})
+        self.assertFalse(decide(strong, 30, slow_motion="off")["slow_motion"]["applied"])
+        self.assertTrue(decide(strong, 30, profile="cs2", slow_motion="on")["slow_motion"]["applied"])
+
+    def test_unknown_profile_is_refused(self):
+        from clipthat_editor.engine import EditorError
+        with self.assertRaises(EditorError):
+            decide(curve(10, {5: 0.8}), 10, profile="minecraft")
 
     def test_short_clip(self):
         plan = decide(curve(4, {2: 0.8}), 4)
@@ -111,7 +140,8 @@ class AutoEditTests(unittest.TestCase):
     def test_silent_clip_with_blur_fill_at_720(self):
         src, out = self.dir / "silent.mp4", self.dir / "edit.mp4"
         make_clip(src, 20, [12.0], audio=False)
-        result = auto_edit(src, out, layout="fit_blur", width=720, height=1280)
+        result = auto_edit(src, out, profile="roblox", width=720, height=1280)
+        self.assertEqual(result["layout"], "fit_blur", "Roblox keeps the whole frame")
         self.assertEqual(result["signals"], ["motion"])
         self.check_output(result, out, 720, 1280)
 

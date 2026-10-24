@@ -180,8 +180,11 @@ def main() -> int:
     auto_parser.add_argument("--output", required=True, type=Path)
     auto_parser.add_argument("--trigger-offset", type=float, default=None,
                              help="seconds into the clip where the user asked for the edit, if known")
-    auto_parser.add_argument("--length", type=float, default=14.0, help="seconds of source to consider around the peak")
-    auto_parser.add_argument("--layout", choices=["center_crop", "fit_blur"], default="center_crop")
+    auto_parser.add_argument("--profile", choices=["generic", "valorant", "cs2", "fortnite", "roblox"], default="generic",
+                             help="per-game starting points for length, slow motion and framing")
+    auto_parser.add_argument("--length", type=float, default=None, help="seconds of source around the peak (default: profile)")
+    auto_parser.add_argument("--layout", choices=["center_crop", "fit_blur"], default=None, help="default: profile")
+    auto_parser.add_argument("--slow-motion", choices=["auto", "on", "off"], default="auto")
     auto_parser.add_argument("--size", choices=["720", "1080"], default="1080")
     auto_parser.add_argument("--fps", type=int, choices=[30, 60], default=None, help="default: 60 for 50+ fps sources")
     auto_parser.add_argument("--encoder", default="auto", help="auto, libx264 or a hardware encoder name")
@@ -196,9 +199,9 @@ def main() -> int:
         elif opts.command == "auto":
             from .highlight import auto_edit
             width, height = (720, 1280) if opts.size == "720" else (1080, 1920)
-            print(json.dumps(auto_edit(opts.file, opts.output, trigger_offset=opts.trigger_offset, length=opts.length,
-                                       width=width, height=height, fps=opts.fps, layout=opts.layout,
-                                       encoder=opts.encoder)))
+            print(json.dumps(auto_edit(opts.file, opts.output, profile=opts.profile, trigger_offset=opts.trigger_offset,
+                                       length=opts.length, width=width, height=height, fps=opts.fps,
+                                       layout=opts.layout, slow_motion=opts.slow_motion, encoder=opts.encoder)))
         else:
             render(opts.manifest, opts.output)
         return 0
