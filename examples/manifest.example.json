@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "session_id": "game-session-001",
+  "style": "high_energy",
+  "layout": "fit_blur",
+  "output": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30
+  },
+  "clips": [
+    {"id": "moment-001", "file": "clips/moment-001.mp4", "start_seconds": 0, "duration_seconds": 6},
+    {"id": "moment-002", "file": "clips/moment-002.mp4", "start_seconds": 1, "duration_seconds": 7},
+    {"id": "moment-003", "file": "clips/moment-003.mp4", "start_seconds": 0, "duration_seconds": 5}
+  ],
+  "music": null
+}
