@@ -263,17 +263,26 @@ IMPACT_ZOOM = 0.12        # a kill cut lands 12 % zoomed in...
 IMPACT_SETTLE = 0.25      # ...and settles back over this long
 FLASH = 0.3               # brightness added on the cut, fading out over...
 FLASH_TIME = 0.12         # ...this long
-GRADE = "eq=contrast=1.12:saturation=1.12:gamma=0.96,vignette=angle=PI/6"
+GRADE = "eq=contrast=1.12:saturation=1.12:gamma=0.96,unsharp=5:5:0.6,vignette=angle=PI/6"
 FEED_BOX = (0.30, 0.18, 0.70, 0.05)   # Valorant kill feed: w, h, x, y as shares of the frame
 
 
 def _impact(s: Segment, width: int, height: int) -> str:
-    """Punch-in zoom that settles, plus a white flash, at the start of a kill cut."""
+    """On a shot: punch-in zoom that settles, a camera shake that dies out, and a white flash."""
     if not s.impact:
         return ""
-    k = f"(1+{IMPACT_ZOOM}*max(0\\,1-t/{IMPACT_SETTLE}))"
-    return (f",scale=w='trunc({width}*{k}/2)*2':h='trunc({height}*{k}/2)*2':eval=frame,crop={width}:{height}"
+    decay = f"max(0\\,1-t/{IMPACT_SETTLE})"
+    k = f"(1.04+{IMPACT_ZOOM}*{decay})"
+    shake_x = f"(in_w-out_w)/2+{width // 70}*sin(t*70)*{decay}"
+    shake_y = f"(in_h-out_h)/2+{height // 150}*cos(t*55)*{decay}"
+    return (f",scale=w='trunc({width}*{k}/2)*2':h='trunc({height}*{k}/2)*2':eval=frame"
+            f",crop={width}:{height}:x='{shake_x}':y='{shake_y}'"
             f",eq=brightness='{FLASH}*max(0\\,1-t/{FLASH_TIME})':eval=frame,setsar=1")
+
+
+def _blur(s: Segment) -> str:
+    """Motion blur on fast stretches, so a whip reads as speed rather than stutter."""
+    return ",tmix=frames=3" if s.speed >= 2 else ""
 
 
 def _dip(s: Segment) -> str:
@@ -308,7 +317,7 @@ def build_filtergraph(segments: list[Segment], *, src_w: int, src_h: int, width:
             fw, fh, fx, fy = FEED_BOX
             feed_w = int(width * 0.6) // 2 * 2
             parts.append(
-                f"[vs{i}]trim={s.start}:{s.end},setpts=PTS-STARTPTS{retime},split=3[f{i}][b{i}][k{i}];"
+                f"[vs{i}]trim={s.start}:{s.end},setpts=PTS-STARTPTS{retime}{_blur(s)},split=3[f{i}][b{i}][k{i}];"
                 f"[b{i}]scale={width // 8}:{height // 8}:force_original_aspect_ratio=increase,"
                 f"crop={width // 8}:{height // 8},boxblur=4:2,scale={width}:{height},eq=brightness=-0.12[bb{i}];"
                 f"[f{i}]crop=min(iw\\,ih):min(iw\\,ih){zoom},scale={main}:{main}:flags=bicubic[ff{i}];"
@@ -399,7 +408,9 @@ def auto_edit(source: Path, output: Path, *, profile: str = "generic", trigger_o
                 raise EditorError("This sound has no run of standout hits long enough for the kills; try sync=beats")
             plan.update(music={k: rhythm[k] for k in ("file", "bpm", "drop", "duration")})
         plan.update(events=events)
-        first, last = plan["segments"][0]["start"], plan["segments"][-1]["end"]
+        # Segments needn't run in source order (a hook can come from the end): seek to the earliest.
+        first = min(seg["start"] for seg in plan["segments"])
+        last = max(seg["end"] for seg in plan["segments"])
         plan["window"] = {"start": first, "end": last}
         plan.setdefault("cuts", [])
         plan["peak"] = kills[-1]

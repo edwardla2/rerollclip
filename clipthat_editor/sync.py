@@ -206,7 +206,89 @@ def plan_to_drop(kills: list[float], duration: float, music: dict[str, Any]) -> 
     targets = drop_targets(len(kills), music)
     if targets[-1] > music.get("duration", float("inf")) - 0.3:
         return None   # the sound ends before the last kill's beat
-    return cut_on_beats(kills, duration, targets, music)
+    return velocity_on_beats(kills, duration, targets, music)
+
+
+# ---------- velocity edit: whip in fast, shot on the beat in slow motion, ramp out ----------
+V_APPROACH = 0.12       # output seconds of fast approach before each shot
+V_FAST = 2.5            # approach speed
+V_IMPACT = 0.22         # output seconds of slow motion starting on the shot
+V_SLOW = 0.4            # slow-motion speed on the shot
+V_OUT = 1.6             # speed of the rest of the beat, ramping out to the next kill
+TEASER = 0.6            # output seconds of the final shot, slowed, as a hook before the build-up
+TEASER_SPEED = 0.5
+OUTRO_FADE = 0.35       # the edit fades to black at the very end
+ENDING = 2.6            # output seconds after the final shot (aftermath, e.g. the ACE)
+
+
+def velocity_on_beats(kills: list[float], duration: float, targets: list[float], music: dict[str, Any],
+                      teaser: bool = True) -> dict[str, Any]:
+    """Each kill: a fast whip in (motion-blurred), the shot exactly on its beat in slow motion
+    with the punch/flash/shake, then a ramp out. Opens with a slowed flash-forward of the last
+    shot (the hook), then the build-up dips to black into the drop; ends holding the aftermath
+    in slow motion and fading out."""
+    n = len(kills)
+    segments: list[Segment] = []
+    def add(a: float, b: float, speed: float = 1.0, *, zoom: float = 1.0, fade_out: float = 0.0,
+            impact: bool = False) -> None:
+        a, b = max(0.0, a), min(duration, b)
+        if b - a >= 0.01:
+            segments.append(Segment(round(a, 4), round(b, 4), speed, zoom, fade_out, impact))
+    approach_src = V_APPROACH * V_FAST
+    # Lead-in (build-up) ends where the first kill's approach begins.
+    lead_end = max(0.0, kills[0] - approach_src)
+    lead = min(lead_end, HIT_LEAD_MAX)
+    tease = TEASER if teaser else 0.0
+    sound_start = targets[0] - V_APPROACH - lead - tease
+    if sound_start < 0:                      # not enough song before the drop: shorten the build-up
+        lead = max(0.0, lead + sound_start)
+        sound_start = targets[0] - V_APPROACH - lead - tease
+    if sound_start < 0:                      # still not: drop the hook
+        tease = 0.0
+        sound_start = max(0.0, targets[0] - V_APPROACH - lead)
+        lead = targets[0] - V_APPROACH - sound_start
+    if tease:
+        final = kills[-1]
+        add(final - 0.05, final - 0.05 + tease * TEASER_SPEED, TEASER_SPEED, impact=True)
+    add(lead_end - lead, lead_end, fade_out=min(DIP, lead / 2) if lead > 0.2 else 0.0)
+    for i in range(n):
+        k = kills[i]
+        add(k - approach_src, k, V_FAST)                           # whip in
+        if i + 1 < n:
+            beat = targets[i + 1] - targets[i]
+            impact = min(V_IMPACT, max(0.05, beat - V_APPROACH - 0.05))
+            rest = beat - V_APPROACH - impact
+            add(k, k + impact * V_SLOW, V_SLOW, impact=True)       # the shot, on the beat
+            add(k + impact * V_SLOW, k + impact * V_SLOW + rest * V_OUT, V_OUT)
+        else:
+            # Final shot: longer slow motion, then the aftermath held slow, fading out.
+            add(k, k + 0.35 * V_SLOW, V_SLOW, impact=True)
+            t = k + 0.35 * V_SLOW
+            normal = min(0.5, max(0.0, duration - t))
+            add(t, t + normal)
+            t += normal
+            remaining_out = max(0.0, ENDING - 0.35 - normal)
+            slow_src = min(max(0.0, duration - t), remaining_out * FINAL_SPEED)
+            add(t, t + slow_src, FINAL_SPEED, zoom=FINAL_ZOOM, fade_out=OUTRO_FADE)
+    if segments and segments[-1].fade_out == 0:
+        last = segments[-1]
+        segments[-1] = Segment(last.start, last.end, last.speed, last.zoom, OUTRO_FADE, last.impact)
+    total = sum(s.output_length for s in segments)
+    return {
+        "mode": "drop",
+        "style": "velocity",
+        "segments": [s.__dict__ for s in segments],
+        "kills": kills,
+        "hits": targets,
+        "cuts_at_output": [round(t - sound_start - V_APPROACH, 3) for t in targets],
+        "kills_at_output": [round(t - sound_start, 3) for t in targets],
+        "kills_on_beat": [True] * n,
+        "teaser": tease > 0,
+        "drop_at_output": round(music["drop"] - sound_start, 3),
+        "sound_start": round(sound_start, 3),
+        "bpm": music["bpm"],
+        "output_seconds": round(total, 3),
+    }
 
 
 def cut_on_beats(kills: list[float], duration: float, targets: list[float], music: dict[str, Any]) -> dict[str, Any]:
