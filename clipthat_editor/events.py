@@ -78,7 +78,62 @@ def _shot_before(change: list[float], banner: float) -> float | None:
     return (lo + j) / SHOT_FPS if window[j] >= max(8.0, 2.5 * typical) else None
 
 
+FEED_FPS = 20
+FEED_LAG = 0.12            # a kill-feed row appears about this long after the shot
+
+
+def _feed_teal(path: Path) -> list[int]:
+    """Teal pixels in the kill feed (top right), FEED_FPS a second. Your own kills get a teal
+    row in Valorant's kill feed, so every kill you make steps this up."""
+    w, h = 96, 40
+    proc = subprocess.run([_ffmpeg(), "-v", "error", "-i", str(path), "-map", "0:v:0",
+                           "-vf", f"fps={FEED_FPS},crop=iw*0.30:ih*0.16:iw*0.70:ih*0.07,scale={w}:{h}",
+                           "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], capture_output=True)
+    raw, size = proc.stdout, w * h * 3
+    out = []
+    for f in range(len(raw) // size):
+        px = raw[f * size:(f + 1) * size]
+        out.append(sum(1 for i in range(0, size, 3)
+                       if px[i + 1] > 140 and px[i + 1] - px[i] > 50 and px[i + 2] - px[i] > 20))
+    return out
+
+
+def _feed_kills(path: Path) -> list[float]:
+    """Kill times from new teal rows in the kill feed: a step up that lasts (a passing teal
+    effect doesn't). Rows arriving together (a collateral) count as one kill moment."""
+    return feed_steps(_feed_teal(path))
+
+
+def feed_steps(teal: list[int]) -> list[float]:
+    """Kill times from a teal-pixel series (see _feed_kills)."""
+    n = len(teal)
+    if not n or max(teal) == 0:
+        return []
+    hold = int(0.4 * FEED_FPS)
+    step = 70                      # a new row is ~100-190 teal pixels at this size
+    kills: list[float] = []
+    i = 1
+    while i < n:
+        before = sorted(teal[max(0, i - hold):i])
+        level = before[len(before) // 2] if before else 0
+        if teal[i] >= level + step:
+            # It has to stay: a passing teal effect (an ability) flashes and drops back.
+            stays = all(v >= level + 0.6 * step for v in teal[i:i + hold])
+            if stays and i + hold <= n:
+                t = round(max(0.0, i / FEED_FPS - FEED_LAG), 2)
+                if not kills or t - kills[-1] > 0.6:   # rows arriving together: one shot (a collateral)
+                    kills.append(t)
+                i += hold
+                continue
+        i += 1
+    return kills
+
+
 def valorant_kills(path: Path) -> list[float]:
+    feed = _feed_kills(path)
+    if feed:
+        return feed
+    # No teal kill-feed rows (other HUD colours, feed hidden): fall back to the kill banner.
     banners = _banner_onsets(path)
     if not banners:
         return []
@@ -148,5 +203,5 @@ def find_events(path: Path, profile: str) -> dict[str, Any]:
     if detector:
         found = detector(Path(path))
         if found:
-            return {"source": f"{profile}-kill-banner", "times": found}
+            return {"source": f"{profile}-kills", "times": found}
     return {"source": "audio-hits", "times": audio_hits(Path(path))}

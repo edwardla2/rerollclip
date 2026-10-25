@@ -194,7 +194,7 @@ def drop_targets(n: int, music: dict[str, Any], min_gap: float = MIN_KILL_SHOW) 
 
 
 DIP = 0.4               # the build-up fades to black over this long, right before the drop
-CUT_IN = 0.05           # each cut lands on its beat this long before the kill's shot
+CUT_IN = 0.1            # each cut lands on its beat this long before the kill's shot (kill times are +-0.1 s)
 
 
 def plan_to_drop(kills: list[float], duration: float, music: dict[str, Any]) -> dict[str, Any] | None:
