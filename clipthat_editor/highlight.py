@@ -365,7 +365,7 @@ def auto_edit(source: Path, output: Path, *, profile: str = "generic", trigger_o
         start = plan["sound_start"]
         mix = subprocess.run([ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-i", str(output),
                               "-ss", f"{start:.3f}", "-i", str(music), "-filter_complex",
-                              "[0:a]volume=0.55[g];[1:a]aresample=48000,volume=0.9[m];[g][m]amix=inputs=2:duration=first:normalize=0[a]",
+                              "[0:a]volume=0.3[g];[1:a]aresample=48000,volume=1.0[m];[g][m]amix=inputs=2:duration=first:normalize=0[a]",
                               "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "160k",
                               "-movflags", "+faststart", str(Path(music_preview).resolve())], capture_output=True, text=True)
         if mix.returncode:

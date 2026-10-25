@@ -125,13 +125,30 @@ HIT_LEAD_MAX = 3.0      # longest lead-in of real footage before the first kill
 HIT_HOLD = 4.0          # after the last kill: play on (slowing for the punch-in) about this long, riding the drop
 
 
-def best_window(run: dict[str, Any], k: int) -> list[float] | None:
-    """The k consecutive hits of a run with the highest mean strength."""
+MIN_KILL_SHOW = 0.45    # a kill needs about this long on screen to read (enemy, shot, drop)
+HIT_PRE_MIN = 0.3       # show at least this much before the shot: the enemy and the aim
+
+
+def best_window(run: dict[str, Any], k: int, min_gap: float = MIN_KILL_SHOW) -> list[float] | None:
+    """k hits from a run, in order, at least min_gap apart, with the highest total strength.
+    Hits closer than a kill can be read (e.g. every other "dun") are skipped."""
     hits, strength = run["hits"], run["strength"]
-    if len(hits) < k:
+    n = len(hits)
+    if n < k:
         return None
-    best = max(range(len(hits) - k + 1), key=lambda i: sum(strength[i:i + k]))
-    return hits[best:best + k]
+    # best[j][c] = (total strength, chosen indices) of c hits ending at hit j
+    best: list[dict[int, tuple[float, list[int]]]] = [dict() for _ in range(n)]
+    for j in range(n):
+        best[j][1] = (strength[j], [j])
+        for c in range(2, k + 1):
+            options = [(best[i][c - 1][0] + strength[j], best[i][c - 1][1] + [j])
+                       for i in range(j) if c - 1 in best[i] and hits[j] - hits[i] >= min_gap - 1e-6]
+            if options:
+                best[j][c] = max(options)
+    finals = [best[j][k] for j in range(n) if k in best[j]]
+    if not finals:
+        return None
+    return [hits[i] for i in max(finals)[1]]
 
 
 def plan_to_hits(kills: list[float], duration: float, music: dict[str, Any]) -> dict[str, Any] | None:
@@ -159,7 +176,7 @@ def plan_to_hits(kills: list[float], duration: float, music: dict[str, Any]) -> 
     start = kills[0] - pre_first
     for i in range(n - 1):
         g = gaps[i]
-        pre_next = max(HIT_MIN_PRE, HIT_PRE_SHARE * g)
+        pre_next = max(HIT_PRE_MIN, HIT_PRE_SHARE * g)
         post = max(HIT_MIN_POST, g - pre_next)
         pre_next = g - post
         source_gap = kills[i + 1] - kills[i]

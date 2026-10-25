@@ -122,7 +122,10 @@ class HitSyncTests(unittest.TestCase):
         kills = [2.13, 5.67, 7.6, 10.87]
         plan = plan_to_hits(kills, 16.6, self.music(hits, strength))
         self.assertEqual(plan["mode"], "hits")
-        self.assertEqual(plan["hits"], [13.24, 13.47, 13.71, 13.94])  # strongest 4 in a row
+        # Duns 0.23 s apart are too quick for a kill to read: every other one, >= 0.45 s apart.
+        self.assertEqual(plan["hits"], [12.53, 12.99, 13.47, 13.94])
+        gaps = [b - a for a, b in zip(plan["hits"], plan["hits"][1:])]
+        self.assertTrue(all(g >= 0.45 for g in gaps), gaps)
         # Walk the segments: every kill must reach the output exactly at its hit.
         for kill, hit in zip(plan["kills"], plan["hits"]):
             t = 0.0
