@@ -21,7 +21,7 @@ import shutil
 import subprocess
 from typing import Any
 
-RATE = 11025
+RATE = 12000          # 120 samples = exactly one 10 ms frame
 HOP = 0.01                # seconds per envelope frame
 MIN_BPM, MAX_BPM = 70.0, 180.0
 
@@ -115,9 +115,69 @@ def _refine(env: list[float], bpm: float) -> tuple[float, float]:
     return best[1], best[2]
 
 
-def _peaks(env: list[float], floor: float = 0.25) -> list[float]:
-    return [i * HOP for i in range(1, len(env) - 1)
-            if env[i] >= floor and env[i] >= env[i - 1] and env[i] > env[i + 1]]
+def _peaks(env: list[float], share: float = 0.35) -> list[float]:
+    """Onset peaks, judged against their own neighbourhood (a loud section mustn't hide its
+    kicks), timed to a fraction of a frame by fitting a parabola through each peak."""
+    radius = int(1.0 / HOP)
+    out = []
+    for i in range(1, len(env) - 1):
+        if not (env[i] >= env[i - 1] and env[i] > env[i + 1]):
+            continue
+        local = max(env[max(0, i - radius):i + radius + 1])
+        if env[i] < share * local or env[i] < 0.02:
+            continue
+        a, b, c = env[i - 1], env[i], env[i + 1]
+        denom = a - 2 * b + c
+        shift = 0.5 * (a - c) / denom if denom else 0.0
+        out.append((i + max(-0.5, min(0.5, shift))) * HOP)
+    return out
+
+
+def _fit_grid(env: list[float], period: float, offset: float) -> tuple[float, float]:
+    """Least-squares fit of the beat grid to the onset peaks nearest each predicted beat."""
+    peaks = _peaks(env)
+    if len(peaks) < 4:
+        return period, offset
+    for _ in range(3):
+        pairs = []
+        k_max = int((len(env) * HOP - offset) / period)
+        for k in range(k_max + 1):
+            want = offset + k * period
+            near = min(peaks, key=lambda p: abs(p - want))
+            if abs(near - want) <= period / 4:
+                pairs.append((k, near))
+        if len(pairs) < 4:
+            break
+        n = len(pairs)
+        mk = sum(k for k, _ in pairs) / n
+        mt = sum(t for _, t in pairs) / n
+        var = sum((k - mk) ** 2 for k, _ in pairs)
+        if var == 0:
+            break
+        period = sum((k - mk) * (t - mt) for k, t in pairs) / var
+        offset = mt - period * mk
+        while offset - period >= -period * 0.1:
+            offset -= period
+        offset = max(0.0, offset)
+    return period, offset
+
+
+def _peaks(env: list[float], share: float = 0.35) -> list[float]:
+    """Onset peaks, judged against their own neighbourhood (a loud section mustn't hide its
+    kicks), timed to a fraction of a frame by fitting a parabola through each peak."""
+    radius = int(1.0 / HOP)
+    out = []
+    for i in range(1, len(env) - 1):
+        if not (env[i] >= env[i - 1] and env[i] > env[i + 1]):
+            continue
+        local = max(env[max(0, i - radius):i + radius + 1])
+        if env[i] < share * local or env[i] < 0.02:
+            continue
+        a, b, c = env[i - 1], env[i], env[i + 1]
+        denom = a - 2 * b + c
+        shift = 0.5 * (a - c) / denom if denom else 0.0
+        out.append((i + max(-0.5, min(0.5, shift))) * HOP)
+    return out
 
 
 def _fit_grid(env: list[float], period: float, offset: float) -> tuple[float, float]:

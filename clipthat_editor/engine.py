@@ -188,6 +188,10 @@ def main() -> int:
     auto_parser.add_argument("--size", choices=["720", "1080"], default="1080")
     auto_parser.add_argument("--fps", type=int, choices=[30, 60], default=None, help="default: 60 for 50+ fps sources")
     auto_parser.add_argument("--encoder", default="auto", help="auto, libx264 or a hardware encoder name")
+    auto_parser.add_argument("--music", type=Path, default=None,
+                             help="sound to pace the edit to; the export does not include it (add it in TikTok)")
+    auto_parser.add_argument("--music-preview", type=Path, default=None,
+                             help="also write a private copy with the sound mixed in, to check the timing")
     eval_parser = sub.add_parser("evaluate", help="Edit every clip in a folder and write a side-by-side review report")
     eval_parser.add_argument("clips", type=Path)
     eval_parser.add_argument("out", type=Path)
@@ -212,7 +216,8 @@ def main() -> int:
             width, height = (720, 1280) if opts.size == "720" else (1080, 1920)
             print(json.dumps(auto_edit(opts.file, opts.output, profile=opts.profile, trigger_offset=opts.trigger_offset,
                                        length=opts.length, width=width, height=height, fps=opts.fps,
-                                       layout=opts.layout, slow_motion=opts.slow_motion, encoder=opts.encoder)))
+                                       layout=opts.layout, slow_motion=opts.slow_motion, encoder=opts.encoder,
+                                       music=opts.music, music_preview=opts.music_preview)))
         else:
             render(opts.manifest, opts.output)
         return 0

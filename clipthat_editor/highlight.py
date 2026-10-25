@@ -56,7 +56,8 @@ class Profile:
 
 PROFILES = {
     # A brief emphasis on the deciding elimination; keep the kill feed and the audio.
-    "valorant": Profile("valorant", length=13.0, slow_motion=True, slow_half=0.4, slow_factor=0.6, zoom=1.1),
+    "valorant": Profile("valorant", length=13.0, slow_motion=True, slow_half=0.4, slow_factor=0.6, zoom=1.1,
+                        layout="fit_blur"),
     # Sprays and rapid multi-kills keep their rhythm: no slow motion.
     "cs2": Profile("cs2", length=12.0, slow_motion=False, dead_min_run=2.0),
     # Build-up matters and building happens off-centre: longer window, whole frame.
@@ -251,9 +252,11 @@ def build_filtergraph(segments: list[Segment], *, src_w: int, src_h: int, width:
                 f"crop={width // 8}:{height // 8},boxblur=4:2,scale={width}:{height}[bb{i}];"
                 f"[f{i}]scale={width}:{height}:force_original_aspect_ratio=decrease[ff{i}];"
                 f"[bb{i}][ff{i}]overlay=(W-w)/2:(H-h)/2,setsar=1,fps={fps}[v{i}]")
-        if s.speed != 1:
+        if s.speed < 1:
             # Pitch drops with the speed: the familiar heavy slow-motion sound.
             atime = f",asetrate=48000*{s.speed},aresample=48000"
+        elif s.speed > 1:
+            atime = f",atempo={s.speed:.4f}"   # sped-up stretches keep their pitch
         else:
             atime = ""
         parts.append(f"[as{i}]atrim={s.start}:{s.end},asetpts=PTS-STARTPTS,aresample=48000{atime}[a{i}]")
@@ -265,8 +268,13 @@ def build_filtergraph(segments: list[Segment], *, src_w: int, src_h: int, width:
 
 def auto_edit(source: Path, output: Path, *, profile: str = "generic", trigger_offset: float | None = None,
               length: float | None = None, width: int = 1080, height: int = 1920, fps: int | None = None,
-              layout: str | None = None, slow_motion: str = "auto", encoder: str = "auto") -> dict[str, Any]:
-    """Edits one clip end to end. Returns the decisions and timings; writes `output`."""
+              layout: str | None = None, slow_motion: str = "auto", encoder: str = "auto",
+              music: Path | None = None, music_preview: Path | None = None) -> dict[str, Any]:
+    """Edits one clip end to end. Returns the decisions and timings; writes `output`.
+
+    With `music`, the edit is paced to that sound (see sync.py) and exported without it;
+    `music_preview` additionally writes a private copy with the sound mixed in, for checking
+    the timing only (not for posting)."""
     source, output = Path(source).resolve(), Path(output).resolve()
     if profile not in PROFILES:
         raise EditorError(f"Unknown profile {profile}; choose from {', '.join(PROFILES)}")
@@ -279,8 +287,24 @@ def auto_edit(source: Path, output: Path, *, profile: str = "generic", trigger_o
     analyzed = time.monotonic()
     if trigger_offset is not None:
         trigger_offset = min(max(0.0, trigger_offset), scored["duration"])
-    plan = decide(scored["score"], scored["duration"], profile=profile, length=length,
-                  trigger_offset=trigger_offset, slow_motion=slow_motion)
+    if music is not None:
+        from .beats import analyze_beats
+        from .events import find_events
+        from .sync import plan_to_music
+        rhythm = analyze_beats(Path(music))
+        events = find_events(source, profile)
+        kills = events["times"] or [suggest_window(scored["score"], scored["duration"], 8.0)["peak"]]
+        plan = plan_to_music(kills, scored["duration"], rhythm)
+        plan.update(events=events, music={k: rhythm[k] for k in ("file", "bpm", "drop", "duration")})
+        first, last = plan["segments"][0]["start"], plan["segments"][-1]["end"]
+        plan["window"] = {"start": first, "end": last}
+        plan.setdefault("cuts", [])
+        plan["peak"] = kills[-1]
+        plan["strength"] = 0.0
+        plan["slow_motion"] = {"applied": True, "reason": "final kill on the drop", "prominence": 0.0}
+    else:
+        plan = decide(scored["score"], scored["duration"], profile=profile, length=length,
+                      trigger_offset=trigger_offset, slow_motion=slow_motion)
     segments = [Segment(**s) for s in plan["segments"]]
     out_fps = fps or (60 if info["fps"] >= 50 else 30)
     chosen = pick_encoder(encoder)
@@ -312,6 +336,15 @@ def auto_edit(source: Path, output: Path, *, profile: str = "generic", trigger_o
         raise EditorError(f"Render failed: {done.stderr[-2000:]}")
     partial.replace(output)  # watchers never see a half-written edit
     finished = time.monotonic()
+    if music is not None and music_preview is not None:
+        start = plan["sound_start"]
+        mix = subprocess.run([ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-i", str(output),
+                              "-ss", f"{start:.3f}", "-i", str(music), "-filter_complex",
+                              "[0:a]volume=0.55[g];[1:a]aresample=48000,volume=0.9[m];[g][m]amix=inputs=2:duration=first:normalize=0[a]",
+                              "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "160k",
+                              "-movflags", "+faststart", str(Path(music_preview).resolve())], capture_output=True, text=True)
+        if mix.returncode:
+            raise EditorError(f"Preview mix failed: {mix.stderr[-1000:]}")
     return {
         "ok": True, "style": "highlight", "source": source.name, "output": str(output),
         "width": width, "height": height, "fps": out_fps, "layout": layout, "encoder": chosen,
