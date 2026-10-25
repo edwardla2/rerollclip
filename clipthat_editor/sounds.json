@@ -48,7 +48,7 @@
     {
       "id": "lmnt-115-final-minutes",
       "title": "Final Minutes",
-      "artist": "LMNT 115, Sofía Reyes, French Montana",
+      "artist": "LMNT 115, Sof\u00eda Reyes, French Montana",
       "explicit": false,
       "tiktok_url": "",
       "mapped": false,
@@ -895,7 +895,7 @@
     {
       "id": "icedlatt-mienteme-edit-slowed",
       "title": "Mienteme - Edit + Slowed",
-      "artist": "IcedLatté, Auralyx",
+      "artist": "IcedLatt\u00e9, Auralyx",
       "explicit": false,
       "tiktok_url": "",
       "mapped": false,
@@ -949,7 +949,7 @@
     },
     {
       "id": "casap-a-kim-ok-pardon-slowed",
-      "title": "AŞKIM ÇOK PARDON - Slowed",
+      "title": "A\u015eKIM \u00c7OK PARDON - Slowed",
       "artist": "CASAP",
       "explicit": true,
       "tiktok_url": "",
@@ -1056,6 +1056,70 @@
       "games": [],
       "source": "Spotify playlist 'Edit Sounds for TikTok 2026' (Aevo154)",
       "added": "2026-10-24"
+    },
+    {
+      "id": "unknown-sound-1-(name-to-confirm)",
+      "title": "Sound 1 (name to confirm)",
+      "artist": "unknown",
+      "games": [
+        "valorant"
+      ],
+      "added": "2026-10-24",
+      "bpm": 63.5,
+      "first_beat": 0.236,
+      "drop": 14.411,
+      "duration": 29.91,
+      "mapped": true,
+      "mapped_on": "2026-10-24",
+      "tiktok_url": ""
+    },
+    {
+      "id": "unknown-sound-2-(name-to-confirm)",
+      "title": "Sound 2 (name to confirm)",
+      "artist": "unknown",
+      "games": [
+        "valorant"
+      ],
+      "added": "2026-10-24",
+      "bpm": 91.5,
+      "first_beat": 0.4,
+      "drop": 4.99,
+      "duration": 60.0,
+      "mapped": true,
+      "mapped_on": "2026-10-24",
+      "tiktok_url": ""
+    },
+    {
+      "id": "unknown-sound-3-(name-to-confirm)",
+      "title": "Sound 3 (name to confirm)",
+      "artist": "unknown",
+      "games": [
+        "valorant"
+      ],
+      "added": "2026-10-24",
+      "bpm": 85.4,
+      "first_beat": 0.066,
+      "drop": 2.877,
+      "duration": 14.0,
+      "mapped": true,
+      "mapped_on": "2026-10-24",
+      "tiktok_url": ""
+    },
+    {
+      "id": "unknown-sound-4-(name-to-confirm)",
+      "title": "Sound 4 (name to confirm)",
+      "artist": "unknown",
+      "games": [
+        "valorant"
+      ],
+      "added": "2026-10-24",
+      "bpm": 69.5,
+      "first_beat": 0.067,
+      "drop": 28.555,
+      "duration": 60.0,
+      "mapped": true,
+      "mapped_on": "2026-10-24",
+      "tiktok_url": ""
     }
   ]
 }
