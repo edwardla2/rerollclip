@@ -371,6 +371,19 @@ def _rhythm_np(path: Path) -> tuple[float, float]:
     return period, offset
 
 
+def strong_hits(path: Path) -> list[list[float]]:
+    """[time, strength] of every hit clearly above the song's usual onsets: where kills can land."""
+    import numpy as np
+    y = _decode_np(path)
+    comb = 0.5 * _onset_envelope_np(y) + 0.5 * _onset_envelope_np(y, top_hz=160.0)
+    t = np.arange(len(comb)) * HOP_NP / SR + LATENCY
+    peaks = [i for i in range(2, len(comb) - 2) if comb[i] == comb[i - 2:i + 3].max() and comb[i] > 0.15]
+    if not peaks:
+        return []
+    typical = float(np.median([comb[i] for i in peaks]))
+    return [[round(float(t[i]), 3), round(float(comb[i]), 2)] for i in peaks if comb[i] >= max(0.3, 1.1 * typical)]
+
+
 def accent_runs(path: Path, min_hits: int = 3) -> list[dict[str, Any]]:
     """The song's standout hits ("dun dun dun"): onsets clearly stronger than its usual hits,
     in tight runs (no gap over 0.6 s). Each run lists its hit times and strengths, strongest
@@ -454,8 +467,9 @@ def analyze_beats(path: Path) -> dict[str, Any]:
             best, drop = jump, b
     try:
         accents = accent_runs(path)
+        hits = strong_hits(path)
     except ImportError:
-        accents = []
+        accents, hits = [], []
     return {"ok": True, "file": path.name, "duration": round(duration, 3), "bpm": round(bpm, 1),
             "beat_seconds": round(period, 4), "beats": beats, "drop": drop,
-            "drop_strength": round(best, 3) if best > -math.inf else 0.0, "accents": accents}
+            "drop_strength": round(best, 3) if best > -math.inf else 0.0, "accents": accents, "hits": hits}

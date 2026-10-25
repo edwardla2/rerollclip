@@ -16,12 +16,18 @@ KILLS = [2.55, 5.85, 7.95, 10.95]
 
 class PickTests(unittest.TestCase):
     def test_prefers_a_sound_that_fits(self):
-        early = entry("Early drop", 160, 2.0)        # no room before the drop for the build-up
+        late = entry("Drop too late", 128, 19.2)     # sound ends before the kills after the drop
         good = entry("Good fit", 128, 7.5)
-        choice = sounds.pick(KILLS, 16.6, sounds=[early, good])
+        choice = sounds.pick(KILLS, 16.6, sounds=[late, good])
         self.assertEqual(choice["sound"]["title"], "Good fit")
-        self.assertTrue(all(choice["plan"]["kills_on_beat"]))
-        self.assertEqual(choice["alternatives"][0]["title"], "Early drop")
+        self.assertEqual(choice["plan"]["mode"], "drop")
+
+    def test_drop_mode_prefers_starting_the_sound_at_zero(self):
+        # Drop 2 s in: the lead-in fits, so the sound starts at 0:00 in TikTok.
+        early, later = entry("Early drop", 128, 2.0), entry("Later drop", 128, 9.0)
+        choice = sounds.pick(KILLS, 16.6, sounds=[later, early])
+        self.assertEqual(choice["sound"]["title"], "Early drop")
+        self.assertEqual(choice["plan"]["sound_start"], 0.0)
 
     def test_game_tag_breaks_ties(self):
         a, b = entry("Generic", 128, 7.5), entry("Valorant pick", 128, 7.5, games=["valorant"])

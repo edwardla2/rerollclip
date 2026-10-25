@@ -136,10 +136,11 @@ class HitSyncTests(unittest.TestCase):
                 t += (s["end"] - s["start"]) / s["speed"]
             self.assertAlmostEqual(t, hit - plan["sound_start"], delta=0.02)
 
-    def test_no_run_long_enough_falls_back_to_beats(self):
-        from clipthat_editor.sync import plan_for
-        plan = plan_for([2.0, 5.0, 8.0, 11.0], 16, self.music([13.0, 13.5]))
-        self.assertEqual(plan["mode"], "beats")
+    def test_no_run_long_enough(self):
+        from clipthat_editor.sync import plan_for, plan_to_hits
+        self.assertIsNone(plan_to_hits([2.0, 5.0, 8.0, 11.0], 16, self.music([13.0, 13.5])))
+        # auto prefers drop mode, which needs only the drop
+        self.assertEqual(plan_for([2.0, 5.0, 8.0, 11.0], 16, self.music([13.0, 13.5]))["mode"], "drop")
 
     def test_kills_closer_than_the_hits_slow_down_to_fit(self):
         from clipthat_editor.sync import plan_to_hits
@@ -168,3 +169,39 @@ class AccentTests(unittest.TestCase):
             self.assertTrue(runs)
             hits = runs[0]["hits"]
             self.assertGreaterEqual(len([h for h in hits if 9.95 <= h <= 11.5]), 5, hits)
+
+
+class DropSyncTests(unittest.TestCase):
+    def music(self):
+        m = grid(127, 30, 14.41)
+        m["drop"] = 14.41
+        # The song's hits after the drop ("dun dun dun"), with a weaker in-between hit at 15.14.
+        m["hits"] = [[14.42, 0.43], [14.9, 0.43], [15.14, 0.48], [15.36, 0.57], [15.84, 0.78], [16.31, 0.5]]
+        return m
+
+    def test_first_kill_on_the_drop_then_next_hits(self):
+        from clipthat_editor.sync import drop_targets
+        self.assertEqual(drop_targets(4, self.music()), [14.42, 14.9, 15.36, 15.84])
+
+    def test_kills_land_in_order_on_their_targets(self):
+        from clipthat_editor.sync import plan_to_drop
+        kills = [2.13, 5.67, 7.6, 10.87]
+        plan = plan_to_drop(kills, 16.6, self.music())
+        self.assertEqual(plan["mode"], "drop")
+        self.assertAlmostEqual(plan["kills_at_output"][0], plan["drop_at_output"], delta=0.02)
+        for kill, target in zip(kills, plan["hits"]):
+            t = 0.0
+            for s in plan["segments"]:
+                if s["start"] <= kill <= s["end"]:
+                    t += (kill - s["start"]) / s["speed"]
+                    break
+                t += (s["end"] - s["start"]) / s["speed"]
+            self.assertAlmostEqual(t, target - plan["sound_start"], delta=0.02)
+
+    def test_grid_fills_in_where_the_song_has_no_hit(self):
+        from clipthat_editor.sync import drop_targets
+        m = self.music()
+        m["hits"] = [[14.42, 0.43]]
+        targets = drop_targets(3, m)
+        self.assertEqual(targets[0], 14.42)
+        self.assertTrue(all(b - a >= 0.45 for a, b in zip(targets, targets[1:])), targets)

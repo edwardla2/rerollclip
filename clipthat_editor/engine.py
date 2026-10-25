@@ -192,8 +192,9 @@ def main() -> int:
                              help="'auto' to let the engine pick from the sound list, or an audio file to pace the "
                                   "edit to; the export never includes the music (add it in TikTok)")
     auto_parser.add_argument("--sounds", type=Path, default=None, help="sound list to pick from (default: built-in)")
-    auto_parser.add_argument("--sync", choices=["auto", "hits", "beats"], default="auto",
-                             help="hits: one kill per standout hit; beats: kills on beats, final on the drop")
+    auto_parser.add_argument("--sync", choices=["auto", "drop", "hits", "beats"], default="auto",
+                             help="drop: first kill on the drop, next kills on the next hits (default via auto); "
+                                  "hits: kills on a burst of standout hits; beats: kills on beats, final on the drop")
     auto_parser.add_argument("--music-preview", type=Path, default=None,
                              help="also write a private copy with the sound mixed in, to check the timing")
     eval_parser = sub.add_parser("evaluate", help="Edit every clip in a folder and write a side-by-side review report")

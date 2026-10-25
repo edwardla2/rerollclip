@@ -156,14 +156,59 @@ def plan_to_hits(kills: list[float], duration: float, music: dict[str, Any]) -> 
     with enough hits for these kills."""
     final = kills[-1]
     kills = [k for k in kills if final - k <= CLUSTER]
-    n = len(kills)
     window = None
     for run in music.get("accents", []):
-        window = best_window(run, n)
+        window = best_window(run, len(kills))
         if window:
             break
     if not window:
         return None
+    return cut_to_targets(kills, duration, window, music, "hits")
+
+
+def drop_targets(n: int, music: dict[str, Any], min_gap: float = MIN_KILL_SHOW) -> list[float]:
+    """Where n kills land: the first on the drop, each next on the song's next hit at least
+    min_gap later ("dun, dun, dun"). Where the song has no clear hit in time, the beat grid
+    (at the shortest of half-beat, beat, two beats that's still readable) fills in."""
+    drop = music["drop"]
+    hits = [h for h in music.get("hits", []) if h[0] >= drop - 0.12]
+    # The drop itself: snap to its hit if one is right there.
+    near = [h for h in hits if abs(h[0] - drop) <= 0.12]
+    first = max(near, key=lambda h: h[1])[0] if near else drop
+    period = 60.0 / music["bpm"]
+    step = next((m * period for m in (0.5, 1, 2) if m * period >= min_gap - 1e-6), 2 * period)
+    targets = [first]
+    while len(targets) < n:
+        prev = targets[-1]
+        options = [h for h in hits if prev + min_gap - 1e-6 <= h[0] <= prev + step + 0.12]
+        if options:
+            # The first clear hit in reach; a much stronger one a moment later wins.
+            pick_ = options[0]
+            for h in options[1:]:
+                if h[1] > 1.4 * pick_[1]:
+                    pick_ = h
+            targets.append(pick_[0])
+        else:
+            targets.append(round(prev + step, 3))
+    return [round(t, 3) for t in targets]
+
+
+def plan_to_drop(kills: list[float], duration: float, music: dict[str, Any]) -> dict[str, Any] | None:
+    """In order: the build-up before the first kill plays out, the first kill's shot lands on
+    the drop, and every next kill on the next hit. None if the drop comes too late in the sound."""
+    final = kills[-1]
+    kills = [k for k in kills if final - k <= CLUSTER]
+    targets = drop_targets(len(kills), music)
+    if targets[-1] > music.get("duration", float("inf")) - 0.3:
+        return None   # the sound ends before the last kill's hit
+    return cut_to_targets(kills, duration, targets, music, "drop")
+
+
+def cut_to_targets(kills: list[float], duration: float, window: list[float], music: dict[str, Any],
+                   mode: str) -> dict[str, Any]:
+    """Hard cuts kill to kill so kill i's shot lands at song time window[i]."""
+    n = len(kills)
+    final = kills[-1]
     gaps = [b - a for a, b in zip(window, window[1:])]
     # Lead-in: real footage before the first kill, as much as the clip has (up to HIT_LEAD_MAX).
     pre_first = min(kills[0], HIT_LEAD_MAX)
@@ -201,7 +246,7 @@ def plan_to_hits(kills: list[float], duration: float, music: dict[str, Any]) -> 
     total = sum(s.output_length for s in segments)
     out = [round(h - sound_start, 3) for h in window]
     return {
-        "mode": "hits",
+        "mode": mode,
         "segments": [s.__dict__ for s in segments],
         "kills": kills,
         "hits": window,
@@ -215,14 +260,17 @@ def plan_to_hits(kills: list[float], duration: float, music: dict[str, Any]) -> 
 
 
 def plan_for(kills: list[float], duration: float, music: dict[str, Any], sync: str = "auto") -> dict[str, Any] | None:
-    """sync: "hits" (one kill per standout hit), "beats" (kills on beats, final on the drop) or
-    "auto" (hits when the sound has a run long enough for the kills, else beats)."""
-    if sync not in ("auto", "hits", "beats"):
-        raise ValueError("sync must be auto, hits or beats")
-    if sync in ("auto", "hits"):
-        plan = plan_to_hits(kills, duration, music)
-        if plan or sync == "hits":
+    """sync: "drop" (first kill on the drop, each next kill on the next hit), "hits" (kills on a
+    burst of standout hits), "beats" (kills on beats, final on the drop) or "auto" (drop when the
+    sound has room after its drop for the kills, else beats)."""
+    if sync not in ("auto", "drop", "hits", "beats"):
+        raise ValueError("sync must be auto, drop, hits or beats")
+    if sync in ("auto", "drop"):
+        plan = plan_to_drop(kills, duration, music)
+        if plan or sync == "drop":
             return plan
+    if sync == "hits":
+        return plan_to_hits(kills, duration, music)
     plan = plan_to_music(kills, duration, music)
     plan.setdefault("mode", "beats")
     return plan

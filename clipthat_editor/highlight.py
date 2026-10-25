@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, asdict
 import json
+import re
 from pathlib import Path
 import subprocess
 import time
@@ -35,7 +36,9 @@ PROTECT_BEFORE = 2.0      # never cut this close before the peak...
 PROTECT_AFTER = 1.0       # ...or after it
 SLOW_MIN_STRENGTH = 0.45  # slow motion only for a peak this strong...
 SLOW_MIN_PROMINENCE = 2.0 # ...that stands this many times above the window's typical level
-LOUDNESS = "loudnorm=I=-14:TP=-1.5:LRA=11"   # short-form platform target
+TARGET_LUFS = -14.0       # short-form platform loudness
+TARGET_PEAK = -1.0        # dBFS ceiling
+CUT_FADE = 0.01           # 10 ms fades at every cut so the game audio never clicks
 
 HW_ENCODERS = ["h264_nvenc", "h264_amf", "h264_qsv", "h264_videotoolbox"]
 
@@ -228,6 +231,32 @@ def _probe_stream(path: Path) -> dict[str, Any]:
             "has_audio": any(s.get("codec_type") == "audio" for s in data["streams"])}
 
 
+def _measure(ffmpeg: str, path: Path) -> tuple[float, float]:
+    """Integrated loudness (LUFS) and true peak (dBFS) of a file's audio."""
+    out = subprocess.run([ffmpeg, "-hide_banner", "-nostats", "-i", str(path), "-map", "0:a:0",
+                          "-af", "ebur128=peak=true", "-f", "null", "-"], capture_output=True, text=True).stderr
+    summary = out[out.rfind("Summary:"):] if "Summary:" in out else out
+    lufs = re.search(r"I:\s+(-?[\d.]+) LUFS", summary)
+    peak = re.search(r"Peak:\s+(-?[\d.]+) dBFS", summary)
+    return (float(lufs.group(1)) if lufs else TARGET_LUFS,
+            float(peak.group(1)) if peak else TARGET_PEAK)
+
+
+def _set_loudness(ffmpeg: str, rendered: Path, output: Path) -> None:
+    """Static gain to the platform target, capped so peaks stay under the ceiling. Video is copied."""
+    lufs, peak = _measure(ffmpeg, rendered)
+    gain = min(TARGET_LUFS - lufs, TARGET_PEAK - peak) if lufs > -70 else 0.0
+    final = output.with_name(output.stem + ".level" + output.suffix)
+    done = subprocess.run([ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-i", str(rendered), "-map", "0:v",
+                           "-map", "0:a", "-c:v", "copy", "-af", f"volume={gain:.2f}dB", "-c:a", "aac", "-b:a", "160k",
+                           "-movflags", "+faststart", str(final)], capture_output=True, text=True)
+    rendered.unlink(missing_ok=True)
+    if done.returncode:
+        final.unlink(missing_ok=True)
+        raise EditorError(f"Setting the volume failed: {done.stderr[-800:]}")
+    final.replace(output)  # watchers never see a half-written edit
+
+
 def build_filtergraph(segments: list[Segment], *, src_w: int, src_h: int, width: int, height: int,
                       fps: int, layout: str, audio_input: str) -> str:
     """One filtergraph: trim each segment, retime it, frame it 9:16, concatenate, normalise loudness."""
@@ -259,10 +288,14 @@ def build_filtergraph(segments: list[Segment], *, src_w: int, src_h: int, width:
             atime = f",atempo={s.speed:.4f}"   # sped-up stretches keep their pitch
         else:
             atime = ""
-        parts.append(f"[as{i}]atrim={s.start}:{s.end},asetpts=PTS-STARTPTS,aresample=48000{atime}[a{i}]")
+        out_len = (s.end - s.start) / s.speed
+        fade = f",afade=t=in:d={CUT_FADE},afade=t=out:st={max(0.0, out_len - CUT_FADE):.4f}:d={CUT_FADE}" if out_len > 4 * CUT_FADE else ""
+        parts.append(f"[as{i}]atrim={s.start}:{s.end},asetpts=PTS-STARTPTS,aresample=48000{atime}{fade}[a{i}]")
     parts.append("".join(f"[v{i}][a{i}]" for i in range(n)) + f"concat=n={n}:v=1:a=1[vc][ac]")
     parts.append("[vc]format=yuv420p[v]")
-    parts.append(f"[ac]{LOUDNESS},aresample=48000[a]")
+    # One steady level for the whole edit is set after the render (see _set_loudness): a
+    # dynamic normaliser here would pump the volume at every cut.
+    parts.append("[ac]aresample=48000[a]")
     return ";".join(parts)
 
 
@@ -359,13 +392,13 @@ def auto_edit(source: Path, output: Path, *, profile: str = "generic", trigger_o
     if done.returncode:
         partial.unlink(missing_ok=True)
         raise EditorError(f"Render failed: {done.stderr[-2000:]}")
-    partial.replace(output)  # watchers never see a half-written edit
+    _set_loudness(ffmpeg, partial, output)  # also moves the finished file into place
     finished = time.monotonic()
     if music is not None and music_preview is not None:
         start = plan["sound_start"]
         mix = subprocess.run([ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-i", str(output),
                               "-ss", f"{start:.3f}", "-i", str(music), "-filter_complex",
-                              "[0:a]volume=0.3[g];[1:a]aresample=48000,volume=1.0[m];[g][m]amix=inputs=2:duration=first:normalize=0[a]",
+                              "[0:a]volume=0.35[g];[1:a]aresample=48000,volume=0.85[m];[g][m]amix=inputs=2:duration=first:normalize=0,alimiter=limit=0.89:level=false[a]",
                               "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "160k",
                               "-movflags", "+faststart", str(Path(music_preview).resolve())], capture_output=True, text=True)
         if mix.returncode:

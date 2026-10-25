@@ -43,7 +43,7 @@ def rhythm(entry: dict[str, Any]) -> dict[str, Any]:
         beats.append(round(t, 3))
         t += period
     return {"bpm": entry["bpm"], "beats": beats, "drop": entry["drop"], "file": entry["title"],
-            "duration": entry["duration"], "accents": entry.get("accents", [])}
+            "duration": entry["duration"], "accents": entry.get("accents", []), "hits": entry.get("hits", [])}
 
 
 def find(query: str, path: Path | None = None) -> list[dict[str, Any]]:
@@ -66,7 +66,7 @@ def add(audio: Path, *, title: str = "", artist: str = "", url: str = "", games:
         "title": title, "artist": artist, "games": [], "added": date.today().isoformat(),
     })
     entry.update(bpm=r["bpm"], first_beat=r["beats"][0] if r["beats"] else 0.0, drop=r["drop"],
-                 duration=r["duration"], accents=r.get("accents", [])[:3], mapped=True,
+                 duration=r["duration"], accents=r.get("accents", [])[:3], hits=r.get("hits", []), mapped=True,
                  mapped_on=date.today().isoformat())
     if url:
         entry["tiktok_url"] = url
@@ -107,8 +107,8 @@ def pick(kills: list[float], duration: float, *, game: str = "", path: Path | No
         if plan is None:
             continue
         score = score_plan(plan) + (0.3 if game and game in entry.get("games", []) else 0.0)
-        if plan.get("mode") == "hits":
-            score += 0.8   # kills on the song's standout hits beat kills on plain beats
+        if plan.get("mode") in ("drop", "hits"):
+            score += 0.8   # kills on the song's own hits beat kills on plain beats
         ranked.append((score, entry, plan))
     if not ranked:
         return None
