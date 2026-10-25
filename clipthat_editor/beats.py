@@ -209,6 +209,179 @@ def _fit_grid(env: list[float], period: float, offset: float) -> tuple[float, fl
     return period, offset
 
 
+# ---------- spectral-flux onsets + dynamic-programming beat tracking (needs numpy) ----------
+# The standard approach from music research (Ellis 2007, as in common beat trackers): onsets
+# from rises across many frequency bands, so hats, snares and 808s all count; tempo from the
+# envelope's autocorrelation with a gentle preference around 120 BPM; then the beat sequence
+# that best balances "lands on onsets" against "keeps a steady tempo".
+SR = 22050
+N_FFT = 2048
+HOP_NP = 256                       # ~11.6 ms per frame
+# A frame's flux peaks when a hit reaches the end of its window, so envelope frames run one
+# window ahead of the audio; measured on a generated track with known kicks (92 ms at 2048).
+LATENCY = N_FFT / SR
+
+
+def _decode_np(path: Path):
+    import numpy as np
+    ffmpeg = shutil.which("ffmpeg")
+    proc = subprocess.run([ffmpeg, "-v", "error", "-i", str(path), "-map", "0:a:0", "-ac", "1",
+                           "-ar", str(SR), "-f", "f32le", "-"], capture_output=True)
+    if proc.returncode or not proc.stdout:
+        raise BeatError(f"Can't read audio from {Path(path).name}")
+    return np.frombuffer(proc.stdout[: len(proc.stdout) // 4 * 4], dtype=np.float32)
+
+
+def _onset_envelope_np(y, top_hz: float = 11000.0):
+    import numpy as np
+    if len(y) < N_FFT:
+        y = np.pad(y, (0, N_FFT - len(y)))
+    frames = 1 + (len(y) - N_FFT) // HOP_NP
+    idx = np.arange(N_FFT)[None, :] + HOP_NP * np.arange(frames)[:, None]
+    spec = np.abs(np.fft.rfft(y[idx] * np.hanning(N_FFT)[None, :], axis=1))
+    freqs = np.fft.rfftfreq(N_FFT, 1.0 / SR)
+    edges = np.geomspace(30.0, top_hz, 41)         # 40 log-spaced bands
+    bands = np.stack([spec[:, (freqs >= lo) & (freqs < hi)].sum(axis=1) for lo, hi in zip(edges[:-1], edges[1:])], axis=1)
+    logb = np.log1p(1000.0 * bands)
+    flux = np.maximum(0.0, np.diff(logb, axis=0, prepend=logb[:1])).mean(axis=1)
+    # Remove the slowly varying part so sustained loud sections don't swamp the beat.
+    k = max(1, int(0.4 * SR / HOP_NP))
+    local = np.convolve(flux, np.ones(k) / k, mode="same")
+    env = np.maximum(0.0, flux - local)
+    return env / (env.max() or 1.0)
+
+
+def _grid_share(env, bpm: float, phases: int = 32) -> tuple[float, float]:
+    """Best share of onset energy within ~3 % of a beat on a steady grid at this tempo, and that phase."""
+    import numpy as np
+    fps = SR / HOP_NP
+    t = np.arange(len(env)) / fps
+    period = 60.0 / bpm
+    ph = (t / period) % 1.0
+    best, best_phase = 0.0, 0.0
+    total = env.sum() or 1.0
+    for k in range(phases):
+        d = np.abs(((ph - k / phases) + 0.5) % 1.0 - 0.5)
+        share = env[d < 0.04].sum() / total
+        if share > best:
+            best, best_phase = share, k / phases
+    return float(best), best_phase
+
+
+def _tempo_np(env) -> float:
+    """Candidate tempos from the autocorrelation, plus their 2x, 1/2x, 3/2x and 2/3x relatives
+    (the usual confusions), judged by how much rhythmic energy a steady grid at that tempo
+    actually catches, with a gentle preference around 120 BPM."""
+    import numpy as np
+    fps = SR / HOP_NP
+    x = env - env.mean()
+    ac = np.correlate(x, x, mode="full")[len(x) - 1:]
+    ac /= ac[0] or 1.0
+    bpms = np.arange(60.0, 200.0, 0.25)
+    lags = 60.0 * fps / bpms
+    score = np.interp(lags, np.arange(len(ac)), ac, right=0.0)
+    order = np.argsort(score)[::-1]
+    seeds = []
+    for i in order:
+        if all(abs(bpms[i] - b) > 3 for b in seeds):
+            seeds.append(float(bpms[i]))
+        if len(seeds) == 4:
+            break
+    cands = {round(b * f, 2) for b in seeds for f in (1, 2, 0.5, 1.5, 2 / 3) if 60 <= b * f <= 200}
+    def polish(b):
+        # A rough tempo drifts off the beat over a long sound, so tune each candidate first.
+        fine = np.arange(b * 0.985, b * 1.015, 0.1)
+        return max(((float(f), _grid_share(env, f, 24)[0]) for f in fine), key=lambda x: x[1])
+    def value(entry):
+        b, share = entry
+        prior = float(np.exp(-0.5 * (np.log2(b / 120.0) / 1.0) ** 2))
+        return share * (0.6 + 0.4 * prior)
+    best, share = max((polish(b) for b in cands), key=value)
+    # Double time catches the hats between kicks too; take the slower tempo if half the speed
+    # still catches most of the rhythm.
+    if best / 2 >= 60:
+        half, half_share = polish(best / 2)
+        if half_share >= 0.62 * share:
+            best = half
+    fine = np.arange(best - 0.3, best + 0.3, 0.02)
+    return float(max(fine, key=lambda b: _grid_share(env, b)[0]))
+
+
+def _track_np(env, bpm: float, tightness: float = 100.0):
+    import numpy as np
+    fps = SR / HOP_NP
+    period = 60.0 * fps / bpm
+    n = len(env)
+    score = env.copy()
+    back = np.full(n, -1)
+    lo, hi = int(round(period / 2)), int(round(2 * period))
+    offsets = np.arange(-hi, -lo + 1)
+    penalty = -tightness * np.log(-offsets / period) ** 2
+    for t in range(n):
+        cand = t + offsets
+        ok = cand >= 0
+        if not ok.any():
+            continue
+        vals = score[cand[ok]] + penalty[ok]
+        j = int(np.argmax(vals))
+        if vals[j] > 0:
+            score[t] = env[t] + vals[j]
+            back[t] = cand[ok][j]
+    # Best last beat within the final period, then follow the chain back.
+    tail = np.arange(max(0, n - int(period)), n)
+    t = int(tail[np.argmax(score[tail])])
+    beats = []
+    while t >= 0:
+        beats.append(t)
+        t = int(back[t])
+    return np.array(beats[::-1]) / fps + LATENCY
+
+
+def _grid_from_beats(beats) -> tuple[float, float]:
+    """A steady grid (period, first beat) fitted through tracked beats; edit sounds hold tempo."""
+    import numpy as np
+    k = np.arange(len(beats))
+    period, offset = np.polyfit(k, beats, 1)
+    while offset - period >= -0.01:
+        offset -= period
+    return float(period), float(max(0.0, offset))
+
+
+def _rhythm_np(path: Path) -> tuple[float, float]:
+    """Steady grid (period, first beat). Tempo from _tempo_np; the grid's start is the phase
+    that puts the most hits on the beat; between beat and half-beat, bass breaks near-ties."""
+    import numpy as np
+    y = _decode_np(path)
+    env = _onset_envelope_np(y)
+    bass = _onset_envelope_np(y, top_hz=160.0)
+    bpm = _tempo_np(env)
+    period = 60.0 / bpm
+    t = np.arange(len(env)) * HOP_NP / SR + LATENCY
+    def caught(sig, phase):
+        d = np.abs((((t - phase) / period) + 0.5) % 1.0 - 0.5)
+        return float(sig[d < 0.04].sum() / (sig.sum() or 1.0))
+    phases = [k / 64 * period for k in range(64)]
+    offset = max(phases, key=lambda ph: caught(env, ph))
+    # Beat or half-beat? Near a tie, the bass decides (kicks usually mark the beat).
+    other = (offset + period / 2) % period
+    if caught(env, other) >= 0.8 * caught(env, offset) and caught(bass, other) > 1.3 * caught(bass, offset):
+        offset = other
+    if len(t) * HOP_NP / SR < 4 * period:
+        raise BeatError("Couldn't find a steady beat in this sound")
+    return period, offset
+
+
+def phase_profile(path: Path, period: float, first: float, bins: int = 16) -> list[float]:
+    """How onset energy falls across one beat when folded onto the grid: a correct grid
+    piles it up in bin 0 (and often bin bins/2). For checking a beat map."""
+    import numpy as np
+    env = _onset_envelope_np(_decode_np(path))
+    t = np.arange(len(env)) * HOP_NP / SR + LATENCY
+    phase = (((t - first) / period) % 1.0 * bins).astype(int) % bins
+    prof = np.bincount(phase, weights=env, minlength=bins)
+    return (prof / (prof.mean() or 1.0)).round(2).tolist()
+
+
 def analyze_beats(path: Path) -> dict[str, Any]:
     path = Path(path)
     if not path.is_file():
@@ -218,9 +391,12 @@ def analyze_beats(path: Path) -> dict[str, Any]:
     duration = len(full) * HOP
     if duration < 4:
         raise BeatError("The sound needs to be at least 4 seconds long")
-    env = _onsets(low)
-    bpm, offset = _refine(env, _tempo(env))
-    period, offset = _fit_grid(env, 60.0 / bpm, offset)
+    try:
+        period, offset = _rhythm_np(path)
+    except ImportError:  # no numpy: the simpler tracker, fine for clean drum tracks
+        env = _onsets(low)
+        bpm, offset = _refine(env, _tempo(env))
+        period, offset = _fit_grid(env, 60.0 / bpm, offset)
     bpm = 60.0 / period
     beats = []
     t = offset
