@@ -193,15 +193,67 @@ def drop_targets(n: int, music: dict[str, Any], min_gap: float = MIN_KILL_SHOW) 
     return [round(t, 3) for t in targets]
 
 
+DIP = 0.4               # the build-up fades to black over this long, right before the drop
+CUT_IN = 0.05           # each cut lands on its beat this long before the kill's shot
+
+
 def plan_to_drop(kills: list[float], duration: float, music: dict[str, Any]) -> dict[str, Any] | None:
-    """In order: the build-up before the first kill plays out, the first kill's shot lands on
-    the drop, and every next kill on the next hit. None if the drop comes too late in the sound."""
+    """The cut-on-the-drop edit, in order: the build-up (scope-in) plays and dips to black just
+    before the drop; a hard cut on the drop goes straight into the first kill's shot; every next
+    beat (or hit) cuts into the next kill; the last kill plays out. None if the sound ends first."""
     final = kills[-1]
     kills = [k for k in kills if final - k <= CLUSTER]
     targets = drop_targets(len(kills), music)
     if targets[-1] > music.get("duration", float("inf")) - 0.3:
-        return None   # the sound ends before the last kill's hit
-    return cut_to_targets(kills, duration, targets, music, "drop")
+        return None   # the sound ends before the last kill's beat
+    return cut_on_beats(kills, duration, targets, music)
+
+
+def cut_on_beats(kills: list[float], duration: float, targets: list[float], music: dict[str, Any]) -> dict[str, Any]:
+    n = len(kills)
+    segments: list[Segment] = []
+    def add(a: float, b: float, speed: float = 1.0, zoom: float = 1.0, fade_out: float = 0.0) -> None:
+        if b - a >= 0.02:
+            segments.append(Segment(round(a, 3), round(b, 3), speed, zoom, fade_out))
+    # Build-up: the footage before the first kill, stopping short of the shot (the drop gets it).
+    lead_end = max(0.0, kills[0] - CUT_IN - 0.25)
+    lead = min(lead_end, HIT_LEAD_MAX)
+    sound_start = max(0.0, targets[0] - lead)
+    lead = targets[0] - sound_start
+    add(lead_end - lead, lead_end, fade_out=min(DIP, lead / 2) if lead > 0.2 else 0.0)
+    for i in range(n):
+        cut = kills[i] - CUT_IN
+        if i + 1 < n:
+            beat = targets[i + 1] - targets[i]
+            next_cut = kills[i + 1] - CUT_IN
+            if next_cut - cut >= beat:
+                add(cut, cut + beat)                       # a full beat of this kill, then cut
+            else:                                          # kills closer than the beats: slow to fit
+                add(cut, next_cut, max(0.5, (next_cut - cut) / beat))
+        else:
+            # The last kill plays out, slowing into a punch-in, then holds (e.g. the ACE).
+            tail = duration - cut
+            normal = min(tail, 0.4)
+            add(cut, cut + normal)
+            slow_src = min(max(0.0, tail - normal), 0.6)
+            add(cut + normal, cut + normal + slow_src, FINAL_SPEED, FINAL_ZOOM)
+            used = normal + slow_src / FINAL_SPEED
+            hold_src = max(0.0, min(duration - (cut + normal + slow_src), HIT_HOLD - used))
+            add(cut + normal + slow_src, cut + normal + slow_src + hold_src)
+    total = sum(s.output_length for s in segments)
+    return {
+        "mode": "drop",
+        "segments": [s.__dict__ for s in segments],
+        "kills": kills,
+        "hits": targets,
+        "cuts_at_output": [round(t - sound_start, 3) for t in targets],
+        "kills_at_output": [round(t - sound_start + CUT_IN, 3) for t in targets],
+        "kills_on_beat": [True] * n,
+        "drop_at_output": round(music["drop"] - sound_start, 3),
+        "sound_start": round(sound_start, 3),
+        "bpm": music["bpm"],
+        "output_seconds": round(total, 3),
+    }
 
 
 def cut_to_targets(kills: list[float], duration: float, window: list[float], music: dict[str, Any],

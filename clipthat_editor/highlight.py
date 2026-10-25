@@ -77,6 +77,7 @@ class Segment:
     end: float
     speed: float = 1.0    # 0.5 = half speed
     zoom: float = 1.0
+    fade_out: float = 0.0  # seconds of fade to black at the segment's end (picture and sound)
 
     @property
     def output_length(self) -> float:
@@ -257,6 +258,14 @@ def _set_loudness(ffmpeg: str, rendered: Path, output: Path) -> None:
     final.replace(output)  # watchers never see a half-written edit
 
 
+def _dip(s: Segment) -> str:
+    """Fade the segment's picture to black over its last fade_out seconds (the dip before a drop)."""
+    if not s.fade_out:
+        return ""
+    out_len = s.output_length
+    return f",fade=t=out:st={max(0.0, out_len - s.fade_out):.4f}:d={s.fade_out:.4f}:color=black"
+
+
 def build_filtergraph(segments: list[Segment], *, src_w: int, src_h: int, width: int, height: int,
                       fps: int, layout: str, audio_input: str) -> str:
     """One filtergraph: trim each segment, retime it, frame it 9:16, concatenate, normalise loudness."""
@@ -271,7 +280,7 @@ def build_filtergraph(segments: list[Segment], *, src_w: int, src_h: int, width:
             cw = f"trunc(min(iw\\,ih*{aspect:.6f})/{s.zoom:.4f}/2)*2"
             ch = f"trunc(min(ih\\,iw/{aspect:.6f})/{s.zoom:.4f}/2)*2"
             frame = f"crop={cw}:{ch},scale={width}:{height}:flags=bicubic,setsar=1"
-            parts.append(f"[vs{i}]trim={s.start}:{s.end},setpts=PTS-STARTPTS{retime},{frame},fps={fps}[v{i}]")
+            parts.append(f"[vs{i}]trim={s.start}:{s.end},setpts=PTS-STARTPTS{retime},{frame},fps={fps}{_dip(s)}[v{i}]")
         else:
             zoom = (f",crop=trunc(iw/{s.zoom:.4f}/2)*2:trunc(ih/{s.zoom:.4f}/2)*2" if s.zoom != 1 else "")
             # Cheap blur fill: blur a small copy, then scale it up behind the shot.
@@ -280,7 +289,7 @@ def build_filtergraph(segments: list[Segment], *, src_w: int, src_h: int, width:
                 f"[b{i}]scale={width // 8}:{height // 8}:force_original_aspect_ratio=increase,"
                 f"crop={width // 8}:{height // 8},boxblur=4:2,scale={width}:{height}[bb{i}];"
                 f"[f{i}]scale={width}:{height}:force_original_aspect_ratio=decrease[ff{i}];"
-                f"[bb{i}][ff{i}]overlay=(W-w)/2:(H-h)/2,setsar=1,fps={fps}[v{i}]")
+                f"[bb{i}][ff{i}]overlay=(W-w)/2:(H-h)/2,setsar=1,fps={fps}{_dip(s)}[v{i}]")
         if s.speed < 1:
             # Pitch drops with the speed: the familiar heavy slow-motion sound.
             atime = f",asetrate=48000*{s.speed},aresample=48000"
@@ -289,7 +298,8 @@ def build_filtergraph(segments: list[Segment], *, src_w: int, src_h: int, width:
         else:
             atime = ""
         out_len = (s.end - s.start) / s.speed
-        fade = f",afade=t=in:d={CUT_FADE},afade=t=out:st={max(0.0, out_len - CUT_FADE):.4f}:d={CUT_FADE}" if out_len > 4 * CUT_FADE else ""
+        tail = max(CUT_FADE, s.fade_out)
+        fade = f",afade=t=in:d={CUT_FADE},afade=t=out:st={max(0.0, out_len - tail):.4f}:d={tail:.4f}" if out_len > 4 * CUT_FADE else ""
         parts.append(f"[as{i}]atrim={s.start}:{s.end},asetpts=PTS-STARTPTS,aresample=48000{atime}{fade}[a{i}]")
     parts.append("".join(f"[v{i}][a{i}]" for i in range(n)) + f"concat=n={n}:v=1:a=1[vc][ac]")
     parts.append("[vc]format=yuv420p[v]")
@@ -371,7 +381,7 @@ def auto_edit(source: Path, output: Path, *, profile: str = "generic", trigger_o
     # Decode only the window: seek the input, and shift segment times to match.
     offset = plan["window"]["start"]
     span = plan["window"]["end"] - offset
-    segments = [Segment(round(s.start - offset, 3), round(s.end - offset, 3), s.speed, s.zoom) for s in segments]
+    segments = [Segment(round(s.start - offset, 3), round(s.end - offset, 3), s.speed, s.zoom, s.fade_out) for s in segments]
     args = [ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-ss", f"{offset:.3f}", "-t", f"{span:.3f}",
             "-i", str(source)]
     audio_input = "0:a:0"

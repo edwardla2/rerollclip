@@ -1456,6 +1456,37 @@
           0.55
         ]
       ]
+    },
+    {
+      "id": "unknown-sound-5-(from-your-reference-edit,-name-to-confirm)",
+      "title": "Sound 5 (from your reference edit, name to confirm)",
+      "artist": "unknown",
+      "games": [
+        "valorant"
+      ],
+      "added": "2026-10-25",
+      "bpm": 114.1,
+      "first_beat": 0.173,
+      "drop": 5.955,
+      "duration": 12.19,
+      "accents": [],
+      "hits": [
+        [
+          4.911,
+          0.57
+        ],
+        [
+          5.445,
+          0.31
+        ],
+        [
+          8.069,
+          0.32
+        ]
+      ],
+      "mapped": true,
+      "mapped_on": "2026-10-25",
+      "tiktok_url": ""
     }
   ]
 }
