@@ -60,7 +60,7 @@ class Profile:
 PROFILES = {
     # A brief emphasis on the deciding elimination; keep the kill feed and the audio.
     "valorant": Profile("valorant", length=13.0, slow_motion=True, slow_half=0.4, slow_factor=0.6, zoom=1.1,
-                        layout="fit_blur"),
+                        layout="focus"),
     # Sprays and rapid multi-kills keep their rhythm: no slow motion.
     "cs2": Profile("cs2", length=12.0, slow_motion=False, dead_min_run=2.0),
     # Build-up matters and building happens off-centre: longer window, whole frame.
@@ -78,6 +78,7 @@ class Segment:
     speed: float = 1.0    # 0.5 = half speed
     zoom: float = 1.0
     fade_out: float = 0.0  # seconds of fade to black at the segment's end (picture and sound)
+    impact: bool = False   # a kill cut: punch-in zoom and a quick flash as it lands
 
     @property
     def output_length(self) -> float:
@@ -258,6 +259,23 @@ def _set_loudness(ffmpeg: str, rendered: Path, output: Path) -> None:
     final.replace(output)  # watchers never see a half-written edit
 
 
+IMPACT_ZOOM = 0.12        # a kill cut lands 12 % zoomed in...
+IMPACT_SETTLE = 0.25      # ...and settles back over this long
+FLASH = 0.3               # brightness added on the cut, fading out over...
+FLASH_TIME = 0.12         # ...this long
+GRADE = "eq=contrast=1.12:saturation=1.12:gamma=0.96,vignette=angle=PI/6"
+FEED_BOX = (0.30, 0.18, 0.70, 0.05)   # Valorant kill feed: w, h, x, y as shares of the frame
+
+
+def _impact(s: Segment, width: int, height: int) -> str:
+    """Punch-in zoom that settles, plus a white flash, at the start of a kill cut."""
+    if not s.impact:
+        return ""
+    k = f"(1+{IMPACT_ZOOM}*max(0\\,1-t/{IMPACT_SETTLE}))"
+    return (f",scale=w='trunc({width}*{k}/2)*2':h='trunc({height}*{k}/2)*2':eval=frame,crop={width}:{height}"
+            f",eq=brightness='{FLASH}*max(0\\,1-t/{FLASH_TIME})':eval=frame,setsar=1")
+
+
 def _dip(s: Segment) -> str:
     """Fade the segment's picture to black over its last fade_out seconds (the dip before a drop)."""
     if not s.fade_out:
@@ -281,6 +299,23 @@ def build_filtergraph(segments: list[Segment], *, src_w: int, src_h: int, width:
             ch = f"trunc(min(ih\\,iw/{aspect:.6f})/{s.zoom:.4f}/2)*2"
             frame = f"crop={cw}:{ch},scale={width}:{height}:flags=bicubic,setsar=1"
             parts.append(f"[vs{i}]trim={s.start}:{s.end},setpts=PTS-STARTPTS{retime},{frame},fps={fps}{_dip(s)}[v{i}]")
+        elif layout == "focus":
+            # The action big: a centred square of the shot fills the width; the kill feed is cut
+            # out and set above it; a blurred copy fills the rest. Graded, with impact on kills.
+            zoom = (f",crop=trunc(iw/{s.zoom:.4f}/2)*2:trunc(ih/{s.zoom:.4f}/2)*2" if s.zoom != 1 else "")
+            main = width                              # square side
+            main_y = (height - main) // 2 + height // 48
+            fw, fh, fx, fy = FEED_BOX
+            feed_w = int(width * 0.6) // 2 * 2
+            parts.append(
+                f"[vs{i}]trim={s.start}:{s.end},setpts=PTS-STARTPTS{retime},split=3[f{i}][b{i}][k{i}];"
+                f"[b{i}]scale={width // 8}:{height // 8}:force_original_aspect_ratio=increase,"
+                f"crop={width // 8}:{height // 8},boxblur=4:2,scale={width}:{height},eq=brightness=-0.12[bb{i}];"
+                f"[f{i}]crop=min(iw\\,ih):min(iw\\,ih){zoom},scale={main}:{main}:flags=bicubic[ff{i}];"
+                f"[k{i}]crop=iw*{fw}:ih*{fh}:iw*{fx}:ih*{fy},scale={feed_w}:-2[kk{i}];"
+                f"[bb{i}][ff{i}]overlay=0:{main_y}[m{i}];"
+                f"[m{i}][kk{i}]overlay=(W-w)/2:{main_y}-h-{height // 64},setsar=1,fps={fps},{GRADE}"
+                f"{_impact(s, width, height)}{_dip(s)}[v{i}]")
         else:
             zoom = (f",crop=trunc(iw/{s.zoom:.4f}/2)*2:trunc(ih/{s.zoom:.4f}/2)*2" if s.zoom != 1 else "")
             # Cheap blur fill: blur a small copy, then scale it up behind the shot.
@@ -289,7 +324,7 @@ def build_filtergraph(segments: list[Segment], *, src_w: int, src_h: int, width:
                 f"[b{i}]scale={width // 8}:{height // 8}:force_original_aspect_ratio=increase,"
                 f"crop={width // 8}:{height // 8},boxblur=4:2,scale={width}:{height}[bb{i}];"
                 f"[f{i}]scale={width}:{height}:force_original_aspect_ratio=decrease[ff{i}];"
-                f"[bb{i}][ff{i}]overlay=(W-w)/2:(H-h)/2,setsar=1,fps={fps}{_dip(s)}[v{i}]")
+                f"[bb{i}][ff{i}]overlay=(W-w)/2:(H-h)/2,setsar=1,fps={fps}{_impact(s, width, height)}{_dip(s)}[v{i}]")
         if s.speed < 1:
             # Pitch drops with the speed: the familiar heavy slow-motion sound.
             atime = f",asetrate=48000*{s.speed},aresample=48000"
@@ -324,8 +359,8 @@ def auto_edit(source: Path, output: Path, *, profile: str = "generic", trigger_o
     if profile not in PROFILES:
         raise EditorError(f"Unknown profile {profile}; choose from {', '.join(PROFILES)}")
     layout = layout or PROFILES[profile].layout
-    if layout not in ("center_crop", "fit_blur"):
-        raise EditorError("layout must be center_crop or fit_blur")
+    if layout not in ("center_crop", "fit_blur", "focus"):
+        raise EditorError("layout must be center_crop, fit_blur or focus")
     began = time.monotonic()
     info = _probe_stream(source)
     scored = score_clip(source)
@@ -381,7 +416,7 @@ def auto_edit(source: Path, output: Path, *, profile: str = "generic", trigger_o
     # Decode only the window: seek the input, and shift segment times to match.
     offset = plan["window"]["start"]
     span = plan["window"]["end"] - offset
-    segments = [Segment(round(s.start - offset, 3), round(s.end - offset, 3), s.speed, s.zoom, s.fade_out) for s in segments]
+    segments = [Segment(round(s.start - offset, 3), round(s.end - offset, 3), s.speed, s.zoom, s.fade_out, s.impact) for s in segments]
     args = [ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-ss", f"{offset:.3f}", "-t", f"{span:.3f}",
             "-i", str(source)]
     audio_input = "0:a:0"

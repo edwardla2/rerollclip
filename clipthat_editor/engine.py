@@ -183,7 +183,7 @@ def main() -> int:
     auto_parser.add_argument("--profile", choices=["generic", "valorant", "cs2", "fortnite", "roblox"], default="generic",
                              help="per-game starting points for length, slow motion and framing")
     auto_parser.add_argument("--length", type=float, default=None, help="seconds of source around the peak (default: profile)")
-    auto_parser.add_argument("--layout", choices=["center_crop", "fit_blur"], default=None, help="default: profile")
+    auto_parser.add_argument("--layout", choices=["center_crop", "fit_blur", "focus"], default=None, help="default: profile")
     auto_parser.add_argument("--slow-motion", choices=["auto", "on", "off"], default="auto")
     auto_parser.add_argument("--size", choices=["720", "1080"], default="1080")
     auto_parser.add_argument("--fps", type=int, choices=[30, 60], default=None, help="default: 60 for 50+ fps sources")

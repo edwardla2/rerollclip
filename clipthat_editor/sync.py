@@ -212,9 +212,10 @@ def plan_to_drop(kills: list[float], duration: float, music: dict[str, Any]) -> 
 def cut_on_beats(kills: list[float], duration: float, targets: list[float], music: dict[str, Any]) -> dict[str, Any]:
     n = len(kills)
     segments: list[Segment] = []
-    def add(a: float, b: float, speed: float = 1.0, zoom: float = 1.0, fade_out: float = 0.0) -> None:
+    def add(a: float, b: float, speed: float = 1.0, zoom: float = 1.0, fade_out: float = 0.0,
+            impact: bool = False) -> None:
         if b - a >= 0.02:
-            segments.append(Segment(round(a, 3), round(b, 3), speed, zoom, fade_out))
+            segments.append(Segment(round(a, 3), round(b, 3), speed, zoom, fade_out, impact))
     # Build-up: the footage before the first kill, stopping short of the shot (the drop gets it).
     lead_end = max(0.0, kills[0] - CUT_IN - 0.25)
     lead = min(lead_end, HIT_LEAD_MAX)
@@ -227,14 +228,14 @@ def cut_on_beats(kills: list[float], duration: float, targets: list[float], musi
             beat = targets[i + 1] - targets[i]
             next_cut = kills[i + 1] - CUT_IN
             if next_cut - cut >= beat:
-                add(cut, cut + beat)                       # a full beat of this kill, then cut
+                add(cut, cut + beat, impact=True)          # a full beat of this kill, then cut
             else:                                          # kills closer than the beats: slow to fit
-                add(cut, next_cut, max(0.5, (next_cut - cut) / beat))
+                add(cut, next_cut, max(0.5, (next_cut - cut) / beat), impact=True)
         else:
             # The last kill plays out, slowing into a punch-in, then holds (e.g. the ACE).
             tail = duration - cut
             normal = min(tail, 0.4)
-            add(cut, cut + normal)
+            add(cut, cut + normal, impact=True)
             slow_src = min(max(0.0, tail - normal), 0.6)
             add(cut + normal, cut + normal + slow_src, FINAL_SPEED, FINAL_ZOOM)
             used = normal + slow_src / FINAL_SPEED

@@ -157,3 +157,20 @@ class AutoEditTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "FFmpeg required")
+class FocusLayoutTests(unittest.TestCase):
+    def test_focus_layout_with_impact_renders(self):
+        from clipthat_editor.highlight import Segment, build_filtergraph
+        graph = build_filtergraph([Segment(0, 1, impact=True), Segment(1, 2, fade_out=0.3)], src_w=1920, src_h=1080,
+                                  width=720, height=1280, fps=30, layout="focus", audio_input="0:a:0")
+        self.assertIn("eval=frame", graph)
+        with tempfile.TemporaryDirectory() as tmp:
+            src, out = Path(tmp) / "c.mp4", Path(tmp) / "o.mp4"
+            make_clip(src, 4, [1.0])
+            result = auto_edit(src, out, layout="focus", width=720, height=1280)
+            self.assertEqual(result["layout"], "focus")
+            data = probe(out)
+            video = next(s for s in data["streams"] if s["codec_type"] == "video")
+            self.assertEqual((video["width"], video["height"]), (720, 1280))
