@@ -205,13 +205,17 @@ def main() -> int:
     sounds_sub = sounds_parser.add_subparsers(dest="sounds_command", required=True)
     add_parser = sounds_sub.add_parser("add", help="Read a sound's rhythm and add it to the list (audio isn't kept)")
     add_parser.add_argument("audio", type=Path)
-    add_parser.add_argument("--title", required=True)
-    add_parser.add_argument("--artist", required=True)
+    add_parser.add_argument("--id", default="", help="fill in a song already on the list (see 'sounds find')")
+    add_parser.add_argument("--title", default="")
+    add_parser.add_argument("--artist", default="")
     add_parser.add_argument("--url", default="", help="the sound's TikTok link")
     add_parser.add_argument("--games", default="", help="comma-separated, e.g. valorant,cs2")
     add_parser.add_argument("--list", type=Path, default=None)
     list_parser = sounds_sub.add_parser("list", help="Show the sound list")
     list_parser.add_argument("--list", type=Path, default=None)
+    find_parser = sounds_sub.add_parser("find", help="Find songs on the list by title or artist words")
+    find_parser.add_argument("query")
+    find_parser.add_argument("--list", type=Path, default=None)
     opts = parser.parse_args()
     try:
         if opts.command == "validate":
@@ -223,11 +227,21 @@ def main() -> int:
         elif opts.command == "sounds":
             from . import sounds
             if opts.sounds_command == "add":
+                if not opts.id and not (opts.title and opts.artist):
+                    raise EditorError("Give --id of a song on the list, or --title and --artist for a new one")
                 games = [g.strip() for g in opts.games.split(",") if g.strip()]
                 print(json.dumps(sounds.add(opts.audio, title=opts.title, artist=opts.artist, url=opts.url,
-                                            games=games, path=opts.list)))
+                                            games=games, song_id=opts.id, path=opts.list), ensure_ascii=False))
+            elif opts.sounds_command == "find":
+                print(json.dumps([{"id": s["id"], "title": s["title"], "artist": s["artist"],
+                                   "mapped": s.get("mapped", False)} for s in sounds.find(opts.query, opts.list)],
+                                 indent=2, ensure_ascii=False))
             else:
-                print(json.dumps(sounds.load(opts.list), indent=2))
+                listed = sounds.load(opts.list)
+                mapped = [s for s in listed if s.get("mapped", "bpm" in s)]
+                print(json.dumps({"songs": len(listed), "ready": len(mapped),
+                                  "ready_titles": [f"{s['title']} - {s['artist']}" for s in mapped]},
+                                 indent=2, ensure_ascii=False))
         elif opts.command == "evaluate":
             from .evaluate import evaluate
             print(json.dumps(evaluate(opts.clips, opts.out, profile=opts.profile, slow_motion=opts.slow_motion,

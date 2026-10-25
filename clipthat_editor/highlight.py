@@ -299,7 +299,11 @@ def auto_edit(source: Path, output: Path, *, profile: str = "generic", trigger_o
             from .sounds import pick
             choice = pick(kills, scored["duration"], game=profile, path=sounds_list)
             if not choice:
-                raise EditorError("No sounds on the list to choose from; add some with 'sounds add'")
+                from .sounds import load
+                listed = load(sounds_list)
+                raise EditorError(f"None of the {len(listed)} songs on the list has a beat map yet; "
+                                  "map one with 'sounds add <audio> --id <song id>'" if listed else
+                                  "The sound list is empty; add a sound with 'sounds add'")
             plan = choice["plan"]
             sound = choice["sound"]
             plan.update(music={"file": sound["title"], "bpm": sound["bpm"], "drop": sound["drop"],

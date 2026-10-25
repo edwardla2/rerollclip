@@ -46,18 +46,33 @@ def rhythm(entry: dict[str, Any]) -> dict[str, Any]:
             "duration": entry["duration"]}
 
 
-def add(audio: Path, *, title: str, artist: str, url: str = "", games: list[str] | None = None,
-        path: Path | None = None) -> dict[str, Any]:
+def find(query: str, path: Path | None = None) -> list[dict[str, Any]]:
+    """Songs whose title or artist contains every word of the query (case-insensitive)."""
+    words = query.lower().split()
+    return [s for s in load(path) if all(w in f"{s['title']} {s['artist']}".lower() for w in words)]
+
+
+def add(audio: Path, *, title: str = "", artist: str = "", url: str = "", games: list[str] | None = None,
+        song_id: str = "", path: Path | None = None) -> dict[str, Any]:
+    """Reads a sound's rhythm and stores its beat map. With `song_id`, fills in an existing
+    song on the list (keeping its title, artist and tags); otherwise adds a new one."""
     r = analyze_beats(Path(audio))
-    entry = {
+    sounds = load(path)
+    existing = next((s for s in sounds if s["id"] == song_id), None) if song_id else None
+    if song_id and existing is None:
+        raise ValueError(f"No song with id {song_id} on the list")
+    entry = dict(existing or {
         "id": "-".join(f"{artist} {title}".lower().split())[:60],
-        "title": title, "artist": artist, "tiktok_url": url,
-        "bpm": r["bpm"], "first_beat": r["beats"][0] if r["beats"] else 0.0,
-        "drop": r["drop"], "duration": r["duration"],
-        "games": games or [], "added": date.today().isoformat(),
-    }
-    sounds = [s for s in load(path) if s["id"] != entry["id"]]
-    sounds.append(entry)
+        "title": title, "artist": artist, "games": [], "added": date.today().isoformat(),
+    })
+    entry.update(bpm=r["bpm"], first_beat=r["beats"][0] if r["beats"] else 0.0, drop=r["drop"],
+                 duration=r["duration"], mapped=True, mapped_on=date.today().isoformat())
+    if url:
+        entry["tiktok_url"] = url
+    entry.setdefault("tiktok_url", "")
+    if games:
+        entry["games"] = sorted(set(entry.get("games", [])) | set(games))
+    sounds = [s for s in sounds if s["id"] != entry["id"]] + [entry]
     save(sounds, path)
     return entry
 
@@ -80,6 +95,8 @@ def pick(kills: list[float], duration: float, *, game: str = "", path: Path | No
     sounds = sounds if sounds is not None else load(path)
     ranked = []
     for entry in sounds:
+        if not entry.get("mapped", "bpm" in entry):
+            continue  # on the list, but its beat map hasn't been made yet
         try:
             plan = plan_to_music(kills, duration, rhythm(entry))
         except ValueError:
