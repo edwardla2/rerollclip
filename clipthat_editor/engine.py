@@ -188,8 +188,10 @@ def main() -> int:
     auto_parser.add_argument("--size", choices=["720", "1080"], default="1080")
     auto_parser.add_argument("--fps", type=int, choices=[30, 60], default=None, help="default: 60 for 50+ fps sources")
     auto_parser.add_argument("--encoder", default="auto", help="auto, libx264 or a hardware encoder name")
-    auto_parser.add_argument("--music", type=Path, default=None,
-                             help="sound to pace the edit to; the export does not include it (add it in TikTok)")
+    auto_parser.add_argument("--music", default=None,
+                             help="'auto' to let the engine pick from the sound list, or an audio file to pace the "
+                                  "edit to; the export never includes the music (add it in TikTok)")
+    auto_parser.add_argument("--sounds", type=Path, default=None, help="sound list to pick from (default: built-in)")
     auto_parser.add_argument("--music-preview", type=Path, default=None,
                              help="also write a private copy with the sound mixed in, to check the timing")
     eval_parser = sub.add_parser("evaluate", help="Edit every clip in a folder and write a side-by-side review report")
@@ -199,6 +201,17 @@ def main() -> int:
     eval_parser.add_argument("--slow-motion", choices=["auto", "on", "off"], default="auto")
     eval_parser.add_argument("--size", choices=["720", "1080"], default="1080")
     eval_parser.add_argument("--encoder", default="auto")
+    sounds_parser = sub.add_parser("sounds", help="Manage the sound list the engine picks from")
+    sounds_sub = sounds_parser.add_subparsers(dest="sounds_command", required=True)
+    add_parser = sounds_sub.add_parser("add", help="Read a sound's rhythm and add it to the list (audio isn't kept)")
+    add_parser.add_argument("audio", type=Path)
+    add_parser.add_argument("--title", required=True)
+    add_parser.add_argument("--artist", required=True)
+    add_parser.add_argument("--url", default="", help="the sound's TikTok link")
+    add_parser.add_argument("--games", default="", help="comma-separated, e.g. valorant,cs2")
+    add_parser.add_argument("--list", type=Path, default=None)
+    list_parser = sounds_sub.add_parser("list", help="Show the sound list")
+    list_parser.add_argument("--list", type=Path, default=None)
     opts = parser.parse_args()
     try:
         if opts.command == "validate":
@@ -207,6 +220,14 @@ def main() -> int:
         elif opts.command == "analyze":
             from .analysis import analyze
             print(json.dumps(analyze(opts.file, length=opts.length, trigger_offset=opts.trigger_offset)))
+        elif opts.command == "sounds":
+            from . import sounds
+            if opts.sounds_command == "add":
+                games = [g.strip() for g in opts.games.split(",") if g.strip()]
+                print(json.dumps(sounds.add(opts.audio, title=opts.title, artist=opts.artist, url=opts.url,
+                                            games=games, path=opts.list)))
+            else:
+                print(json.dumps(sounds.load(opts.list), indent=2))
         elif opts.command == "evaluate":
             from .evaluate import evaluate
             print(json.dumps(evaluate(opts.clips, opts.out, profile=opts.profile, slow_motion=opts.slow_motion,
@@ -217,7 +238,8 @@ def main() -> int:
             print(json.dumps(auto_edit(opts.file, opts.output, profile=opts.profile, trigger_offset=opts.trigger_offset,
                                        length=opts.length, width=width, height=height, fps=opts.fps,
                                        layout=opts.layout, slow_motion=opts.slow_motion, encoder=opts.encoder,
-                                       music=opts.music, music_preview=opts.music_preview)))
+                                       music=opts.music if opts.music in (None, "auto") else Path(opts.music),
+                                       music_preview=opts.music_preview, sounds_list=opts.sounds)))
         else:
             render(opts.manifest, opts.output)
         return 0

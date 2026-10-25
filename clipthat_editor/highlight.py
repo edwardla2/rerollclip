@@ -269,10 +269,12 @@ def build_filtergraph(segments: list[Segment], *, src_w: int, src_h: int, width:
 def auto_edit(source: Path, output: Path, *, profile: str = "generic", trigger_offset: float | None = None,
               length: float | None = None, width: int = 1080, height: int = 1920, fps: int | None = None,
               layout: str | None = None, slow_motion: str = "auto", encoder: str = "auto",
-              music: Path | None = None, music_preview: Path | None = None) -> dict[str, Any]:
+              music: Path | str | None = None, music_preview: Path | None = None,
+              sounds_list: Path | None = None) -> dict[str, Any]:
     """Edits one clip end to end. Returns the decisions and timings; writes `output`.
 
     With `music`, the edit is paced to that sound (see sync.py) and exported without it;
+    `music="auto"` lets the engine pick the best-fitting sound from Reroll's sound list.
     `music_preview` additionally writes a private copy with the sound mixed in, for checking
     the timing only (not for posting)."""
     source, output = Path(source).resolve(), Path(output).resolve()
@@ -288,14 +290,30 @@ def auto_edit(source: Path, output: Path, *, profile: str = "generic", trigger_o
     if trigger_offset is not None:
         trigger_offset = min(max(0.0, trigger_offset), scored["duration"])
     if music is not None:
-        from .beats import analyze_beats
         from .events import find_events
         from .sync import plan_to_music
-        rhythm = analyze_beats(Path(music))
         events = find_events(source, profile)
         kills = events["times"] or [suggest_window(scored["score"], scored["duration"], 8.0)["peak"]]
-        plan = plan_to_music(kills, scored["duration"], rhythm)
-        plan.update(events=events, music={k: rhythm[k] for k in ("file", "bpm", "drop", "duration")})
+        if str(music) == "auto":
+            # The engine chooses: test-fit every sound on Reroll's list against these kills.
+            from .sounds import pick
+            choice = pick(kills, scored["duration"], game=profile, path=sounds_list)
+            if not choice:
+                raise EditorError("No sounds on the list to choose from; add some with 'sounds add'")
+            plan = choice["plan"]
+            sound = choice["sound"]
+            plan.update(music={"file": sound["title"], "bpm": sound["bpm"], "drop": sound["drop"],
+                               "duration": sound["duration"]},
+                        sound={"title": sound["title"], "artist": sound["artist"], "tiktok_url": sound["tiktok_url"],
+                               "start_at": plan["sound_start"], "score": choice["score"]},
+                        alternatives=choice["alternatives"])
+            music_preview = None  # nothing to mix: the list holds beat maps, not audio
+        else:
+            from .beats import analyze_beats
+            rhythm = analyze_beats(Path(music))
+            plan = plan_to_music(kills, scored["duration"], rhythm)
+            plan.update(music={k: rhythm[k] for k in ("file", "bpm", "drop", "duration")})
+        plan.update(events=events)
         first, last = plan["segments"][0]["start"], plan["segments"][-1]["end"]
         plan["window"] = {"start": first, "end": last}
         plan.setdefault("cuts", [])
