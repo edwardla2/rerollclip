@@ -1071,7 +1071,40 @@
       "duration": 29.91,
       "mapped": true,
       "mapped_on": "2026-10-24",
-      "tiktok_url": ""
+      "tiktok_url": "",
+      "accents": [
+        {
+          "hits": [
+            12.527,
+            12.992,
+            13.235,
+            13.468,
+            13.711,
+            13.944,
+            14.42,
+            14.896,
+            15.139,
+            15.36,
+            15.836,
+            16.312
+          ],
+          "strength": [
+            0.48,
+            0.74,
+            0.51,
+            0.87,
+            0.67,
+            0.91,
+            0.43,
+            0.43,
+            0.48,
+            0.57,
+            0.78,
+            0.5
+          ],
+          "score": 24.89
+        }
+      ]
     },
     {
       "id": "unknown-sound-2-(name-to-confirm)",
@@ -1087,7 +1120,8 @@
       "duration": 60.0,
       "mapped": true,
       "mapped_on": "2026-10-24",
-      "tiktok_url": ""
+      "tiktok_url": "",
+      "accents": []
     },
     {
       "id": "unknown-sound-3-(name-to-confirm)",
@@ -1103,7 +1137,8 @@
       "duration": 14.0,
       "mapped": true,
       "mapped_on": "2026-10-24",
-      "tiktok_url": ""
+      "tiktok_url": "",
+      "accents": []
     },
     {
       "id": "unknown-sound-4-(name-to-confirm)",
@@ -1119,7 +1154,8 @@
       "duration": 60.0,
       "mapped": true,
       "mapped_on": "2026-10-24",
-      "tiktok_url": ""
+      "tiktok_url": "",
+      "accents": []
     }
   ]
 }

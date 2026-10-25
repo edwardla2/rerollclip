@@ -95,7 +95,8 @@ class RhythmAndRenderTests(unittest.TestCase):
         make_clip(clip, 16, [3.0, 7.0, 11.0])
         make_track(track)
         out, preview = self.dir / "edit.mp4", self.dir / "preview.mp4"
-        result = auto_edit(clip, out, profile="generic", width=720, height=1280, music=track, music_preview=preview)
+        result = auto_edit(clip, out, profile="generic", width=720, height=1280, music=track, music_preview=preview,
+                           sync="beats")
         self.assertEqual(result["events"]["source"], "audio-hits")
         self.assertAlmostEqual(result["kills_at_output"][-1], result["drop_at_output"], delta=0.01)
         for path in (out, preview):
@@ -106,3 +107,61 @@ class RhythmAndRenderTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HitSyncTests(unittest.TestCase):
+    def music(self, hits, strength=None):
+        m = grid(127, 30, 14.4)
+        m["accents"] = [{"hits": hits, "strength": strength or [0.8] * len(hits), "score": 10.0}]
+        return m
+
+    def test_each_kill_lands_on_a_hit(self):
+        from clipthat_editor.sync import plan_to_hits
+        hits = [12.53, 12.99, 13.24, 13.47, 13.71, 13.94]
+        strength = [0.48, 0.74, 0.51, 0.87, 0.67, 0.91]
+        kills = [2.13, 5.67, 7.6, 10.87]
+        plan = plan_to_hits(kills, 16.6, self.music(hits, strength))
+        self.assertEqual(plan["mode"], "hits")
+        self.assertEqual(plan["hits"], [13.24, 13.47, 13.71, 13.94])  # strongest 4 in a row
+        # Walk the segments: every kill must reach the output exactly at its hit.
+        for kill, hit in zip(plan["kills"], plan["hits"]):
+            t = 0.0
+            for s in plan["segments"]:
+                if s["start"] <= kill <= s["end"]:
+                    t += (kill - s["start"]) / s["speed"]
+                    break
+                t += (s["end"] - s["start"]) / s["speed"]
+            self.assertAlmostEqual(t, hit - plan["sound_start"], delta=0.02)
+
+    def test_no_run_long_enough_falls_back_to_beats(self):
+        from clipthat_editor.sync import plan_for
+        plan = plan_for([2.0, 5.0, 8.0, 11.0], 16, self.music([13.0, 13.5]))
+        self.assertEqual(plan["mode"], "beats")
+
+    def test_kills_closer_than_the_hits_slow_down_to_fit(self):
+        from clipthat_editor.sync import plan_to_hits
+        plan = plan_to_hits([5.0, 5.2, 9.0], 12, self.music([10.0, 10.6, 11.2]))
+        self.assertTrue(any(s["speed"] < 1 for s in plan["segments"][:3]), plan["segments"])
+
+
+@unittest.skipUnless(shutil.which("ffmpeg"), "FFmpeg required")
+class AccentTests(unittest.TestCase):
+    def test_finds_the_standout_run(self):
+        """A steady beat with a burst of six much louder hits: the burst is the run."""
+        from clipthat_editor.beats import accent_runs
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "duns.m4a"
+            p = 0.47
+            # Busy beat (kick + hats) with a break at 10-11.5 s: the music drops out and six
+            # staccato hits play, like the "dun dun dun" before a drop in edit sounds.
+            burst = "+".join(f"between(t,{10 + i * 0.235},{10 + i * 0.235 + 0.15})*(0.6*(random(0)*2-1)+0.8*sin(2*PI*55*t))*exp(-(t-{10 + i * 0.235})*22)"
+                             for i in range(6))
+            beat = (f"0.5*sin(2*PI*(50+120*exp(-mod(t,{p})*30))*mod(t,{p}))*exp(-mod(t,{p})*14)"
+                    f"+0.12*(random(0)*2-1)*exp(-mod(t+{p}/2,{p})*60)+0.08*(random(0)*2-1)*exp(-mod(t,{p}/4)*90)")
+            expr = f"if(between(t,9.95,11.45),0,1)*({beat})+{burst}"
+            subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-f", "lavfi", "-i",
+                            f"aevalsrc='{expr}':s=44100:d=16", "-c:a", "aac", str(path)], check=True)
+            runs = accent_runs(path)
+            self.assertTrue(runs)
+            hits = runs[0]["hits"]
+            self.assertGreaterEqual(len([h for h in hits if 9.95 <= h <= 11.5]), 5, hits)

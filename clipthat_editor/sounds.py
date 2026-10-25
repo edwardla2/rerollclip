@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from .beats import analyze_beats
-from .sync import IDEAL_SPEED, plan_to_music
+from .sync import IDEAL_SPEED, plan_for
 
 DEFAULT_LIST = Path(__file__).with_name("sounds.json")
 
@@ -43,7 +43,7 @@ def rhythm(entry: dict[str, Any]) -> dict[str, Any]:
         beats.append(round(t, 3))
         t += period
     return {"bpm": entry["bpm"], "beats": beats, "drop": entry["drop"], "file": entry["title"],
-            "duration": entry["duration"]}
+            "duration": entry["duration"], "accents": entry.get("accents", [])}
 
 
 def find(query: str, path: Path | None = None) -> list[dict[str, Any]]:
@@ -66,7 +66,8 @@ def add(audio: Path, *, title: str = "", artist: str = "", url: str = "", games:
         "title": title, "artist": artist, "games": [], "added": date.today().isoformat(),
     })
     entry.update(bpm=r["bpm"], first_beat=r["beats"][0] if r["beats"] else 0.0, drop=r["drop"],
-                 duration=r["duration"], mapped=True, mapped_on=date.today().isoformat())
+                 duration=r["duration"], accents=r.get("accents", [])[:3], mapped=True,
+                 mapped_on=date.today().isoformat())
     if url:
         entry["tiktok_url"] = url
     entry.setdefault("tiktok_url", "")
@@ -85,23 +86,29 @@ def score_plan(plan: dict[str, Any]) -> float:
     speed_cost = sum(abs(s - IDEAL_SPEED) for s in ramps) / len(ramps) if ramps else 0.0
     lead = plan["kills_at_output"][0]
     lead_cost = max(0.0, 0.8 - lead)
+    # Starting the sound partway in means a fiddly drag in TikTok; mildly prefer 0:00.
+    start_cost = 0.25 if plan.get("sound_start", 0) > 0.05 else 0.0
     length = plan["output_seconds"]
     length_cost = max(0.0, 7 - length) / 7 + max(0.0, length - 20) / 20
-    return round(3.0 * on_beat - 0.8 * speed_cost - 1.2 * lead_cost - 1.5 * length_cost, 4)
+    return round(3.0 * on_beat - 0.8 * speed_cost - 1.2 * lead_cost - 1.5 * length_cost - start_cost, 4)
 
 
 def pick(kills: list[float], duration: float, *, game: str = "", path: Path | None = None,
-         sounds: list[dict[str, Any]] | None = None) -> dict[str, Any] | None:
+         sounds: list[dict[str, Any]] | None = None, sync: str = "auto") -> dict[str, Any] | None:
     sounds = sounds if sounds is not None else load(path)
     ranked = []
     for entry in sounds:
         if not entry.get("mapped", "bpm" in entry):
             continue  # on the list, but its beat map hasn't been made yet
         try:
-            plan = plan_to_music(kills, duration, rhythm(entry))
+            plan = plan_for(kills, duration, rhythm(entry), sync)
         except ValueError:
             continue
+        if plan is None:
+            continue
         score = score_plan(plan) + (0.3 if game and game in entry.get("games", []) else 0.0)
+        if plan.get("mode") == "hits":
+            score += 0.8   # kills on the song's standout hits beat kills on plain beats
         ranked.append((score, entry, plan))
     if not ranked:
         return None

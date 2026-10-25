@@ -371,6 +371,41 @@ def _rhythm_np(path: Path) -> tuple[float, float]:
     return period, offset
 
 
+def accent_runs(path: Path, min_hits: int = 3) -> list[dict[str, Any]]:
+    """The song's standout hits ("dun dun dun"): onsets clearly stronger than its usual hits,
+    in tight runs (no gap over 0.6 s). Each run lists its hit times and strengths, strongest
+    run first. Edits put one kill on each hit of a run."""
+    import numpy as np
+    y = _decode_np(path)
+    full = _onset_envelope_np(y)
+    bass = _onset_envelope_np(y, top_hz=160.0)
+    comb = 0.5 * full + 0.5 * bass
+    t = np.arange(len(comb)) * HOP_NP / SR + LATENCY
+    peaks = [i for i in range(2, len(comb) - 2) if comb[i] == comb[i - 2:i + 3].max() and comb[i] > 0.15]
+    if not peaks:
+        return []
+    typical = float(np.median([comb[i] for i in peaks]))
+    strong = [i for i in peaks if comb[i] >= max(0.42, 1.35 * typical)]
+    runs, current = [], []
+    for i in strong:
+        if current and t[i] - t[current[-1]] > 0.6:
+            runs.append(current)
+            current = []
+        current.append(i)
+    if current:
+        runs.append(current)
+    out = []
+    for run in runs:
+        # A burst, not a section: a steady loud stretch (e.g. everything after a drop) isn't
+        # a "dun dun dun".
+        if len(run) < min_hits or t[run[-1]] - t[run[0]] > 4.0:
+            continue
+        values = [float(comb[i]) for i in run]
+        out.append({"hits": [round(float(t[i]), 3) for i in run], "strength": [round(v, 2) for v in values],
+                    "score": round(sum(values) / typical, 2)})
+    return sorted(out, key=lambda r: r["score"], reverse=True)
+
+
 def phase_profile(path: Path, period: float, first: float, bins: int = 16) -> list[float]:
     """How onset energy falls across one beat when folded onto the grid: a correct grid
     piles it up in bin 0 (and often bin bins/2). For checking a beat map."""
@@ -417,6 +452,10 @@ def analyze_beats(path: Path) -> dict[str, Any]:
         jump = math.log10((after + 1e-4) / (before + 1e-4))
         if jump > best:
             best, drop = jump, b
+    try:
+        accents = accent_runs(path)
+    except ImportError:
+        accents = []
     return {"ok": True, "file": path.name, "duration": round(duration, 3), "bpm": round(bpm, 1),
             "beat_seconds": round(period, 4), "beats": beats, "drop": drop,
-            "drop_strength": round(best, 3) if best > -math.inf else 0.0}
+            "drop_strength": round(best, 3) if best > -math.inf else 0.0, "accents": accents}

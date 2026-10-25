@@ -20,7 +20,6 @@ from typing import Any
 
 FPS = 10
 BOX = 40
-BANNER_LAG = 0.15          # the banner appears this long after the shot that caused it
 
 
 def _ffmpeg() -> str:
@@ -49,7 +48,51 @@ def _region_contrast(path: Path, crop: str) -> list[float]:
     return out
 
 
+SHOT_LOOKBACK = 0.9        # the shot comes before the banner (and any post-kill animation)
+SHOT_FPS = 30
+
+
+def _frame_change(path: Path) -> list[float]:
+    """Mean absolute change between consecutive small greyscale frames, SHOT_FPS a second."""
+    w, h = 64, 36
+    proc = subprocess.run([_ffmpeg(), "-v", "error", "-i", str(path), "-map", "0:v:0",
+                           "-vf", f"fps={SHOT_FPS},scale={w}:{h},format=gray", "-f", "rawvideo", "-"],
+                          capture_output=True)
+    raw, size = proc.stdout, w * h
+    frames = len(raw) // size
+    out = [0.0]
+    for f in range(1, frames):
+        a, b = raw[(f - 1) * size:f * size], raw[f * size:(f + 1) * size]
+        out.append(sum(abs(x - y) for x, y in zip(a, b)) / size)
+    return out
+
+
+def _shot_before(change: list[float], banner: float) -> float | None:
+    """The sharpest whole-screen change (muzzle flash, recoil, unscope) shortly before a banner."""
+    lo, hi = max(1, int((banner - SHOT_LOOKBACK) * SHOT_FPS)), int(banner * SHOT_FPS)
+    window = change[lo:hi]
+    if not window:
+        return None
+    j = max(range(len(window)), key=lambda i: window[i])
+    typical = sorted(window)[len(window) // 2]
+    return (lo + j) / SHOT_FPS if window[j] >= max(8.0, 2.5 * typical) else None
+
+
 def valorant_kills(path: Path) -> list[float]:
+    banners = _banner_onsets(path)
+    if not banners:
+        return []
+    # Banners (and post-kill ability animations near them) trail the shot; for tight cuts
+    # the kill needs to be the shot itself.
+    change = _frame_change(path)
+    kills = []
+    for banner in banners:
+        shot = _shot_before(change, banner)
+        kills.append(round(shot if shot is not None else max(0.0, banner - 0.45), 2))
+    return kills
+
+
+def _banner_onsets(path: Path) -> list[float]:
     signal = _region_contrast(path, "iw*0.10:ih*0.14:iw*0.45:ih*0.71")
     if not signal:
         return []
@@ -65,7 +108,7 @@ def valorant_kills(path: Path) -> list[float]:
         else:
             quiet = 0
         if armed and v >= high:
-            kills.append(round(max(0.0, i / FPS - BANNER_LAG), 2))
+            kills.append(round(i / FPS, 2))
             armed = False
     return kills
 

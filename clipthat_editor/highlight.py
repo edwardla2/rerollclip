@@ -270,7 +270,7 @@ def auto_edit(source: Path, output: Path, *, profile: str = "generic", trigger_o
               length: float | None = None, width: int = 1080, height: int = 1920, fps: int | None = None,
               layout: str | None = None, slow_motion: str = "auto", encoder: str = "auto",
               music: Path | str | None = None, music_preview: Path | None = None,
-              sounds_list: Path | None = None) -> dict[str, Any]:
+              sounds_list: Path | None = None, sync: str = "auto") -> dict[str, Any]:
     """Edits one clip end to end. Returns the decisions and timings; writes `output`.
 
     With `music`, the edit is paced to that sound (see sync.py) and exported without it;
@@ -297,7 +297,7 @@ def auto_edit(source: Path, output: Path, *, profile: str = "generic", trigger_o
         if str(music) == "auto":
             # The engine chooses: test-fit every sound on Reroll's list against these kills.
             from .sounds import pick
-            choice = pick(kills, scored["duration"], game=profile, path=sounds_list)
+            choice = pick(kills, scored["duration"], game=profile, path=sounds_list, sync=sync)
             if not choice:
                 from .sounds import load
                 listed = load(sounds_list)
@@ -314,8 +314,11 @@ def auto_edit(source: Path, output: Path, *, profile: str = "generic", trigger_o
             music_preview = None  # nothing to mix: the list holds beat maps, not audio
         else:
             from .beats import analyze_beats
+            from .sync import plan_for
             rhythm = analyze_beats(Path(music))
-            plan = plan_to_music(kills, scored["duration"], rhythm)
+            plan = plan_for(kills, scored["duration"], rhythm, sync)
+            if plan is None:
+                raise EditorError("This sound has no run of standout hits long enough for the kills; try sync=beats")
             plan.update(music={k: rhythm[k] for k in ("file", "bpm", "drop", "duration")})
         plan.update(events=events)
         first, last = plan["segments"][0]["start"], plan["segments"][-1]["end"]
