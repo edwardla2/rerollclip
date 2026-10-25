@@ -204,6 +204,8 @@ def main() -> int:
     eval_parser.add_argument("--slow-motion", choices=["auto", "on", "off"], default="auto")
     eval_parser.add_argument("--size", choices=["720", "1080"], default="1080")
     eval_parser.add_argument("--encoder", default="auto")
+    study_parser = sub.add_parser("study", help="Measure reference edits: cuts, shot lengths, beat alignment, flashes, dips")
+    study_parser.add_argument("files", type=Path, nargs="+")
     sounds_parser = sub.add_parser("sounds", help="Manage the sound list the engine picks from")
     sounds_sub = sounds_parser.add_subparsers(dest="sounds_command", required=True)
     add_parser = sounds_sub.add_parser("add", help="Read a sound's rhythm and add it to the list (audio isn't kept)")
@@ -245,6 +247,9 @@ def main() -> int:
                 print(json.dumps({"songs": len(listed), "ready": len(mapped),
                                   "ready_titles": [f"{s['title']} - {s['artist']}" for s in mapped]},
                                  indent=2, ensure_ascii=False))
+        elif opts.command == "study":
+            from .study import study
+            print(json.dumps([study(f) for f in opts.files], indent=2))
         elif opts.command == "evaluate":
             from .evaluate import evaluate
             print(json.dumps(evaluate(opts.clips, opts.out, profile=opts.profile, slow_motion=opts.slow_motion,

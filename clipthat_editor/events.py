@@ -104,8 +104,9 @@ def _feed_kills(path: Path) -> list[float]:
     return feed_steps(_feed_teal(path))
 
 
-def feed_steps(teal: list[int]) -> list[float]:
-    """Kill times from a teal-pixel series (see _feed_kills)."""
+def feed_steps(teal: list[int], merge: float = 0.6) -> list[float]:
+    """Kill times from a teal-pixel series (see _feed_kills). Rows closer than `merge` seconds
+    count once (a collateral is one shot); merge=0 counts every row (every kill)."""
     n = len(teal)
     if not n or max(teal) == 0:
         return []
@@ -121,7 +122,7 @@ def feed_steps(teal: list[int]) -> list[float]:
             stays = all(v >= level + 0.6 * step for v in teal[i:i + hold])
             if stays and i + hold <= n:
                 t = round(max(0.0, i / FEED_FPS - FEED_LAG), 2)
-                if not kills or t - kills[-1] > 0.6:   # rows arriving together: one shot (a collateral)
+                if not kills or t - kills[-1] > merge:   # rows arriving together: one shot (a collateral)
                     kills.append(t)
                 i += hold
                 continue
@@ -129,10 +130,38 @@ def feed_steps(teal: list[int]) -> list[float]:
     return kills
 
 
+def feed_rows(teal: list[int]) -> int:
+    """How many kill rows arrived: each step up counts as its size over a single row's
+    (the smallest step), so two rows landing together (a collateral) count as two."""
+    hold = int(0.4 * FEED_FPS)
+    rises = []
+    for t in feed_steps(teal):
+        i = int(round((t + FEED_LAG) * FEED_FPS))
+        before = sorted(teal[max(0, i - hold):i]) or [0]
+        after = sorted(teal[i + hold:i + 2 * hold]) or sorted(teal[i:i + hold])
+        rises.append(after[len(after) // 2] - before[len(before) // 2])
+    rises = [r for r in rises if r > 0]
+    if not rises:
+        return 0
+    unit = min(rises)
+    return sum(max(1, round(r / unit)) for r in rises)
+
+
 def valorant_kills(path: Path) -> list[float]:
-    feed = _feed_kills(path)
+    return valorant_events(path)["times"]
+
+
+def valorant_events(path: Path) -> dict[str, Any]:
+    """Kill moments plus the number of kills (a collateral is one moment but two kills)."""
+    teal = _feed_teal(path)
+    feed = feed_steps(teal)
     if feed:
-        return feed
+        return {"times": feed, "count": max(len(feed), feed_rows(teal))}
+    times = _banner_kills(path)
+    return {"times": times, "count": len(times)}
+
+
+def _banner_kills(path: Path) -> list[float]:
     # No teal kill-feed rows (other HUD colours, feed hidden): fall back to the kill banner.
     banners = _banner_onsets(path)
     if not banners:
@@ -195,13 +224,13 @@ def audio_hits(path: Path, limit: int = 8) -> list[float]:
     return sorted(round(t, 2) for t in picked)
 
 
-DETECTORS = {"valorant": valorant_kills}
+DETECTORS = {"valorant": valorant_events}
 
 
 def find_events(path: Path, profile: str) -> dict[str, Any]:
     detector = DETECTORS.get(profile)
     if detector:
         found = detector(Path(path))
-        if found:
-            return {"source": f"{profile}-kills", "times": found}
-    return {"source": "audio-hits", "times": audio_hits(Path(path))}
+        if found["times"]:
+            return {"source": f"{profile}-kills", **found}
+    return {"source": "audio-hits", "times": audio_hits(Path(path)), "count": None}

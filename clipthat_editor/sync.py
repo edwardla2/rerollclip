@@ -121,7 +121,7 @@ def plan_to_music(kills: list[float], duration: float, music: dict[str, Any]) ->
 HIT_PRE_SHARE = 0.6     # of the time between two hits, this share shows the run-up to the next kill
 HIT_MIN_PRE = 0.12      # never cut in later than this before a kill...
 HIT_MIN_POST = 0.08     # ...or out sooner than this after one
-HIT_LEAD_MAX = 3.0      # longest lead-in of real footage before the first kill
+HIT_LEAD_MAX = 4.0      # longest lead-in of real footage before the first kill
 HIT_HOLD = 4.0          # after the last kill: play on (slowing for the punch-in) about this long, riding the drop
 
 
@@ -203,8 +203,13 @@ def plan_to_drop(kills: list[float], duration: float, music: dict[str, Any]) -> 
     beat (or hit) cuts into the next kill; the last kill plays out. None if the sound ends first."""
     final = kills[-1]
     kills = [k for k in kills if final - k <= CLUSTER]
-    targets = drop_targets(len(kills), music)
-    if targets[-1] > music.get("duration", float("inf")) - 0.3:
+    end = music.get("duration", float("inf")) - 0.3
+    # About a second per kill reads best (velocity edits cut on every other beat); tighter
+    # only if the sound runs out first.
+    targets = drop_targets(len(kills), music, V_GAP)
+    if targets[-1] > end:
+        targets = drop_targets(len(kills), music)
+    if targets[-1] > end:
         return None   # the sound ends before the last kill's beat
     return velocity_on_beats(kills, duration, targets, music)
 
@@ -214,10 +219,12 @@ V_APPROACH = 0.12       # output seconds of fast approach before each shot
 V_FAST = 2.5            # approach speed
 V_IMPACT = 0.22         # output seconds of slow motion starting on the shot
 V_SLOW = 0.4            # slow-motion speed on the shot
-V_OUT = 1.6             # speed of the rest of the beat, ramping out to the next kill
+V_OUT = 1.6             # usual speed of the rest of the beat, ramping out to the next kill...
+V_OUT_RANGE = (0.25, 2.2)  # ...stretched within this range so it flows into the next kill's approach
+V_GAP = 0.9             # aim for at least this long per kill
 TEASER = 0.6            # output seconds of the final shot, slowed, as a hook before the build-up
 TEASER_SPEED = 0.5
-OUTRO_FADE = 0.35       # the edit fades to black at the very end
+OUTRO_FADE = 0.0        # hard cut at the end: the edit loops straight back into the hook
 ENDING = 2.6            # output seconds after the final shot (aftermath, e.g. the ACE)
 
 
@@ -235,6 +242,7 @@ def velocity_on_beats(kills: list[float], duration: float, targets: list[float],
         if b - a >= 0.01:
             segments.append(Segment(round(a, 4), round(b, 4), speed, zoom, fade_out, impact))
     approach_src = V_APPROACH * V_FAST
+    period = 60.0 / music["bpm"]
     # Lead-in (build-up) ends where the first kill's approach begins.
     lead_end = max(0.0, kills[0] - approach_src)
     lead = min(lead_end, HIT_LEAD_MAX)
@@ -259,7 +267,22 @@ def velocity_on_beats(kills: list[float], duration: float, targets: list[float],
             impact = min(V_IMPACT, max(0.05, beat - V_APPROACH - 0.05))
             rest = beat - V_APPROACH - impact
             add(k, k + impact * V_SLOW, V_SLOW, impact=True)       # the shot, on the beat
-            add(k + impact * V_SLOW, k + impact * V_SLOW + rest * V_OUT, V_OUT)
+            after = k + impact * V_SLOW
+            approach_at = kills[i + 1] - approach_src
+            # Two beats or more to the next kill: cut on the beat in between too (references cut
+            # on every beat), into the next kill's run-up at normal speed, so the enemy is seen
+            # before the shot.
+            runup = period - V_APPROACH if beat >= 2 * period - 0.06 and period > V_APPROACH else 0.0
+            ramp = rest - runup
+            runup_start = max(after + ramp * V_OUT_RANGE[0], approach_at - runup)
+            # Ramp out at the speed that reaches the run-up (no repeated footage), within a
+            # watchable range; past that range the beat cut skips ahead.
+            out = min(max((runup_start - after) / ramp, V_OUT_RANGE[0]), V_OUT_RANGE[1]) if ramp > 0 else V_OUT
+            add(after, after + ramp * out, round(out, 3))
+            if runup:
+                # Normally 1x; if the kills are close, slower so no footage repeats.
+                start = max(approach_at - runup, after + ramp * out)
+                add(start, approach_at, round(max(0.3, (approach_at - start) / runup), 3))
         else:
             # Final shot: longer slow motion, then the aftermath held slow, fading out.
             add(k, k + 0.35 * V_SLOW, V_SLOW, impact=True)
@@ -270,9 +293,6 @@ def velocity_on_beats(kills: list[float], duration: float, targets: list[float],
             remaining_out = max(0.0, ENDING - 0.35 - normal)
             slow_src = min(max(0.0, duration - t), remaining_out * FINAL_SPEED)
             add(t, t + slow_src, FINAL_SPEED, zoom=FINAL_ZOOM, fade_out=OUTRO_FADE)
-    if segments and segments[-1].fade_out == 0:
-        last = segments[-1]
-        segments[-1] = Segment(last.start, last.end, last.speed, last.zoom, OUTRO_FADE, last.impact)
     total = sum(s.output_length for s in segments)
     return {
         "mode": "drop",

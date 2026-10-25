@@ -293,8 +293,29 @@ def _dip(s: Segment) -> str:
     return f",fade=t=out:st={max(0.0, out_len - s.fade_out):.4f}:d={s.fade_out:.4f}:color=black"
 
 
+CAPTION_FONT = Path(__file__).parent / "assets" / "SpaceGrotesk-Bold.ttf"
+
+
+def caption_text(count: int | None) -> str | None:
+    """The hook caption for a multi-kill clip: "ACE" for five, "4K" and so on."""
+    if not count or count < 2:
+        return None
+    return "ACE" if count >= 5 else f"{count}K"
+
+
+def _caption(text: str, start: float, end: float, width: int, height: int) -> str:
+    """Big white text with a black outline in the top third (read with the sound off), popping in."""
+    font = str(CAPTION_FONT).replace("\\", "/").replace(":", "\\:")
+    size = int(height * 0.08)
+    grow = f"{size}*min(1\\,0.7+3*(t-{start:.3f}))"
+    return (f",drawtext=fontfile='{font}':text='{text}':fontcolor=white:fontsize='{grow}'"
+            f":borderw={max(3, size // 12)}:bordercolor=black:x=(w-text_w)/2:y={int(height * 0.06)}-text_h/2"
+            f":enable='between(t\\,{start:.3f}\\,{end:.3f})'")
+
+
 def build_filtergraph(segments: list[Segment], *, src_w: int, src_h: int, width: int, height: int,
-                      fps: int, layout: str, audio_input: str) -> str:
+                      fps: int, layout: str, audio_input: str,
+                      caption: tuple[str, float, float] | None = None) -> str:
     """One filtergraph: trim each segment, retime it, frame it 9:16, concatenate, normalise loudness."""
     n = len(segments)
     parts = [f"[0:v]split={n}" + "".join(f"[vs{i}]" for i in range(n)),
@@ -313,7 +334,7 @@ def build_filtergraph(segments: list[Segment], *, src_w: int, src_h: int, width:
             # out and set above it; a blurred copy fills the rest. Graded, with impact on kills.
             zoom = (f",crop=trunc(iw/{s.zoom:.4f}/2)*2:trunc(ih/{s.zoom:.4f}/2)*2" if s.zoom != 1 else "")
             main = width                              # square side
-            main_y = (height - main) // 2 + height // 48
+            main_y = (height - main) // 2 + height // 14   # low enough to leave the top band for the caption
             fw, fh, fx, fy = FEED_BOX
             feed_w = int(width * 0.6) // 2 * 2
             parts.append(
@@ -346,7 +367,8 @@ def build_filtergraph(segments: list[Segment], *, src_w: int, src_h: int, width:
         fade = f",afade=t=in:d={CUT_FADE},afade=t=out:st={max(0.0, out_len - tail):.4f}:d={tail:.4f}" if out_len > 4 * CUT_FADE else ""
         parts.append(f"[as{i}]atrim={s.start}:{s.end},asetpts=PTS-STARTPTS,aresample=48000{atime}{fade}[a{i}]")
     parts.append("".join(f"[v{i}][a{i}]" for i in range(n)) + f"concat=n={n}:v=1:a=1[vc][ac]")
-    parts.append("[vc]format=yuv420p[v]")
+    hook = _caption(*caption, width, height) if caption else ""
+    parts.append(f"[vc]format=yuv420p{hook}[v]")
     # One steady level for the whole edit is set after the render (see _set_loudness): a
     # dynamic normaliser here would pump the volume at every cut.
     parts.append("[ac]aresample=48000[a]")
@@ -434,8 +456,15 @@ def auto_edit(source: Path, output: Path, *, profile: str = "generic", trigger_o
     if not info["has_audio"]:
         args += ["-f", "lavfi", "-i", f"anullsrc=r=48000:cl=stereo:d={span:.3f}"]
         audio_input = "1:a:0"
+    caption = None
+    text = caption_text((plan.get("events") or {}).get("count")) if music is not None else None
+    if text:
+        # On screen from the first frame until the drop, when the kills take over.
+        until = plan.get("drop_at_output") or 2.5
+        caption = (text, 0.0, max(1.0, until - 0.05))
+        plan["caption"] = {"text": text, "until": round(caption[2], 3)}
     graph = build_filtergraph(segments, src_w=info["width"], src_h=info["height"], width=width,
-                              height=height, fps=out_fps, layout=layout, audio_input=audio_input)
+                              height=height, fps=out_fps, layout=layout, audio_input=audio_input, caption=caption)
     output.parent.mkdir(parents=True, exist_ok=True)
     partial = output.with_name(output.stem + ".partial" + output.suffix)
     tail = ["-filter_complex", graph, "-map", "[v]", "-map", "[a]", "-r", str(out_fps), "-pix_fmt", "yuv420p",

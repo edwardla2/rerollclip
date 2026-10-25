@@ -1,7 +1,7 @@
 """Valorant kill detection from the kill feed's teal rows."""
 import unittest
 
-from clipthat_editor.events import FEED_FPS, FEED_LAG, feed_steps
+from clipthat_editor.events import FEED_FPS, FEED_LAG, feed_rows, feed_steps
 
 
 def series(levels):
@@ -34,3 +34,12 @@ class FeedTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class KillCountTests(unittest.TestCase):
+    def test_collateral_is_one_moment_but_two_kills(self):
+        hold = int(0.4 * FEED_FPS)
+        # One row, then later two rows 0.15 s apart (a collateral): two moments, three kills.
+        teal = [0] * 20 + [150] * 40 + [300] * 3 + [450] * 40
+        self.assertEqual(len(feed_steps(teal)), 2)
+        self.assertEqual(feed_rows(teal), 3)

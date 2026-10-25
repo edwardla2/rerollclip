@@ -195,7 +195,7 @@ class DropSyncTests(unittest.TestCase):
             self.assertLessEqual(segs[0]["start"], kills[-1])
         self.assertGreater(body[0]["fade_out"], 0)                      # build-up dips to black
         self.assertEqual(sum(1 for x in body if x["impact"]), len(kills))
-        self.assertGreater(segs[-1]["fade_out"], 0)                     # fades out at the end
+        self.assertEqual(segs[-1]["fade_out"], 0)                       # hard cut at the end, so it loops
         # Walk the edit: every shot lands exactly on its beat, the first on the drop.
         for kill, target in zip(kills, plan["hits"]):
             t = segs[0]["end"] - segs[0]["start"] if plan["teaser"] else 0.0
@@ -215,3 +215,35 @@ class DropSyncTests(unittest.TestCase):
         targets = drop_targets(3, m)
         self.assertEqual(targets[0], 14.42)
         self.assertTrue(all(b - a >= 0.45 for a, b in zip(targets, targets[1:])), targets)
+
+
+class VelocityPacingTests(unittest.TestCase):
+    """Calibrated against a reference edit (see 'study'): about a second per kill, and a cut on
+    every beat in between, into the next kill's run-up."""
+    def music(self):
+        m = grid(114, 30, 6.0)
+        m["drop"], m["hits"] = 6.0, []
+        return m
+
+    def test_about_a_second_per_kill(self):
+        from clipthat_editor.sync import plan_to_drop
+        plan = plan_to_drop([2.1, 5.6, 7.7, 10.7], 16.6, self.music())
+        gaps = [b - a for a, b in zip(plan["hits"], plan["hits"][1:])]
+        self.assertTrue(all(0.9 <= g <= 1.2 for g in gaps), gaps)
+
+    def test_cut_on_the_beat_between_kills_and_no_repeated_footage(self):
+        from clipthat_editor.sync import plan_to_drop
+        kills = [2.1, 5.6, 7.7, 10.7]
+        plan = plan_to_drop(kills, 16.6, self.music())
+        body = plan["segments"][1:]                # after the hook
+        runups = [x for x in body if x["speed"] == 1.0 and not x["impact"] and x["fade_out"] == 0]
+        self.assertGreaterEqual(len(runups), 3, body)
+        for a, b in zip(body, body[1:]):
+            self.assertGreaterEqual(b["start"], a["end"] - 1e-6, (a, b))
+
+    def test_close_kills_slow_the_runup_instead_of_repeating(self):
+        from clipthat_editor.sync import plan_to_drop
+        plan = plan_to_drop([3.0, 3.6, 4.2], 10, self.music())
+        body = plan["segments"][1:]
+        for a, b in zip(body, body[1:]):
+            self.assertGreaterEqual(b["start"], a["end"] - 1e-6, (a, b))
