@@ -43,3 +43,16 @@ class KillCountTests(unittest.TestCase):
         teal = [0] * 20 + [150] * 40 + [300] * 3 + [450] * 40
         self.assertEqual(len(feed_steps(teal)), 2)
         self.assertEqual(feed_rows(teal), 3)
+
+
+class OwnKillTests(unittest.TestCase):
+    def test_banners_pick_your_rows_out_of_everyones(self):
+        from clipthat_editor.events import own_kills
+        # The feed on a real clip: eight rows, five of them yours (your banner follows those).
+        steps = [8.73, 12.13, 12.93, 19.83, 20.43, 34.63, 46.83, 50.08]
+        banners = [9.4, 12.6, 20.3, 34.8, 50.7]
+        self.assertEqual(own_kills(steps, banners), [8.73, 12.93, 20.43, 34.63, 50.08])
+
+    def test_without_banners_every_row_counts(self):
+        from clipthat_editor.events import own_kills
+        self.assertEqual(own_kills([1.0, 2.0], []), [1.0, 2.0])

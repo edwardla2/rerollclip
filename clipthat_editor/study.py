@@ -83,19 +83,25 @@ def study(path: Path) -> dict[str, Any]:
         **events_from_brightness(bright),
     }
     try:
+        import tempfile
         from .beats import analyze_beats
-        music = analyze_beats(path)
+        from .montage import decoded_audio
+        with tempfile.TemporaryDirectory() as tmp:
+            # Decoded at the right speed (some downloads' audio decodes at half rate).
+            music = analyze_beats(decoded_audio(path, Path(tmp)))
     except Exception as exc:  # no audio track, or nothing rhythmic
         result["music"] = {"error": str(exc)}
         return result
     period = 60.0 / music["bpm"]
     beats = music["beats"]
     halves = sorted(beats + [round(b + period / 2, 3) for b in beats])
+    quarters = sorted(halves + [round(b + period / 4, 3) for b in halves])
     drop = music["drop"]
     after = [c for c in cuts if c >= drop - 0.1]
     result["music"] = {"bpm": music["bpm"], "drop": drop}
     result["cuts_on_beat"] = on_beat_share(cuts, beats)
     result["cuts_on_half_beat"] = on_beat_share(cuts, halves)
+    result["cuts_on_quarter_beat"] = on_beat_share(cuts, quarters, tolerance=0.05)
     result["first_cut_after_drop"] = round(after[0] - drop, 3) if after else None
     if len(after) > 1:
         gaps = [b - a for a, b in zip(after, after[1:])]

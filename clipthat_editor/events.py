@@ -83,8 +83,7 @@ FEED_LAG = 0.12            # a kill-feed row appears about this long after the s
 
 
 def _feed_teal(path: Path) -> list[int]:
-    """Teal pixels in the kill feed (top right), FEED_FPS a second. Your own kills get a teal
-    row in Valorant's kill feed, so every kill you make steps this up."""
+    """Teal pixels in the kill feed (top right), FEED_FPS a second. Every kill row has some."""
     w, h = 96, 40
     proc = subprocess.run([_ffmpeg(), "-v", "error", "-i", str(path), "-map", "0:v:0",
                            "-vf", f"fps={FEED_FPS},crop=iw*0.30:ih*0.16:iw*0.70:ih*0.07,scale={w}:{h}",
@@ -102,6 +101,32 @@ def _feed_kills(path: Path) -> list[float]:
     """Kill times from new teal rows in the kill feed: a step up that lasts (a passing teal
     effect doesn't). Rows arriving together (a collateral) count as one kill moment."""
     return feed_steps(_feed_teal(path))
+
+
+def _feed_band(path: Path) -> list[int]:
+    """Kill-feed rows only: per frame, how many pixel lines of the feed area are mostly row
+    colour (teal or red) across their width, times 20. A row is a long horizontal band of
+    both; teal or red bits of the scene (walls, smoke, abilities) aren't, so they don't count."""
+    w, h = 96, 60
+    proc = subprocess.run([_ffmpeg(), "-v", "error", "-i", str(path), "-map", "0:v:0",
+                           "-vf", f"fps={FEED_FPS},crop=iw*0.30:ih*0.24:iw*0.70:ih*0.07,scale={w}:{h}",
+                           "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], capture_output=True)
+    raw, size, need = proc.stdout, w * h * 3, 0.35 * w
+    out = []
+    for f in range(len(raw) // size):
+        px = raw[f * size:(f + 1) * size]
+        lines = 0
+        for y in range(h):
+            row = px[y * w * 3:(y + 1) * w * 3]
+            hits = 0
+            for i in range(0, w * 3, 3):
+                r, g, b = row[i], row[i + 1], row[i + 2]
+                if (g > 140 and g - r > 50 and b - r > 20) or (r > 170 and r - g > 70 and r - b > 60):
+                    hits += 1
+            if hits >= need:
+                lines += 1
+        out.append(lines * 20)
+    return out
 
 
 def feed_steps(teal: list[int], merge: float = 0.6) -> list[float]:
@@ -130,33 +155,78 @@ def feed_steps(teal: list[int], merge: float = 0.6) -> list[float]:
     return kills
 
 
-def feed_rows(teal: list[int]) -> int:
-    """How many kill rows arrived: each step up counts as its size over a single row's
-    (the smallest step), so two rows landing together (a collateral) count as two."""
+def row_counts(teal: list[int], steps: list[float] | None = None) -> dict[float, int]:
+    """Rows that arrived at each feed step: the step's size over a single row's (the typical
+    step), so two rows landing together (a collateral) count as two."""
     hold = int(0.4 * FEED_FPS)
-    rises = []
-    for t in feed_steps(teal):
+    rises = {}
+    for t in (feed_steps(teal) if steps is None else steps):
         i = int(round((t + FEED_LAG) * FEED_FPS))
         before = sorted(teal[max(0, i - hold):i]) or [0]
         after = sorted(teal[i + hold:i + 2 * hold]) or sorted(teal[i:i + hold])
-        rises.append(after[len(after) // 2] - before[len(before) // 2])
-    rises = [r for r in rises if r > 0]
-    if not rises:
-        return 0
-    unit = min(rises)
-    return sum(max(1, round(r / unit)) for r in rises)
+        rises[t] = after[len(after) // 2] - before[len(before) // 2]
+    positive = [r for r in rises.values() if r > 0]
+    if not positive:
+        return {}
+    unit = sorted(positive)[(len(positive) - 1) // 2]    # lower median: most steps are one row
+    return {t: max(1, round(r / unit)) if r > 0 else 1 for t, r in rises.items()}
+
+
+def feed_rows(teal: list[int]) -> int:
+    """How many kill rows arrived in all (see row_counts)."""
+    return sum(row_counts(teal).values())
 
 
 def valorant_kills(path: Path) -> list[float]:
     return valorant_events(path)["times"]
 
 
+BANNER_BEFORE = 0.9         # a kill's feed row appears up to this long before your banner...
+BANNER_AFTER = 0.3          # ...or this long after it
+
+
+def row_onsets(teal: list[int], rise: int = 40, hold: float = 0.3) -> list[float]:
+    """Frames where a kill-feed row starts sliding in: teal jumps over the level just before
+    and stays up (the row stays for seconds; a passing effect doesn't). Exact to the frame."""
+    n, keep, look = len(teal), int(hold * FEED_FPS), 6
+    out: list[float] = []
+    i = look
+    while i < n - keep:
+        level = sorted(teal[i - look:i])[look // 2]
+        if teal[i] >= level + rise and all(v >= level + 0.75 * rise for v in teal[i:i + keep]):
+            out.append(round(i / FEED_FPS, 3))
+            i += keep
+            continue
+        i += 1
+    return out
+
+
+def own_kills(onsets: list[float], banners: list[float]) -> list[float]:
+    """Your kills, to the frame. The feed lists everyone's kills; only yours bring up your
+    kill banner. For each banner: the latest feed row that started in the window around it
+    (earlier rows there are other players' kills). No row in the window: just before the banner.
+    Without readable banners, every row counts."""
+    if not banners:
+        return onsets
+    mine: list[float] = []
+    for b in banners:
+        near = [t for t in onsets if b - BANNER_BEFORE <= t <= b + BANNER_AFTER and t not in mine]
+        mine.append(max(near) if near else round(max(0.0, b - 0.1), 3))
+    return sorted(set(mine))
+
+
 def valorant_events(path: Path) -> dict[str, Any]:
     """Kill moments plus the number of kills (a collateral is one moment but two kills)."""
     teal = _feed_teal(path)
-    feed = feed_steps(teal)
-    if feed:
-        return {"times": feed, "count": max(len(feed), feed_rows(teal))}
+    steps = feed_steps(teal)
+    if steps:
+        banners = _banner_onsets(path)
+        mine = own_kills(row_onsets(_feed_band(path)), banners)
+        if mine:
+            rows = row_counts(teal, [t for t in steps if any(abs(t - m) <= 0.7 for m in mine)])
+            # Five enemies a round: a row landing just after someone else's can read double.
+            count = min(5, max(len(mine), sum(rows.values())))
+            return {"times": mine, "count": count, "feed_rows": len(steps), "banners": banners}
     times = _banner_kills(path)
     return {"times": times, "count": len(times)}
 

@@ -186,6 +186,8 @@ def main() -> int:
     auto_parser.add_argument("--layout", choices=["center_crop", "fit_blur", "focus"], default=None, help="default: profile")
     auto_parser.add_argument("--slow-motion", choices=["auto", "on", "off"], default="auto")
     auto_parser.add_argument("--size", choices=["720", "1080"], default="1080")
+    auto_parser.add_argument("--aspect", choices=["9:16", "16:9"], default="9:16",
+                             help="9:16 for TikTok/Shorts/Reels, 16:9 for landscape posts")
     auto_parser.add_argument("--fps", type=int, choices=[30, 60], default=None, help="default: 60 for 50+ fps sources")
     auto_parser.add_argument("--encoder", default="auto", help="auto, libx264 or a hardware encoder name")
     auto_parser.add_argument("--music", default=None,
@@ -204,6 +206,17 @@ def main() -> int:
     eval_parser.add_argument("--slow-motion", choices=["auto", "on", "off"], default="auto")
     eval_parser.add_argument("--size", choices=["720", "1080"], default="1080")
     eval_parser.add_argument("--encoder", default="auto")
+    mont = sub.add_parser("montage", help="Velocity montage edit (reference style) of one clip, synced to a song")
+    mont.add_argument("file", type=Path)
+    mont.add_argument("--music", type=Path, required=True, help="the song to sync to (never exported)")
+    mont.add_argument("--output", type=Path, required=True)
+    mont.add_argument("--profile", choices=["generic", "valorant", "cs2", "fortnite", "roblox"], default="valorant")
+    mont.add_argument("--words", default="", help="intro words, e.g. 'little aggro swiftplay'")
+    mont.add_argument("--aspect", choices=["16:9", "9:16"], default="16:9")
+    mont.add_argument("--fps", type=int, default=60)
+    mont.add_argument("--timeline", type=Path, default=None, help="render this timeline JSON instead of planning one")
+    mont.add_argument("--work", type=Path, default=None)
+    mont.add_argument("--preview", action="store_true", help="also write a private copy with the song mixed in")
     study_parser = sub.add_parser("study", help="Measure reference edits: cuts, shot lengths, beat alignment, flashes, dips")
     study_parser.add_argument("files", type=Path, nargs="+")
     sounds_parser = sub.add_parser("sounds", help="Manage the sound list the engine picks from")
@@ -247,6 +260,11 @@ def main() -> int:
                 print(json.dumps({"songs": len(listed), "ready": len(mapped),
                                   "ready_titles": [f"{s['title']} - {s['artist']}" for s in mapped]},
                                  indent=2, ensure_ascii=False))
+        elif opts.command == "montage":
+            from .montage import montage
+            print(json.dumps(montage(opts.file, opts.music, opts.output, profile=opts.profile,
+                                     words=opts.words.split(), aspect=opts.aspect, fps=opts.fps,
+                                     timeline=opts.timeline, work=opts.work, preview=opts.preview), indent=1))
         elif opts.command == "study":
             from .study import study
             print(json.dumps([study(f) for f in opts.files], indent=2))
@@ -257,6 +275,8 @@ def main() -> int:
         elif opts.command == "auto":
             from .highlight import auto_edit
             width, height = (720, 1280) if opts.size == "720" else (1080, 1920)
+            if opts.aspect == "16:9":
+                width, height = height, width
             print(json.dumps(auto_edit(opts.file, opts.output, profile=opts.profile, trigger_offset=opts.trigger_offset,
                                        length=opts.length, width=width, height=height, fps=opts.fps,
                                        layout=opts.layout, slow_motion=opts.slow_motion, encoder=opts.encoder,

@@ -201,8 +201,7 @@ def plan_to_drop(kills: list[float], duration: float, music: dict[str, Any]) -> 
     """The cut-on-the-drop edit, in order: the build-up (scope-in) plays and dips to black just
     before the drop; a hard cut on the drop goes straight into the first kill's shot; every next
     beat (or hit) cuts into the next kill; the last kill plays out. None if the sound ends first."""
-    final = kills[-1]
-    kills = [k for k in kills if final - k <= CLUSTER]
+    # Every kill, however far apart: the edit cuts between them on the beat.
     end = music.get("duration", float("inf")) - 0.3
     # About a second per kill reads best (velocity edits cut on every other beat); tighter
     # only if the sound runs out first.
