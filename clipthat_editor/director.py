@@ -681,10 +681,28 @@ def story_compilation(plays: list[dict[str, Any]], music: dict[str, Any] | None,
                 return b
         return song_t
 
-    # The song: the first kill of the first play lands on the drop when the setup allows.
-    w0 = play_windows(plays[0]["kills"], plays[0].get("story", []), plays[0]["duration"], cfg)
-    lead0 = plays[0]["kills"][0] - w0[0][0]
-    start = (music["drop"] - lead0) if synced and music["drop"] >= lead0 else 0.0
+    # The edit should fit the sound (a TikTok sound loops if the video runs longer): leave out
+    # the weakest plays until it does. The best play always stays.
+    if synced and music.get("duration"):
+        def length(ps):
+            return sum(b - a for p_ in ps for a, b in play_windows(p_["kills"], p_.get("story", []), p_["duration"], cfg)) \
+                + P * len(ps)
+        while len(plays) > 1 and length(plays) > music["duration"]:
+            plays = plays[1:]
+
+    # The song: its drop goes on the first kill of the best play (the last one), and the song
+    # starts wherever that puts it, as long as it lasts the whole edit.
+    start = 0.0
+    if synced:
+        spans = [play_windows(p["kills"], p.get("story", []), p["duration"], cfg) for p in plays]
+        before_best = sum(b - a for w in spans[:-1] for a, b in w)
+        best_first_kill = before_best + (plays[-1]["kills"][0] - spans[-1][0][0])
+        total = sum(b - a for w in spans for a, b in w) + P * len(spans) * 2   # beat slack
+        # A song without a real drop just starts from the top.
+        start = music["drop"] - best_first_kill if music.get("drop_strength", 1.0) >= 0.15 else 0.0
+        if music.get("duration"):
+            start = min(start, music["duration"] - total)
+        start = max(0.0, start)
     clips: list[Clip] = []
     master = {k: Curve().add(0.0, 0.0) for k in ("ca", "glow", "flash", "radial", "edge", "exposure", "mono")}
     sfx: list[Sfx] = []
@@ -782,6 +800,17 @@ def story_compilation(plays: list[dict[str, Any]], music: dict[str, Any] | None,
                 wins[wi + 1][0] = b2 + gap
             elif nxt is not None:
                 notes.append(f"play {pi + 1}: cut {nxt - b2:.1f}s of dead time at {out_t:.3f}s")
+    # End with the song: trim the last hold if it runs past the sound.
+    if synced and music.get("duration"):
+        excess = out_t - (music["duration"] - start)
+        last = clips[-1]
+        if excess > 0 and last.keys[-1].out - excess > last.keys[-2].out + 0.2:
+            k = last.keys[-1]
+            k.out = round(k.out - excess, 6)
+            k.src = round(k.src - excess * (k.speed_in if k.speed_in else 1.0), 6)
+            last.src_out = round(last.src_in + k.src, 4)
+            out_t = last.out_end
+            notes.append(f"trimmed {excess:.2f}s off the end to finish with the song")
     end = out_t
     for c in master.values():
         c.add(end, c.at(end))
