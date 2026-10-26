@@ -62,6 +62,26 @@ def _shake_expr(clip: Clip, axis: str, width: int, t: str = "t") -> str:
 INTERPOLATE = "minterpolate=fps={fps}:mi_mode=mci:mc_mode=obmc:me=epzs:search_param=24"
 
 
+TEAL = "255*gt(g(X\\,Y)\\,140)*gt(g(X\\,Y)-r(X\\,Y)\\,50)*gt(b(X\\,Y)-r(X\\,Y)\\,20)"
+RED = "255*gt(r(X\\,Y)\\,170)*gt(r(X\\,Y)-g(X\\,Y)\\,70)*gt(r(X\\,Y)-b(X\\,Y)\\,60)"
+
+
+def feed_rows_chain(label: str, width: int) -> str:
+    """Valorant's kill feed, rows only: a pixel line counts as a row when it carries both the
+    teal and the red of a feed row; each row is kept across its own extent (names, weapon,
+    portraits), everything else is transparent, so no scenery comes along with it."""
+    def thr(v: int) -> str:
+        return f"lut=y='if(gt(val\\,{v})\\,255\\,0)'"
+    return (f"[{label}]crop=iw*0.30:ih*0.20:iw*0.70:ih*0.065,split[fc][fm];"
+            f"[fm]format=gbrp,split[t0][r0];"
+            f"[t0]geq=r='{TEAL}':g='{TEAL}':b='{TEAL}',format=gray,split[ta][tb];"
+            f"[r0]geq=r='{RED}':g='{RED}':b='{RED}',format=gray,split[ra][rb];"
+            f"[ta]avgblur=sizeX=600:sizeY=1,{thr(8)}[tl];[ra]avgblur=sizeX=600:sizeY=1,{thr(8)}[rl];"
+            f"[tb][rb]blend=all_mode=lighten,avgblur=sizeX=50:sizeY=1,{thr(70)},avgblur=sizeX=45:sizeY=1,{thr(8)}[loc];"
+            f"[tl][rl]blend=all_mode=multiply[both];[both][loc]blend=all_mode=multiply,dilation,"
+            f"avgblur=sizeX=2:sizeY=2[mask];[fc][mask]alphamerge,format=rgba,scale={width}:-2:flags=lanczos")
+
+
 def chunk_video_chain(clip: Clip, k0: int, k1: int, slow: bool, tl: Timeline, src_fps: float) -> str:
     """Picture for one run of a clip's keys (input already seeked to its first key)."""
     w, h, fps = tl.width, tl.height, tl.fps
@@ -82,9 +102,12 @@ def chunk_video_chain(clip: Clip, k0: int, k1: int, slow: bool, tl: Timeline, sr
         parts.append("split[cam][feedsrc];[cam]null")
     if clip.framing == "fit":
         # The whole frame, centred, over a soft blurred fill (for sources too small to crop).
+        # A centre square fills the width (big enough to read on a phone, keeps the crosshair
+        # and the top banner); a dark blurred copy fills the rest.
+        side = min(w, h)
         parts.append(f"split[fg][bg];[bg]scale={w // 8}:{h // 8}:force_original_aspect_ratio=increase,"
-                     f"crop={w // 8}:{h // 8},boxblur=4:2,scale={w}:{h},eq=brightness=-0.1[bgb];"
-                     f"[fg]scale={w}:{h}:force_original_aspect_ratio=decrease:flags=lanczos[fgs];"
+                     f"crop={w // 8}:{h // 8},boxblur=4:2,scale={w}:{h},eq=brightness=-0.12[bgb];"
+                     f"[fg]crop='min(iw\\,ih)':'min(iw\\,ih)',scale={side}:{side}:flags=lanczos[fgs];"
                      f"[bgb][fgs]overlay=(W-w)/2:(H-h)/2,setsar=1")
     else:
         # Fill the output frame: centre crop to its aspect (9:16 from 16:9 keeps the crosshair,
@@ -106,8 +129,7 @@ def chunk_video_chain(clip: Clip, k0: int, k1: int, slow: bool, tl: Timeline, sr
         # The kill feed (who killed whom: the story of the round) as a crisp inset, top centre,
         # under the game's score bar. Not affected by the camera moves.
         fw = int(w * 0.62) // 2 * 2
-        parts.append(f"null[camv];[feedsrc]crop=iw*0.30:ih*0.20:iw*0.70:ih*0.065,scale={fw}:-2:flags=lanczos,"
-                     f"format=rgba,colorchannelmixer=aa=0.94[feed];[camv][feed]overlay=(W-w)/2:H*0.075")
+        parts.append(f"null[camv];{feed_rows_chain('feedsrc', fw)}[feed];[camv][feed]overlay=(W-w)/2:H*0.145")
     parts.append(f"setsar=1,format=yuv420p,tpad=stop_mode=clone:stop_duration=0.3,"
                  f"trim=end_frame={frames},setpts=N/({fps}*TB)[v0]")      # exactly on the frame grid
     return ",".join(parts)
