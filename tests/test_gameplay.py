@@ -72,3 +72,45 @@ class PlannerTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class StoryTests(unittest.TestCase):
+    PLAYS = [
+        {"source": "a.mp4", "duration": 52.33, "kills": KILLS, "count": 5, "height": 1080, "game": "valorant",
+         "story": [2.1, 8.85, 12.25, 13.05, 13.45, 16.4, 19.95, 38.7, 46.95]},
+        {"source": "b.mp4", "duration": 16.6, "kills": [2.25, 5.75, 7.85, 10.85], "count": 5, "height": 360,
+         "game": "valorant", "story": [9.45, 10.5]},
+    ]
+
+    def plan(self):
+        from clipthat_editor.director import story_compilation
+        return story_compilation([dict(p) for p in self.PLAYS], music(), taste_mod.load(branding={"enabled": False}))
+
+    def test_best_play_last_and_low_res_kept_whole_frame(self):
+        tl = self.plan()
+        self.assertEqual(tl.check(), [])
+        self.assertEqual(tl.clips[-1].source, "a.mp4")                    # the sharper ace closes
+        self.assertTrue(all(c.framing == "fit" for c in tl.clips if c.source == "b.mp4"))
+        self.assertTrue(all(c.framing == "crop" and c.feed_inset for c in tl.clips if c.source == "a.mp4"))
+
+    def test_story_kept_in_order_at_real_speed(self):
+        tl = self.plan()
+        for c in tl.clips:
+            if "window" in c.label and "accent" not in c.label:
+                self.assertTrue(all(abs(k.speed_in - 1) < 1e-6 or k.speed_in < 1 for k in c.keys), c.label)
+        for src in ("a.mp4", "b.mp4"):
+            mine = [c for c in tl.clips if c.source == src]
+            for x, y in zip(mine, mine[1:]):
+                self.assertGreaterEqual(y.src_in, x.src_out - 1e-3)          # never backwards in a play
+        kills_shown = len(tl.music["kills_at"])
+        self.assertEqual(kills_shown, 9)                                   # every kill of both plays
+
+    def test_cuts_on_beats_and_one_accent(self):
+        tl = self.plan()
+        p, b0 = 60 / 80, music()["beats"][0]
+        for c in tl.clips[:-1]:
+            ph = ((c.out_end + tl.music["start"] - b0) / p) % 1
+            self.assertLess(min(ph, 1 - ph), 0.03, c.label)
+        mono = tl.master["mono"]
+        on = [i / 60 for i in range(int(tl.duration * 60)) if mono.at(i / 60) > 0.5]
+        self.assertTrue(on and on[-1] - on[0] < 1.5)

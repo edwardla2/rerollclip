@@ -624,3 +624,183 @@ def gameplay_first(source: str, duration: float, kills: list[float], music: dict
                                       for e, c in zip(events, [c for c in clips if c.label.startswith("kill")])]},
                   notes=notes, look=look, branding=branding)
     return tl
+
+
+# =====================================================================================
+# Story compilation: several plays back to back, lightly edited, the story kept.
+# =====================================================================================
+
+def play_windows(kills: list[float], story: list[float], duration: float, cfg: dict[str, Any]) -> list[list[float]]:
+    """The parts of one clip that tell the play: around each of your kills, and around the
+    other kill-feed events between them (a teammate going down is what makes a clutch).
+    Windows closer than `merge_gap` join; what's left between them is dead time."""
+    if not kills:
+        return []
+    first, last = kills[0], kills[-1]
+    wins = [[k - (cfg["first_lead"] if k == first else cfg["lead"]), k + cfg["after"]] for k in kills]
+    wins[-1][1] = last + cfg["payoff"]
+    for t in story:
+        # Only events that lead into one of your kills: the teammate who goes down before you
+        # trade, the last teammate falling before the 1v1.
+        if any(0 <= k - t <= cfg["context_before"] for k in kills):
+            wins.append([t - cfg["story_pad"], t + cfg["story_pad"] + 0.2])
+    wins = sorted([max(0.0, a), min(duration - 0.02, b)] for a, b in wins)
+    merged: list[list[float]] = []
+    for a, b in wins:
+        if merged and a - merged[-1][1] <= cfg["merge_gap"]:
+            merged[-1][1] = max(merged[-1][1], b)
+        else:
+            merged.append([a, b])
+    return merged
+
+
+def story_compilation(plays: list[dict[str, Any]], music: dict[str, Any] | None, taste: dict[str, Any]) -> Timeline:
+    """plays: [{"source", "duration", "kills", "story", "count", "height"}]. The best play goes
+    last; each keeps its windows in order at real speed; dead time between windows is sped
+    through (short) or cut (long); cuts land on beats by letting the footage before them run
+    on a moment; one accent on the best moment of the whole video."""
+    from .taste import tier
+    cfg = taste["story"]
+    fmt = taste["format"]
+    width, height, fps = fmt["width"], fmt["height"], fmt["fps"]
+    tz = tier(taste)
+    plays = [p for p in plays if p["kills"]]
+    if not plays:
+        raise ValueError("no kills found in any clip")
+    # Best last (more kills, then a cleaner finish); otherwise keep the given order.
+    order = sorted(range(len(plays)), key=lambda i: ((plays[i].get("count") or len(plays[i]["kills"])),
+                                                     plays[i].get("height", 0), i))
+    plays = [plays[i] for i in order]
+    synced = bool(music)
+    P = 60.0 / music["bpm"] if synced else 0.5
+    beats = list(music["beats"]) if synced else []
+
+    def next_beat(song_t: float) -> float:
+        for b in beats:
+            if b >= song_t - 1e-6:
+                return b
+        return song_t
+
+    # The song: the first kill of the first play lands on the drop when the setup allows.
+    w0 = play_windows(plays[0]["kills"], plays[0].get("story", []), plays[0]["duration"], cfg)
+    lead0 = plays[0]["kills"][0] - w0[0][0]
+    start = (music["drop"] - lead0) if synced and music["drop"] >= lead0 else 0.0
+    clips: list[Clip] = []
+    master = {k: Curve().add(0.0, 0.0) for k in ("ca", "glow", "flash", "radial", "edge", "exposure", "mono")}
+    sfx: list[Sfx] = []
+    notes: list[str] = []
+    out_t = 0.0
+    top_play = len(plays) - 1
+    for pi, play in enumerate(plays):
+        src, dur = play["source"], play["duration"]
+        crop_scale = (height / play.get("height", 1080)) if width < height else 1.0
+        framing = "crop" if crop_scale <= cfg["max_crop_upscale"] else "fit"
+        inset = framing == "crop" and cfg.get("feed_inset", True) and play.get("game") == "valorant"
+        wins = play_windows(play["kills"], play.get("story", []), dur, cfg)
+        # Don't open a window on flat footage (smoke, a wall): start where the picture has detail,
+        # keeping at least `min_lead` before the kill that window is for.
+        if Path(src).exists():
+            for w_ in wins:
+                k_next = next((k for k in play["kills"] if k >= w_[0]), None)
+                if k_next is not None:
+                    w_[0] = max(w_[0], min(first_detailed(src, w_[0], k_next - cfg["min_lead"]), k_next - cfg["min_lead"]))
+        notes.append(f"play {pi + 1}: {Path(src).name}, {len(play['kills'])} kills, framing {framing}"
+                     + (" + kill feed" if inset else ""))
+        for wi, (a, b) in enumerate(wins):
+            last_of_play = wi == len(wins) - 1
+            nxt = wins[wi + 1][0] if not last_of_play else None
+            gap = (nxt - b) if nxt is not None else 0.0
+            ramp = nxt is not None and gap <= cfg["ramp_gap_under"]
+            if ramp:
+                b2 = b
+            else:
+                # Cut on the beat: let this window run on until the next beat (if there's footage).
+                end_out = out_t + (b - a)
+                if synced:
+                    target = next_beat(end_out + start) - start
+                    room = (nxt if nxt is not None else dur - 0.02) - b
+                    if target - end_out > room:            # not enough footage: trim back to the beat before
+                        target = max(out_t + 0.3, target - P)
+                    b2 = b + (target - end_out)
+                else:
+                    b2 = b
+            b2 = max(a + 0.3, min(b2, dur - 0.02))
+            kb = KeyBuilder(1.0)
+            kb.keys.append(TimeKey(round(b2 - a, 6), round(b2 - a, 6), 1.0, 1.0))
+            zoom = Curve().add(0, 1.0)
+            clip = Clip(f"play {pi + 1} window {wi + 1}", round(a, 4), round(b2, 4), round(out_t, 4), kb.keys,
+                        zoom=zoom, source=src, framing=framing, feed_inset=inset, interpolate=False)
+            # The accent: the final kill of the best play, once.
+            if pi == top_play and last_of_play and cfg.get("top_accent") == "mono_hang":
+                k = play["kills"][-1]
+                if a < k < b2 - 0.3:
+                    hang_out = cfg["hang"]
+                    s = tz["slow"] if tz["slow"] >= 0.35 else 0.35
+                    hk = KeyBuilder(1.0)
+                    hk.keys.append(TimeKey(round(k - a, 6), round(k - a, 6), 1.0, 1.0))
+                    hk.snap(s).ramp(s, s * 1.1, hang_out, pieces=2).ramp(s * 1.1, 1.0, 0.3, pieces=2)
+                    rest = (b2 - a) - hk.src
+                    if rest > 0.05:
+                        hk.keys.append(TimeKey(round(hk.src + rest, 6), round(hk.out + rest, 6), 1.0, 1.0))
+                    clip.keys = hk.keys
+                    clip.src_out = round(a + hk.src, 4)
+                    clip.interpolate = True
+                    t = out_t + (k - a)
+                    clip.zoom = Curve().add(0, 1.0).add(k - a, 1.0).add(k - a + 0.12, min(taste["protect"]["zoom_max"], 1.07), "out3") \
+                        .add(k - a + hang_out + 0.6, 1.0, "smooth")
+                    if tz.get("mono"):
+                        back = t + hang_out
+                        master["mono"].add(t - 0.001, 0.0).add(t + 0.05, 1.0, "out").add(back - 0.05, 1.0).add(back + 0.25, 0.0, "smooth")
+                    master["flash"].add(t - 0.001, 0.0).add(t, tz["flash"] * 0.6).add(t + 0.12, 0.0, "out")
+                    sfx.append(Sfx("hit", round(t, 4), 0.3))
+                    notes.append(f"accent: final kill of play {pi + 1} at {t:.3f}s")
+            clips.append(clip)
+            out_t = clip.out_end
+            if ramp and gap > 0.05:
+                # Speed through short dead time, smoothly, up from real time and back.
+                avg = cfg["ramp_avg"]
+                room = gap / avg
+                if synced:
+                    target = next_beat(out_t + room + start) - start
+                    if target - out_t < gap / 4.0:
+                        target = next_beat(target + 0.01 + start) - start
+                    room = target - out_t
+                avg = gap / room
+                peak = max(1.05, 2 * avg - 1.0)
+                dk = KeyBuilder(1.0)
+                dk.ramp(1.0, peak, room / 2, pieces=3).ramp(peak, 1.0, room / 2, pieces=3)
+                f = gap / dk.src
+                for key in dk.keys:
+                    key.src = round(key.src * f, 6)
+                    key.speed_in *= f
+                    key.speed_out *= f
+                dclip = Clip(f"play {pi + 1} skim {wi + 1}", round(b2, 4), round(b2 + gap, 4), round(out_t, 4), dk.keys,
+                             source=src, framing=framing, feed_inset=inset, interpolate=False,
+                             motion_blur=3 if peak > 2.2 else 0, game_gain=0.6)
+                clips.append(dclip)
+                out_t = dclip.out_end
+                wins[wi + 1][0] = b2 + gap
+            elif nxt is not None:
+                notes.append(f"play {pi + 1}: cut {nxt - b2:.1f}s of dead time at {out_t:.3f}s")
+    end = out_t
+    for c in master.values():
+        c.add(end, c.at(end))
+    branding = None
+    if taste["branding"].get("enabled"):
+        best = plays[-1]
+        corner, bands = hud_corner(best["source"], width, height, taste["branding"]["corners"])
+        branding = {k: taste["branding"][k] for k in ("sub", "word", "height", "margin")}
+        branding.update(corner=corner, top=bands.get("top", 0.0), bottom=bands.get("bottom", 0.0))
+    t = taste.get("look", {})
+    look = {"contrast": t.get("contrast", 1.05), "saturation": t.get("saturation", 1.08), "gamma": t.get("gamma", 1.0),
+            "warmth": t.get("warmth", 0.01), "sharpen": t.get("sharpen", 0.4)}
+    kills_at = []
+    for c in clips:
+        play = next(p for p in plays if p["source"] == c.source)
+        for k in play["kills"]:
+            if c.src_in <= k < c.src_out:
+                kills_at.append(round(c.out_start + c.out_at(k - c.src_in), 4))
+    return Timeline(width, height, fps, plays[0]["source"], clips, master, [], [], sorted(sfx, key=lambda s: s.t),
+                    music={"file": (music or {}).get("file"), "start": round(start, 4), "bpm": (music or {}).get("bpm"),
+                           "drop": (music or {}).get("drop"), "kills_at": sorted(kills_at)},
+                    notes=notes, look=look, branding=branding)

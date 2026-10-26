@@ -78,9 +78,18 @@ def chunk_video_chain(clip: Clip, k0: int, k1: int, slow: bool, tl: Timeline, sr
         parts.append(INTERPOLATE.format(fps=fps))
     else:
         parts.append(f"fps={fps}")
-    # Fill the output frame: centre crop to its aspect (9:16 from 16:9 keeps the crosshair,
-    # the top banner and the ability bar), then scale.
-    parts.append(f"crop='min(iw\\,ih*{w}/{h})':'min(ih\\,iw*{h}/{w})',scale={w}:{h}:flags=lanczos,setsar=1")
+    if clip.feed_inset:
+        parts.append("split[cam][feedsrc];[cam]null")
+    if clip.framing == "fit":
+        # The whole frame, centred, over a soft blurred fill (for sources too small to crop).
+        parts.append(f"split[fg][bg];[bg]scale={w // 8}:{h // 8}:force_original_aspect_ratio=increase,"
+                     f"crop={w // 8}:{h // 8},boxblur=4:2,scale={w}:{h},eq=brightness=-0.1[bgb];"
+                     f"[fg]scale={w}:{h}:force_original_aspect_ratio=decrease:flags=lanczos[fgs];"
+                     f"[bgb][fgs]overlay=(W-w)/2:(H-h)/2,setsar=1")
+    else:
+        # Fill the output frame: centre crop to its aspect (9:16 from 16:9 keeps the crosshair,
+        # the top banner and the ability bar), then scale.
+        parts.append(f"crop='min(iw\\,ih*{w}/{h})':'min(ih\\,iw*{h}/{w})',scale={w}:{h}:flags=lanczos,setsar=1")
     moving = not (clip.zoom.is_const(1.0) and clip.rot.is_const(0.0) and clip.pan_x.is_const(0.0)
                   and clip.pan_y.is_const(0.0) and not clip.shakes)
     if moving:
@@ -93,6 +102,12 @@ def chunk_video_chain(clip: Clip, k0: int, k1: int, slow: bool, tl: Timeline, sr
         parts.append(f"crop={w}:{h}:x='{x}':y='{y}'")
     start, end = clip.out_start + a.out, clip.out_start + b.out
     frames = round(end * fps) - round(start * fps)       # boundaries on whole frames
+    if clip.feed_inset:
+        # The kill feed (who killed whom: the story of the round) as a crisp inset, top centre,
+        # under the game's score bar. Not affected by the camera moves.
+        fw = int(w * 0.62) // 2 * 2
+        parts.append(f"null[camv];[feedsrc]crop=iw*0.30:ih*0.20:iw*0.70:ih*0.065,scale={fw}:-2:flags=lanczos,"
+                     f"format=rgba,colorchannelmixer=aa=0.94[feed];[camv][feed]overlay=(W-w)/2:H*0.075")
     parts.append(f"setsar=1,format=yuv420p,tpad=stop_mode=clone:stop_duration=0.3,"
                  f"trim=end_frame={frames},setpts=N/({fps}*TB)[v0]")      # exactly on the frame grid
     return ",".join(parts)
@@ -131,7 +146,7 @@ def render_clips(tl: Timeline, base: Path, encoder_args: list[str], workers: int
     re-encoding. Boundaries sit on whole frames and samples, so picture and sound stay in
     step with the timeline to the frame. Unchanged pieces are reused from the last render."""
     from concurrent.futures import ThreadPoolExecutor
-    info = _probe(Path(tl.source))
+    infos: dict[str, dict[str, Any]] = {}
     jobs = []
     for c in sorted(tl.clips, key=lambda c: c.out_start):
         for k0, k1, slow in c.chunks():
@@ -139,16 +154,18 @@ def render_clips(tl: Timeline, base: Path, encoder_args: list[str], workers: int
 
     def run(job):
         c, k0, k1, slow, part = job
+        src = c.source or tl.source
+        info = infos.setdefault(src, _probe(Path(src)))
         graph = (chunk_video_chain(c, k0, k1, slow, tl, info["fps"]) + ";\n"
                  + chunk_audio_chain(c, k0, k1, info["has_audio"], tl.fps))
         script = part.with_suffix(".graph.txt")
-        key = f"# {tl.source}|{c.src_in}|{tl.fps}|{encoder_args}\n{graph}"
+        key = f"# {src}|{c.src_in}|{tl.fps}|{encoder_args}\n{graph}"
         if part.exists() and script.exists() and script.read_text() == key:
             return part
         script.write_text(graph)
         src_a, src_b = c.src_in + c.keys[k0].src, c.src_in + c.keys[k1].src
         _run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-ss", f"{src_a:.4f}",
-              "-t", f"{src_b - src_a + 0.5:.4f}", "-i", tl.source, "-filter_complex_script", str(script),
+              "-t", f"{src_b - src_a + 0.5:.4f}", "-i", src, "-filter_complex_script", str(script),
               "-map", "[v0]", "-map", "[a0]", "-fps_mode", "passthrough"] + encoder_args
              + ["-threads", "2", "-c:a", "pcm_s16le", str(part)], f"Rendering {c.label}")
         script.write_text(key)

@@ -125,6 +125,9 @@ class Clip:
     pan_x: Curve = field(default_factory=lambda: Curve.const(0.0))   # share of frame width
     pan_y: Curve = field(default_factory=lambda: Curve.const(0.0))
     shakes: list[Shake] = field(default_factory=list)
+    source: str | None = None   # this clip's video (None: the timeline's source)
+    framing: str = "crop"       # crop: fill the frame; fit: whole frame over a blurred fill
+    feed_inset: bool = False    # show the kill feed (top right of the source) as an inset
     motion_blur: int = 0        # source frames blended (shutter) before retiming; 0 = off
     interpolate: bool = True    # synthesize in-between frames (smooth slow motion / 60 fps)
     game_gain: float = 1.0

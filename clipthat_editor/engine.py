@@ -221,6 +221,15 @@ def main() -> int:
     mont.add_argument("--timeline", type=Path, default=None, help="render this timeline JSON instead of planning one")
     mont.add_argument("--work", type=Path, default=None)
     mont.add_argument("--preview", action="store_true", help="also write a private copy with the song mixed in")
+    comp = sub.add_parser("compile", help="Story mode: compile clips into one lightly edited video, best play last")
+    comp.add_argument("files", type=Path, nargs="+")
+    comp.add_argument("--music", type=Path, default=None, help="the song to time cuts to (never exported)")
+    comp.add_argument("--output", type=Path, required=True)
+    comp.add_argument("--profile", choices=["generic", "valorant", "cs2", "fortnite", "roblox"], default="valorant")
+    comp.add_argument("--taste", type=Path, default=None)
+    comp.add_argument("--intensity", choices=["restrained", "medium", "aggressive"], default=None)
+    comp.add_argument("--work", type=Path, default=None)
+    comp.add_argument("--preview", action="store_true")
     study_parser = sub.add_parser("study", help="Measure reference edits: cuts, shot lengths, beat alignment, flashes, dips")
     study_parser.add_argument("files", type=Path, nargs="+")
     sounds_parser = sub.add_parser("sounds", help="Manage the sound list the engine picks from")
@@ -270,6 +279,11 @@ def main() -> int:
                                      words=opts.words.split(), style=opts.style, taste_path=opts.taste,
                                      intensity=opts.intensity, aspect=opts.aspect, fps=opts.fps,
                                      timeline=opts.timeline, work=opts.work, preview=opts.preview), indent=1))
+        elif opts.command == "compile":
+            from .montage import compile_clips
+            print(json.dumps(compile_clips(opts.files, opts.music, opts.output, profile=opts.profile,
+                                           taste_path=opts.taste, intensity=opts.intensity, work=opts.work,
+                                           preview=opts.preview), indent=1))
         elif opts.command == "study":
             from .study import study
             print(json.dumps([study(f) for f in opts.files], indent=2))

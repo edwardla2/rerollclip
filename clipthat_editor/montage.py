@@ -79,3 +79,34 @@ def montage(source: Path, music: Path | None, output: Path, *, profile: str = "v
     result = render(tl, output, work, preview_music=song if (preview and song) else None)
     result.update(timeline=str(plan), events=events, notes=tl.notes)
     return result
+
+
+def compile_clips(sources: list[Path], music: Path | None, output: Path, *, profile: str = "valorant",
+                  taste_path: Path | None = None, intensity: str | None = None, work: Path | None = None,
+                  preview: bool = False) -> dict[str, Any]:
+    """Story mode: several clips into one lightly edited video, best play last."""
+    from .beats import analyze_beats
+    from .compositor import _probe
+    from .director import story_compilation
+    from .events import find_events
+    from .taste import load
+    output = Path(output).resolve()
+    work = Path(work) if work else Path(tempfile.mkdtemp(prefix="reroll-"))
+    work.mkdir(parents=True, exist_ok=True)
+    song = decoded_audio(Path(music), work) if music else None
+    plays = []
+    for src in sources:
+        src = Path(src).resolve()
+        ev = find_events(src, profile)
+        info = _probe(src)
+        plays.append({"source": str(src), "duration": _duration(src, "v:0"), "kills": ev["times"],
+                      "story": ev.get("story", []), "count": ev.get("count"), "height": info["height"],
+                      "game": profile if ev["source"].endswith("-kills") else None})
+    taste = load(taste_path, intensity=intensity)
+    tl = story_compilation(plays, analyze_beats(song) if song else None, taste)
+    plan = output.with_suffix(".timeline.json")
+    tl.save(plan)
+    result = render(tl, output, work, preview_music=song if (preview and song) else None)
+    result.update(timeline=str(plan), plays=[{k: p[k] for k in ("source", "kills", "story", "count")} for p in plays],
+                  notes=tl.notes)
+    return result

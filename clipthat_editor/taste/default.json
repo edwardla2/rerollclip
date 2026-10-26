@@ -112,5 +112,22 @@
     "gamma": 0.99,
     "warmth": 0.015,
     "sharpen": 0.45
+  },
+  "mode": "story",
+  "story": {
+    "first_lead": 2.5,
+    "lead": 1.6,
+    "after": 1.0,
+    "payoff": 2.4,
+    "context_before": 4.0,
+    "story_pad": 0.8,
+    "merge_gap": 2.0,
+    "ramp_gap_under": 5.0,
+    "ramp_avg": 2.5,
+    "max_crop_upscale": 2.2,
+    "feed_inset": true,
+    "top_accent": "mono_hang",
+    "hang": 0.7,
+    "min_lead": 0.6
   }
 }

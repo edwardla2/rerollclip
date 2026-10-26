@@ -221,12 +221,15 @@ def valorant_events(path: Path) -> dict[str, Any]:
     steps = feed_steps(teal)
     if steps:
         banners = _banner_onsets(path)
-        mine = own_kills(row_onsets(_feed_band(path)), banners)
+        onsets = row_onsets(_feed_band(path))
+        mine = own_kills(onsets, banners)
         if mine:
             rows = row_counts(teal, [t for t in steps if any(abs(t - m) <= 0.7 for m in mine)])
             # Five enemies a round: a row landing just after someone else's can read double.
             count = min(5, max(len(mine), sum(rows.values())))
-            return {"times": mine, "count": count, "feed_rows": len(steps), "banners": banners}
+            # Everyone else's kills (teammates', and teammates going down) are the story around yours.
+            others = [t for t in onsets if all(abs(t - m) > 0.15 for m in mine)]
+            return {"times": mine, "count": count, "feed_rows": len(steps), "banners": banners, "story": others}
     times = _banner_kills(path)
     return {"times": times, "count": len(times)}
 
