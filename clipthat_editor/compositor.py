@@ -72,7 +72,9 @@ def chunk_video_chain(clip: Clip, k0: int, k1: int, slow: bool, tl: Timeline, sr
     tv = f"(t+{out_a:.6f})"                       # clip-local output time inside this chunk
     parts = [f"[0:v]trim=duration={src_len + 1 / src_fps:.4f},setpts=PTS-STARTPTS"]
     if clip.motion_blur > 1 and not slow:
-        parts.append(f"tmix=frames={clip.motion_blur}")
+        n = clip.motion_blur
+        weights = " ".join(str(min(i + 1, n - i)) for i in range(n))     # centre-weighted shutter
+        parts.append(f"tmix=frames={n}:weights='{weights}'")
     parts.append(f"setpts='(({clip.setpts_expr(f'(T+{a.src:.6f})')})-{out_a:.6f})/TB'")
     if clip.interpolate and slow:
         parts.append(INTERPOLATE.format(fps=fps))
@@ -190,7 +192,15 @@ def measure_motion(video: Path, start: float, dur: float, fps: int, width: int) 
         if c.max() > 0.08 and abs(x) < w / 6 and abs(y) < h / 6:
             acc += (x, y)
         out.append((float(acc[0] * scale), float(acc[1] * scale)))
-    return out
+    # Smooth it (the virtual camera's own roll and zoom read as jittery shifts) and keep it
+    # small: text should ride along with the scene, not wander across the frame.
+    k = 9
+    smooth = []
+    for i in range(len(out)):
+        win = out[max(0, i - k):i + k + 1]
+        smooth.append((sum(p[0] for p in win) / len(win), sum(p[1] for p in win) / len(win)))
+    lim_x, lim_y = 0.04 * width, 0.03 * width
+    return [(max(-lim_x, min(lim_x, x)), max(-lim_y, min(lim_y, y))) for x, y in smooth]
 
 
 # ---------------------------------------------------------------- assets
@@ -335,6 +345,18 @@ def render_master(tl: Timeline, base: Path, output: Path, work: Path, encoder_ar
          + encoder_args + ["-c:a", "pcm_s16le", str(output)], "Rendering the master")
 
 
+def export(master: Path, output: Path, work: Path) -> None:
+    """Final delivery encode: H.264 High, AAC; impact peaks limited so the whole edit can be
+    brought to the platform loudness target without clipping."""
+    from .highlight import _set_loudness
+    final = work / "final.mp4"
+    _run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(master), "-c:v", "libx264",
+          "-preset", "slow", "-crf", "16", "-profile:v", "high", "-pix_fmt", "yuv420p",
+          "-af", "alimiter=limit=0.2:attack=2:release=120:level=false", "-c:a", "aac",
+          "-b:a", "192k", "-movflags", "+faststart", str(final)], "Encoding the export")
+    _set_loudness("ffmpeg", final, Path(output))
+
+
 def render(tl: Timeline, output: Path, work: Path, preview_music: Path | None = None) -> dict[str, Any]:
     """Renders the timeline to `output` (H.264 + AAC, loudness-matched). With preview_music,
     also writes a private copy with the music mixed in at its sync offset (never the export)."""
@@ -351,11 +373,7 @@ def render(tl: Timeline, output: Path, work: Path, preview_music: Path | None = 
     render_master(tl, base, master, work, ["-c:v", "libx264", "-preset", "fast", "-crf", "8", "-pix_fmt", "yuv420p"])
     t2 = time.monotonic()
     output = Path(output)
-    final = work / "final.mp4"
-    _run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(master), "-c:v", "libx264",
-          "-preset", "slow", "-crf", "16", "-profile:v", "high", "-pix_fmt", "yuv420p", "-c:a", "aac",
-          "-b:a", "192k", "-movflags", "+faststart", str(final)], "Encoding the export")
-    _set_loudness("ffmpeg", final, output)
+    export(master, output, work)
     result = {"output": str(output), "seconds": round(tl.duration, 3),
               "timings": {"clips_s": round(t1 - t0, 1), "master_s": round(t2 - t1, 1),
                           "total_s": round(time.monotonic() - t0, 1)}}

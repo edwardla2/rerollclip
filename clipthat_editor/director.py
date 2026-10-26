@@ -32,7 +32,7 @@ def exp_ramp(s0: float, s1: float, length: float) -> float:
     return length * (s1 - s0) / math.log(s1 / s0)
 
 
-def fit_ramp_end(s0: float, length: float, budget: float, top: float = 8.0) -> float:
+def fit_ramp_end(s0: float, length: float, budget: float, top: float = 5.5) -> float:
     """End speed of a ramp from s0 over `length` output seconds that covers `budget` source."""
     if exp_ramp(s0, top, length) <= budget:
         return top
