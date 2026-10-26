@@ -129,7 +129,7 @@ def chunk_video_chain(clip: Clip, k0: int, k1: int, slow: bool, tl: Timeline, sr
         # The kill feed (who killed whom: the story of the round) as a crisp inset, top centre,
         # under the game's score bar. Not affected by the camera moves.
         fw = int(w * 0.86) // 2 * 2       # big enough to read the names on a phone
-        parts.append(f"null[camv];{feed_rows_chain('feedsrc', fw)}[feed];[camv][feed]overlay=(W-w)/2:H*0.19")      # below the round banners (spike planted, won, ace)
+        parts.append(f"null[camv];{feed_rows_chain('feedsrc', fw)}[feed];[camv][feed]overlay=(W-w)/2:H*0.275")     # below the round banners (spike planted, won, ace)
     parts.append(f"setsar=1,format=yuv420p,tpad=stop_mode=clone:stop_duration=0.3,"
                  f"trim=end_frame={frames},setpts=N/({fps}*TB)[v0]")      # exactly on the frame grid
     return ",".join(parts)
