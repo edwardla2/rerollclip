@@ -20,6 +20,7 @@ Effects are attached to kills, cuts and the drop, not to every beat.
 from __future__ import annotations
 
 import math
+from pathlib import Path
 from typing import Any
 
 from .timeline import Clip, Curve, Sfx, Shake, TextLayer, TimeKey, Timeline
@@ -370,6 +371,41 @@ def hud_corner(source: str, width: int, height: int, corners: list[str], box_w: 
     return pick, {"top": round(top_band / h, 4), "bottom": round(bottom_band / h, 4), "scores": scores}
 
 
+def first_detailed(source: str, a: float, b: float, step: float = 0.1) -> float:
+    """The first moment in [a, b] where the picture has real detail. A smoke cloud, a flash or
+    a wall in the face is flat and makes a weak opening, so the edit starts after it."""
+    import numpy as np
+    import subprocess as sp
+    if b <= a:
+        return a
+    w, h = 96, 54
+    raw = sp.run(["ffmpeg", "-v", "error", "-ss", f"{max(0.0, a - 2):.3f}", "-t", f"{b - a + 4:.3f}", "-i", source,
+                  "-vf", f"fps={1 / step:g},scale={w}:{h},format=gray", "-f", "rawvideo", "-"],
+                 capture_output=True).stdout
+    n = len(raw) // (w * h)
+    if n < 3:
+        return a
+    f = np.frombuffer(raw[: n * w * h], np.uint8).reshape(n, h, w).astype(np.float32)
+    detail = np.abs(np.diff(f, axis=2)).mean(axis=(1, 2))
+    t0 = max(0.0, a - 2)
+    times = t0 + np.arange(n) * step
+    after = detail[times >= b]           # the footage around the kill sets what "detailed" means
+    ref = float(np.median(after if len(after) else detail))
+    # The earliest start from which the picture *stays* detailed through to b (a one-frame
+    # flicker inside smoke doesn't count).
+    ok = detail >= 0.55 * ref
+    best = b
+    for i in range(n - 1, -1, -1):
+        t = times[i]
+        if t > b:
+            continue
+        if not ok[i]:
+            break
+        if t >= a - 1e-6:
+            best = round(float(t), 3)
+    return best
+
+
 def gameplay_first(source: str, duration: float, kills: list[float], music: dict[str, Any] | None,
                    taste: dict[str, Any], *, count: int | None = None, words: list[str] | None = None) -> Timeline:
     from .taste import tier
@@ -400,6 +436,11 @@ def gameplay_first(source: str, duration: float, kills: list[float], music: dict
     notes: list[str] = []
     # Song time of kill 1: the drop if the setup fits before it, else the first beat after the setup.
     first_lead = min(OPEN, kills[0])
+    # Open on something worth looking at: skip a flat stretch (smoke, a flash) at the start,
+    # keeping at least the usual lead-in.
+    if source and Path(source).exists():
+        start_at = first_detailed(source, kills[0] - first_lead, kills[0] - 0.45)
+        first_lead = kills[0] - start_at
     if synced:
         t1_song = music["drop"] if music["drop"] >= first_lead else next_beat(first_lead)
         start = t1_song - first_lead
