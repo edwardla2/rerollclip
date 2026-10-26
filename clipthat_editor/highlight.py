@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, asdict
 import json
+import math
 import re
 from pathlib import Path
 import subprocess
@@ -285,6 +286,53 @@ def _blur(s: Segment) -> str:
     return ",tmix=frames=3" if s.speed >= 2 else ""
 
 
+RAMP_MAX = 8.0            # fastest a speed curve may reach (with motion blur it reads as a whip)
+
+
+def _log_mean(a: float, b: float) -> float:
+    return a if abs(b - a) < 1e-9 else (b - a) / math.log(b / a)
+
+
+def ramp_speeds(segments: list[Segment]) -> list[tuple[float, float] | None]:
+    """Smooth speed curves for the fast stretches. Instead of jumping to a fixed speed, a fast
+    segment starts at the speed the footage was already playing (if it continues the same
+    footage) and accelerates steadily, so velocity edits flow. Its length stays the same, so
+    every kill still lands on its beat: speed rises linearly over the source, and the
+    logarithmic mean of the start and end speeds equals the segment's planned speed."""
+    out: list[tuple[float, float] | None] = []
+    prev: Segment | None = None
+    for seg in segments:
+        ramp = None
+        if seg.speed > 1.05 and not seg.impact:
+            s0 = prev.speed if prev is not None and abs(prev.end - seg.start) < 0.02 else 1.0
+            if s0 < seg.speed * 0.95 and _log_mean(s0, RAMP_MAX) >= seg.speed:
+                lo, hi = seg.speed, RAMP_MAX
+                for _ in range(50):
+                    mid = (lo + hi) / 2
+                    lo, hi = (mid, hi) if _log_mean(s0, mid) < seg.speed else (lo, mid)
+                ramp = (s0, round((lo + hi) / 2, 4))
+        out.append(ramp)
+        prev = seg
+    return out
+
+
+def _retime(s: Segment, ramp: tuple[float, float] | None, fps: int, smooth: bool) -> str:
+    """Speed for one segment: a curve (see ramp_speeds), a constant speed, or none. Slow motion
+    gets in-between frames generated, so it stays smooth instead of repeating frames."""
+    if ramp:
+        s0, s1 = ramp
+        length = s.end - s.start
+        a, b = length / (s1 - s0), (s1 - s0) / (length * s0)
+        # Output time for source time T: a*ln(1 + b*T); its slope starts at 1/s0.
+        return f",setpts='{a:.6f}*log(1+{b:.6f}*PTS*TB)/TB'"
+    if s.speed == 1:
+        return ""
+    slow = f",setpts={1 / s.speed:.4f}*PTS"
+    if smooth and s.speed < 0.9:
+        slow += f",minterpolate=fps={fps}:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1"
+    return slow
+
+
 def _dip(s: Segment) -> str:
     """Fade the segment's picture to black over its last fade_out seconds (the dip before a drop)."""
     if not s.fade_out:
@@ -294,6 +342,9 @@ def _dip(s: Segment) -> str:
 
 
 CAPTION_FONT = Path(__file__).parent / "assets" / "SpaceGrotesk-Bold.ttf"
+SFX_DIR = Path(__file__).parent / "assets"
+WHOOSH_LEAD = 0.40        # the whoosh file builds for this long, ending on the kill
+SFX_GAIN = 0.55
 
 
 def caption_text(count: int | None) -> str | None:
@@ -315,14 +366,16 @@ def _caption(text: str, start: float, end: float, width: int, height: int) -> st
 
 def build_filtergraph(segments: list[Segment], *, src_w: int, src_h: int, width: int, height: int,
                       fps: int, layout: str, audio_input: str,
-                      caption: tuple[str, float, float] | None = None) -> str:
+                      caption: tuple[str, float, float] | None = None,
+                      sfx: list[tuple[str, float, float]] | None = None, smooth: bool = True) -> str:
     """One filtergraph: trim each segment, retime it, frame it 9:16, concatenate, normalise loudness."""
     n = len(segments)
     parts = [f"[0:v]split={n}" + "".join(f"[vs{i}]" for i in range(n)),
              f"[{audio_input}]asplit={n}" + "".join(f"[as{i}]" for i in range(n))]
     aspect = width / height
+    ramps = ramp_speeds(segments)
     for i, s in enumerate(segments):
-        retime = f",setpts={1 / s.speed:.4f}*PTS" if s.speed != 1 else ""
+        retime = _retime(s, ramps[i], fps, smooth)
         if layout == "center_crop":
             # Crop the 9:16 slice (narrower when zoomed) straight from the source, then scale once.
             cw = f"trunc(min(iw\\,ih*{aspect:.6f})/{s.zoom:.4f}/2)*2"
@@ -371,7 +424,22 @@ def build_filtergraph(segments: list[Segment], *, src_w: int, src_h: int, width:
     parts.append(f"[vc]format=yuv420p{hook}[v]")
     # One steady level for the whole edit is set after the render (see _set_loudness): a
     # dynamic normaliser here would pump the volume at every cut.
-    parts.append("[ac]aresample=48000[a]")
+    if sfx:
+        # Sound design: (input, output time, gain) per effect, mixed over the game audio.
+        by_input: dict[str, list[tuple[float, float]]] = {}
+        for label, at, gain in sfx:
+            by_input.setdefault(label, []).append((max(0.0, at), gain))
+        mix = ["[ac]"]
+        for j, (label, events) in enumerate(by_input.items()):
+            parts.append(f"[{label}]aresample=48000,aformat=channel_layouts=stereo,asplit={len(events)}"
+                         + "".join(f"[x{j}_{k}]" for k in range(len(events))))
+            for k, (at, gain) in enumerate(events):
+                ms = int(round(at * 1000))
+                parts.append(f"[x{j}_{k}]volume={gain:.3f},adelay={ms}|{ms}[y{j}_{k}]")
+                mix.append(f"[y{j}_{k}]")
+        parts.append("".join(mix) + f"amix=inputs={len(mix)}:duration=first:normalize=0,aresample=48000[a]")
+    else:
+        parts.append("[ac]aresample=48000[a]")
     return ";".join(parts)
 
 
@@ -456,6 +524,15 @@ def auto_edit(source: Path, output: Path, *, profile: str = "generic", trigger_o
     if not info["has_audio"]:
         args += ["-f", "lavfi", "-i", f"anullsrc=r=48000:cl=stereo:d={span:.3f}"]
         audio_input = "1:a:0"
+    sfx = None
+    if music is not None and plan.get("kills_at_output"):
+        # A whoosh rushing into every kill and a hit on it (Reroll's own synthesized sounds).
+        base = 2 if not info["has_audio"] else 1
+        args += ["-i", str(SFX_DIR / "whoosh.wav"), "-i", str(SFX_DIR / "hit.wav")]
+        whoosh, hit = f"{base}:a:0", f"{base + 1}:a:0"
+        times = list(plan["kills_at_output"]) + ([0.0] if plan.get("teaser") else [])
+        sfx = [(whoosh, t - WHOOSH_LEAD, SFX_GAIN * 0.7) for t in times if t >= WHOOSH_LEAD]
+        sfx += [(hit, t, SFX_GAIN) for t in times]
     caption = None
     text = caption_text((plan.get("events") or {}).get("count")) if music is not None else None
     if text:
@@ -464,7 +541,8 @@ def auto_edit(source: Path, output: Path, *, profile: str = "generic", trigger_o
         caption = (text, 0.0, max(1.0, until - 0.05))
         plan["caption"] = {"text": text, "until": round(caption[2], 3)}
     graph = build_filtergraph(segments, src_w=info["width"], src_h=info["height"], width=width,
-                              height=height, fps=out_fps, layout=layout, audio_input=audio_input, caption=caption)
+                              height=height, fps=out_fps, layout=layout, audio_input=audio_input, caption=caption,
+                              sfx=sfx)
     output.parent.mkdir(parents=True, exist_ok=True)
     partial = output.with_name(output.stem + ".partial" + output.suffix)
     tail = ["-filter_complex", graph, "-map", "[v]", "-map", "[a]", "-r", str(out_fps), "-pix_fmt", "yuv420p",

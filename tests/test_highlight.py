@@ -174,3 +174,24 @@ class FocusLayoutTests(unittest.TestCase):
             data = probe(out)
             video = next(s for s in data["streams"] if s["codec_type"] == "video")
             self.assertEqual((video["width"], video["height"]), (720, 1280))
+
+
+class RampTests(unittest.TestCase):
+    def test_curves_keep_each_segment_length_and_start_where_the_footage_was(self):
+        import math
+        from clipthat_editor.highlight import Segment, ramp_speeds
+        segs = [Segment(0, 0.4, 1.0), Segment(0.4, 0.7, 2.5), Segment(0.7, 0.8, 0.4, impact=True),
+                Segment(0.8, 2.0, 2.2), Segment(5.0, 5.3, 2.5)]
+        ramps = ramp_speeds(segs)
+        self.assertIsNone(ramps[0])
+        self.assertIsNone(ramps[2])                                   # the shot itself snaps to slow motion
+        self.assertEqual(ramps[1][0], 1.0)                            # continues the run-up's speed
+        self.assertEqual(ramps[3][0], 0.4)                            # accelerates out of the slow shot
+        self.assertEqual(ramps[4][0], 1.0)                            # after a cut: from normal speed
+        for seg, ramp in zip(segs, ramps):
+            if ramp:
+                s0, s1 = ramp
+                length = seg.end - seg.start
+                curved = length / (s1 - s0) * math.log(s1 / s0)       # output time of the whole curve
+                self.assertAlmostEqual(curved, seg.output_length, delta=0.002)
+                self.assertGreater(s1, seg.speed)
