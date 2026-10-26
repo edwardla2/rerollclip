@@ -588,6 +588,20 @@ def gameplay_first(source: str, duration: float, kills: list[float], music: dict
                 last.keys[-1].src = round(min(last.keys[-1].src + extra, duration - last.src_in - 0.02), 6)
                 last.src_out = round(last.src_in + last.keys[-1].src, 4)
                 out_t = last.out_end
+            # Don't cut into flat footage (smoke): start the lead-in where the picture has detail,
+            # and let this aftermath run on so the next kill still lands on its beat.
+            if source and Path(source).exists() and lead > 0.5:
+                begin = first_detailed(source, nxt - lead, nxt - 0.45)
+                skip = begin - (nxt - lead)
+                last = clips[-1]
+                room_src = duration - last.src_in - last.keys[-1].src - 0.02
+                if skip > 0.05 and room_src > 0:
+                    last.keys[-1].out = round(last.keys[-1].out + skip, 6)
+                    last.keys[-1].src = round(last.keys[-1].src + min(skip, room_src), 6)
+                    last.src_out = round(last.src_in + last.keys[-1].src, 4)
+                    out_t = last.out_end
+                    lead -= skip
+                    notes.append(f"lead-in to kill {i + 2} starts {skip:.2f}s later (flat footage)")
             if gap_src > 0:
                 notes.append(f"cut over {gap_src:.2f}s of downtime before kill {i + 2}")
         lead = max(0.2, lead)
