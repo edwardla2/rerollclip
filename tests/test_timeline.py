@@ -146,3 +146,17 @@ class ChunkTests(unittest.TestCase):
         self.assertIn("minterpolate", chain)
         self.assertIn(f"(t+{c.keys[k0].out:.6f})", chain)
         self.assertIn(f"(T+{c.keys[k0].src:.6f})", chain)
+
+
+@unittest.skipUnless(shutil.which("ffmpeg"), "FFmpeg required")
+class BlendOrderTests(unittest.TestCase):
+    """The radial blur relies on FFmpeg's normal blend showing its *second* input at opacity 0."""
+    def test_normal_blend_opacity_weights_the_first_input(self):
+        def px(op):
+            return subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "color=c=red:s=16x16:d=0.1",
+                                   "-f", "lavfi", "-i", "color=c=blue:s=16x16:d=0.1", "-filter_complex",
+                                   f"[0]format=gbrp[a];[1]format=gbrp[b];[a][b]blend=all_mode=normal:all_opacity={op},"
+                                   "format=rgb24", "-frames:v", "1", "-f", "rawvideo", "-"],
+                                  capture_output=True, check=True).stdout[:3]
+        self.assertGreater(px(0)[2], 200)    # blue: the second input
+        self.assertGreater(px(1)[0], 200)    # red: the first

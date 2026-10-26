@@ -188,7 +188,9 @@ def velocity_montage(source: str, duration: float, kills: list[float], music: di
         src_in = k - a_src
         roll = (-3.5 if i % 2 == 0 else 3.0) * (1.6 if big else 1.0)
         zoom = Curve().add(0, 1.22 if clips else 1.13).add(0.16, 1.02, "out3").add(A - 0.02, 1.05, "in")
-        zoom.add(A + 0.08, 1.16, "out3").add(A + hold, 1.22 if not final else 1.3, "smooth")
+        # Punch in toward the crosshair (the target); harder on the final kill, which hangs longest.
+        punch = 1.28 if final else (1.2 if i == n - 2 else 1.16)
+        zoom.add(A + 0.08, punch, "out3").add(A + hold, 1.42 if final else punch + 0.06, "smooth")
         rot = Curve().add(0, 0.0).add(A, 0.0).add(A + hold, roll, "smooth")
         if not final:
             zoom.add(clip_out, 1.36, "in")
@@ -228,7 +230,8 @@ def velocity_montage(source: str, duration: float, kills: list[float], music: di
     hold_end = T[-1] + 4 * P
     word = kill_word(count)
     if word:
-        texts.append(TextLayer(word, round(T[-1] + P, 4), round(3 * P, 4), "impact_white", x=0.5, y=0.33,
+        # Below the game's own round banner (top centre), over the spot where the last enemy fell.
+        texts.append(TextLayer(word, round(T[-1] + P, 4), round(3 * P, 4), "impact_white", x=0.5, y=0.52,
                                size=0.27, tilt=-2.0, yaw=0.0, enter="slam", exit="through", track=0.6))
         master["flash"].add(T[-1] + P - 0.001, 0.0).add(T[-1] + P, 0.12).add(T[-1] + P + 0.1, 0.0, "out")
         sfx.append(Sfx("hit", round(T[-1] + P, 4), 0.35))

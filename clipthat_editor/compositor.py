@@ -299,7 +299,8 @@ def render_master(tl: Timeline, base: Path, output: Path, work: Path, encoder_ar
         zw, zh = int(hw * s) // 2 * 2, int(hh * s) // 2 * 2
         graph.append(f"[z{i + 1}]scale={zw}:{zh},crop={hw}:{hh}[zz{i + 1}]")
     graph.append(f"[z0][zz1][zz2][zz3]mix=inputs=4:weights='1 1 1 1',scale={w}:{h}:flags=bicubic[rb]")
-    graph.append("[rs][rb]blend@rb=all_mode=normal:all_opacity=0[rbo]")
+    # In FFmpeg's "normal" blend, opacity weights the first input; at 0 the second shows.
+    graph.append("[rb][rs]blend@rb=all_mode=normal:all_opacity=0[rbo]")
     # Colour split, then exposure (flashes) and the edge glow.
     graph.append(f"[rbo]rgbashift@ca=rh=0:bh=0:edge=smear,format=yuv444p,"
                  f"eq=brightness='{flash.expr()}':contrast='1+{exposure.expr()}':eval=frame[ex]")
