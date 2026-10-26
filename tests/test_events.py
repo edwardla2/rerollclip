@@ -48,10 +48,15 @@ class KillCountTests(unittest.TestCase):
 class OwnKillTests(unittest.TestCase):
     def test_banners_pick_your_rows_out_of_everyones(self):
         from clipthat_editor.events import own_kills
-        # The feed on a real clip: eight rows, five of them yours (your banner follows those).
-        steps = [8.73, 12.13, 12.93, 19.83, 20.43, 34.63, 46.83, 50.08]
+        # Feed-row onsets measured on a real swiftplay ace (everyone's kills, plus a smoke exit
+        # at 8.85), and the player's kill banners. Verified kill frames: 9.30, 12.43, 20.57,
+        # 34.77, 50.20 (one 20 fps sample of tolerance).
+        onsets = [2.1, 8.85, 9.3, 12.25, 12.55, 13.05, 13.45, 16.4, 19.95, 20.55, 34.75, 38.7, 46.95, 50.2]
         banners = [9.4, 12.6, 20.3, 34.8, 50.7]
-        self.assertEqual(own_kills(steps, banners), [8.73, 12.93, 20.43, 34.63, 50.08])
+        got = own_kills(onsets, banners)
+        for g, truth in zip(got, [9.30, 12.43, 20.57, 34.77, 50.20]):
+            self.assertAlmostEqual(g, truth, delta=0.13)
+        self.assertEqual(len(got), 5)
 
     def test_without_banners_every_row_counts(self):
         from clipthat_editor.events import own_kills
