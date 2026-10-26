@@ -39,13 +39,15 @@ def decoded_audio(path: Path, work: Path) -> Path:
     return out
 
 
-def montage(source: Path, music: Path, output: Path, *, profile: str = "valorant", words: list[str] | None = None,
-            aspect: str = "16:9", fps: int = 60, timeline: Path | None = None, work: Path | None = None,
-            preview: bool = False) -> dict[str, Any]:
+def montage(source: Path, music: Path | None, output: Path, *, profile: str = "valorant",
+            words: list[str] | None = None, style: str = "gameplay", taste_path: Path | None = None,
+            intensity: str | None = None, aspect: str | None = None, fps: int | None = None,
+            timeline: Path | None = None, work: Path | None = None, preview: bool = False) -> dict[str, Any]:
+    """style "gameplay" (default, taste profile driven) or "stylized" (the velocity montage)."""
     source, output = Path(source).resolve(), Path(output).resolve()
     work = Path(work) if work else Path(tempfile.mkdtemp(prefix="reroll-"))
     work.mkdir(parents=True, exist_ok=True)
-    song = decoded_audio(Path(music), work)
+    song = decoded_audio(Path(music), work) if music else None
     if timeline:
         tl = Timeline.load(timeline)
         events = {"source": "timeline"}
@@ -53,12 +55,27 @@ def montage(source: Path, music: Path, output: Path, *, profile: str = "valorant
         from .beats import analyze_beats
         from .events import find_events
         events = find_events(source, profile)
-        rhythm = analyze_beats(song)
-        width, height = (1920, 1080) if aspect == "16:9" else (1080, 1920)
-        tl = velocity_montage(str(source), _duration(source, "v:0"), events["times"], rhythm,
-                              count=events.get("count"), words=words, width=width, height=height, fps=fps)
+        rhythm = analyze_beats(song) if song else None
+        if style == "stylized":
+            if not rhythm:
+                raise ValueError("the stylized montage needs a song to cut to")
+            width, height = (1920, 1080) if (aspect or "16:9") == "16:9" else (1080, 1920)
+            tl = velocity_montage(str(source), _duration(source, "v:0"), events["times"], rhythm,
+                                  count=events.get("count"), words=words, width=width, height=height, fps=fps or 60)
+        else:
+            from .director import gameplay_first
+            from .taste import load
+            fmt = {}
+            if aspect:
+                fmt = {"aspect": aspect, "width": 1920 if aspect == "16:9" else 1080,
+                       "height": 1080 if aspect == "16:9" else 1920}
+            if fps:
+                fmt["fps"] = fps
+            taste = load(taste_path, intensity=intensity, format=fmt or None)
+            tl = gameplay_first(str(source), _duration(source, "v:0"), events["times"], rhythm, taste,
+                                count=events.get("count"), words=words)
     plan = output.with_suffix(".timeline.json")
     tl.save(plan)
-    result = render(tl, output, work, preview_music=song if preview else None)
+    result = render(tl, output, work, preview_music=song if (preview and song) else None)
     result.update(timeline=str(plan), events=events, notes=tl.notes)
     return result

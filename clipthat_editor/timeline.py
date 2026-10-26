@@ -223,12 +223,15 @@ class Timeline:
     fps: int
     source: str
     clips: list[Clip]
-    master: dict[str, Curve] = field(default_factory=dict)   # ca, glow, flash, radial, edge, exposure
+    master: dict[str, Curve] = field(default_factory=dict)   # ca, glow, flash, radial, edge, exposure, mono
     reveals: list[dict[str, Any]] = field(default_factory=list)  # {"t", "dur", "mode": "in"|"out"}
     texts: list[TextLayer] = field(default_factory=list)
     sfx: list[Sfx] = field(default_factory=list)
     music: dict[str, Any] = field(default_factory=dict)       # sync reference only, never exported
     notes: list[str] = field(default_factory=list)
+    look: dict[str, float] = field(default_factory=lambda: {"contrast": 1.13, "saturation": 1.42, "gamma": 0.97,
+                                                            "warmth": 0.04, "sharpen": 0.5})
+    branding: dict[str, Any] | None = None    # {"sub", "word", "corner", "height", "margin"}
 
     @property
     def duration(self) -> float:

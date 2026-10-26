@@ -23,8 +23,6 @@ from typing import Any
 from .timeline import Clip, Curve, Timeline
 
 ASSETS = Path(__file__).parent / "assets"
-GRADE = ("eq=contrast=1.13:saturation=1.42:gamma=0.97,"
-         "colorbalance=rs=-0.03:bs=0.05:rh=0.05:bh=-0.04,unsharp=5:5:0.5")
 
 
 class RenderError(RuntimeError):
@@ -80,7 +78,9 @@ def chunk_video_chain(clip: Clip, k0: int, k1: int, slow: bool, tl: Timeline, sr
         parts.append(INTERPOLATE.format(fps=fps))
     else:
         parts.append(f"fps={fps}")
-    parts.append(f"scale={w}:{h}:flags=lanczos,setsar=1")
+    # Fill the output frame: centre crop to its aspect (9:16 from 16:9 keeps the crosshair,
+    # the top banner and the ability bar), then scale.
+    parts.append(f"crop='min(iw\\,ih*{w}/{h})':'min(ih\\,iw*{h}/{w})',scale={w}:{h}:flags=lanczos,setsar=1")
     moving = not (clip.zoom.is_const(1.0) and clip.rot.is_const(0.0) and clip.pan_x.is_const(0.0)
                   and clip.pan_y.is_const(0.0) and not clip.shakes)
     if moving:
@@ -266,6 +266,49 @@ def _reveal_filters(tl: Timeline) -> str:
     return ("," + ",".join(out)) if out else ""
 
 
+def _grade(look: dict[str, float]) -> str:
+    warm = look.get("warmth", 0.0)
+    return (f"eq=contrast={look.get('contrast', 1.0):.3f}:saturation={look.get('saturation', 1.0):.3f}"
+            f":gamma={look.get('gamma', 1.0):.3f},"
+            f"colorbalance=rs={-warm * 0.75:.3f}:bs={warm * 1.25:.3f}:rh={warm * 1.25:.3f}:bh={-warm:.3f},"
+            f"unsharp=5:5:{look.get('sharpen', 0.0):.2f}")
+
+
+def brand_mark(path: Path, branding: dict[str, Any], width: int, height: int) -> tuple[Path, int, int]:
+    """The "made with reroll" lockup: a small die mark, a light "made with" line and a heavier
+    wordmark, white with a soft shadow (no panel). Returns (png, x, y) for its corner."""
+    from PIL import Image, ImageDraw, ImageFilter, ImageFont
+    lock_h = max(24, int(branding.get("height", 0.032) * height))
+    bold = ImageFont.truetype(str(ASSETS / "SpaceGrotesk-Bold.ttf"), int(lock_h * 0.62))
+    small = ImageFont.truetype(str(ASSETS / "SpaceGrotesk-Bold.ttf"), int(lock_h * 0.3))
+    word, sub = branding.get("word", "reroll"), branding.get("sub", "made with")
+    mark = int(lock_h * 0.78)
+    gap = int(lock_h * 0.22)
+    text_w = int(max(bold.getlength(word), small.getlength(sub))) + 2
+    pad = int(lock_h * 0.3)
+    w, h = pad * 2 + mark + gap + text_w, pad * 2 + lock_h
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    my = pad + (lock_h - mark) // 2
+    d.rounded_rectangle([pad, my, pad + mark, my + mark], radius=mark // 4, fill=(233, 185, 73, 255))
+    r = max(2, mark // 9)
+    for cx, cy in ((0.32, 0.32), (0.68, 0.68)):          # a die showing two: reroll
+        x0, y0 = pad + int(mark * cx), my + int(mark * cy)
+        d.ellipse([x0 - r, y0 - r, x0 + r, y0 + r], fill=(24, 24, 28, 255))
+    tx = pad + mark + gap
+    d.text((tx, pad - int(lock_h * 0.04)), sub, font=small, fill=(255, 255, 255, 200))
+    d.text((tx, pad + int(lock_h * 0.28)), word, font=bold, fill=(255, 255, 255, 255))
+    shadow = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    shadow.putalpha(img.getchannel("A").filter(ImageFilter.GaussianBlur(lock_h * 0.12)).point(lambda v: int(v * 0.55)))
+    out = Image.alpha_composite(shadow, img)
+    out.save(path)
+    m = int(branding.get("margin", 0.035) * width)
+    corner = branding.get("corner", "top-left")
+    x = m if "left" in corner else width - w - m
+    y = int(branding.get("top", 0.0) * height) + m if "top" in corner else height - h - m - int(branding.get("bottom", 0.0) * height)
+    return path, x, y
+
+
 def _count_inputs(args: list[str]) -> int:
     return sum(1 for a in args if a == "-i")
 
@@ -279,7 +322,9 @@ def render_master(tl: Timeline, base: Path, output: Path, work: Path, encoder_ar
     master_commands(tl, cmd)
     flash = tl.master.get("flash", Curve.const(0.0))
     exposure = tl.master.get("exposure", Curve.const(0.0))
-    graph.append(f"[0:v]sendcmd=f='{cmd}',{GRADE},format=rgba[g0]")
+    mono = tl.master.get("mono", Curve.const(0.0))
+    hue = "" if mono.is_const(0.0) else f",hue=s='max(0\\,1-({mono.expr()}))'"
+    graph.append(f"[0:v]sendcmd=f='{cmd}',{_grade(tl.look)}{hue},format=rgba[g0]")
     # Typography, positioned with the footage's motion.
     cur = "g0"
     for j, layer in enumerate(tl.texts):
@@ -318,8 +363,15 @@ def render_master(tl: Timeline, base: Path, output: Path, work: Path, encoder_ar
     inputs += ["-loop", "1", "-framerate", str(fps), "-t", f"{tl.duration + 0.5:.3f}", "-i", str(edge)]
     k = _count_inputs(inputs) - 1
     graph.append(f"[{k}:v]format=rgba,colorchannelmixer@eg=aa=0[edge]")
+    tail = "[vf]" if tl.branding else "[v]"
     graph.append(f"[ex][edge]overlay=format=auto:shortest=1{_reveal_filters(tl)},"
-                 f"trim=duration={tl.duration:.4f},format=yuv420p[v]")
+                 f"trim=duration={tl.duration:.4f},format=yuv420p{tail}")
+    if tl.branding:
+        png, bx, by = brand_mark(work / "brand.png", tl.branding, w, h)
+        inputs += ["-loop", "1", "-framerate", str(fps), "-t", f"{tl.duration + 0.5:.3f}", "-i", str(png)]
+        k = _count_inputs(inputs) - 1
+        graph.append(f"[{k}:v]format=rgba,fade=t=in:st=0.15:d=0.35:alpha=1[brand]")
+        graph.append(f"[vf][brand]overlay={bx}:{by}:format=auto:shortest=1,format=yuv420p[v]")
     # Sound: game audio from pass 1, sound effects on top.
     audio_in = _count_inputs(inputs)
     names = sorted({s.name for s in tl.sfx})

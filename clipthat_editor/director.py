@@ -294,3 +294,278 @@ def velocity_montage(source: str, duration: float, kills: list[float], music: di
                   notes=[f"kill {i + 1}: source {k:.3f}s lands on beat {slots[i]} (master {T[i]:.3f}s)"
                          for i, k in enumerate(kills)])
     return tl
+
+
+# =====================================================================================
+# Gameplay-first (the default; taste profile v0.2): the play is the star, effects are accents.
+# =====================================================================================
+
+def rank_events(kills: list[float], count: int | None) -> list[dict[str, Any]]:
+    """Each kill with an importance: the final elimination is the top event (more so if it
+    completes an ace); kills close behind another (a multi-kill burst) rank above singles."""
+    out = []
+    for i, k in enumerate(kills):
+        burst = i > 0 and k - kills[i - 1] <= 2.0
+        score = 0.5 + (0.2 if burst else 0.0) + 0.05 * i
+        out.append({"t": k, "index": i, "burst": burst, "score": round(score, 3), "top": False})
+    if out:
+        out[-1]["top"] = True
+        out[-1]["score"] = 1.0 if (count or 0) >= 5 else 0.9
+    return out
+
+
+def recipes_for(events: list[dict[str, Any]], taste: dict[str, Any]) -> list[str]:
+    """A treatment per kill: the top event gets the profile's top recipe; the rest rotate
+    through the others so no two neighbours look the same."""
+    cycle = list(taste["accents"]["rotate_recipes"])
+    out, j = [], 0
+    for e in events:
+        if e["top"]:
+            out.append(taste["accents"]["top_event_recipe"])
+            continue
+        pick = cycle[j % len(cycle)]
+        if out and pick == out[-1]:
+            j += 1
+            pick = cycle[j % len(cycle)]
+        out.append(pick)
+        j += 1
+    return out
+
+
+def hud_corner(source: str, width: int, height: int, corners: list[str], box_w: float = 0.3,
+               box_h: float = 0.06, margin: float = 0.035) -> tuple[str, dict[str, float]]:
+    """The corner of the framed output with the least HUD: HUD is detailed and doesn't move,
+    so score each corner box by edge density weighted by stillness over the clip; the first
+    preferred corner within reach of the best wins. Also returns how far below the top HUD
+    band (or above the bottom one) the mark should sit."""
+    import numpy as np
+    import subprocess as sp
+    w, h = 108, 192
+    raw = sp.run(["ffmpeg", "-v", "error", "-i", source, "-vf",
+                  f"fps=2,crop='min(iw\\,ih*{width}/{height})':'min(ih\\,iw*{height}/{width})',scale={w}:{h},format=gray",
+                  "-f", "rawvideo", "-"], capture_output=True).stdout
+    n = len(raw) // (w * h)
+    if n < 2:
+        return corners[0], {}
+    frames = np.frombuffer(raw[: n * w * h], np.uint8).reshape(n, h, w).astype(np.float32)
+    edges = np.abs(np.diff(frames, axis=2)).mean(axis=0)
+    edges = np.pad(edges, ((0, 0), (0, 1)))
+    still = 1.0 / (1.0 + frames.std(axis=0) / 8.0)
+    hud = edges * still
+    # HUD bands: rows near the top/bottom whose HUD score stays high (score bar, ability bar).
+    rows = hud.mean(axis=1)
+    strong = rows > 2.0 * float(np.median(rows))
+    top_rows = [y for y in range(h // 6) if strong[y]]
+    bottom_rows = [y for y in range(h - h // 5, h) if strong[y]]
+    top_band = (max(top_rows) + 1) if top_rows else 0
+    bottom_band = (h - min(bottom_rows)) if bottom_rows else 0
+    bw, bh, m = int(box_w * w), int(box_h * h), int(margin * w)
+    scores = {}
+    for c in corners:
+        x0 = m if "left" in c else w - bw - m
+        y0 = top_band + m if "top" in c else h - bottom_band - bh - m
+        scores[c] = float(hud[y0:y0 + bh, x0:x0 + bw].mean())
+    best = min(scores.values())
+    pick = next(c for c in corners if scores[c] <= best * 1.25 + 0.05)
+    return pick, {"top": round(top_band / h, 4), "bottom": round(bottom_band / h, 4), "scores": scores}
+
+
+def gameplay_first(source: str, duration: float, kills: list[float], music: dict[str, Any] | None,
+                   taste: dict[str, Any], *, count: int | None = None, words: list[str] | None = None) -> Timeline:
+    from .taste import tier
+    fmt, pace, prot = taste["format"], taste["pacing"], taste["protect"]
+    width, height, fps = fmt["width"], fmt["height"], fmt["fps"]
+    tz = tier(taste)
+    kills = sorted(k for k in kills if 0.3 < k < duration - 0.05)
+    if not kills:
+        raise ValueError("no kills to edit around")
+    events = rank_events(kills, count)
+    recipes = recipes_for(events, taste)
+    zmax = prot["zoom_max"]
+    synced = bool(music) and pace.get("sync_to_music", True)
+    P = 60.0 / music["bpm"] if synced else 0.5
+    beats = list(music["beats"]) if synced else []
+
+    def next_beat(song_t: float) -> float:
+        for b in beats:
+            if b >= song_t - 1e-6:
+                return b
+        return song_t
+
+    LEAD, AFTER = pace["lead_in"], pace["aftermath"]
+    OPEN = max(LEAD, 2.0)                     # the first play gets more setup
+    clips: list[Clip] = []
+    master = {k: Curve().add(0.0, 0.0) for k in ("ca", "glow", "flash", "radial", "edge", "exposure", "mono")}
+    sfx: list[Sfx] = []
+    notes: list[str] = []
+    # Song time of kill 1: the drop if the setup fits before it, else the first beat after the setup.
+    first_lead = min(OPEN, kills[0])
+    if synced:
+        t1_song = music["drop"] if music["drop"] >= first_lead else next_beat(first_lead)
+        start = t1_song - first_lead
+    else:
+        start = 0.0
+    out_t = 0.0                                # running master time
+    src_cursor = kills[0] - first_lead         # where the story is in the source
+    lead = first_lead
+    for i, (ev, recipe) in enumerate(zip(events, recipes)):
+        k = ev["t"]
+        top = ev["top"]
+        nxt = kills[i + 1] if i + 1 < len(kills) else None
+        # ---- build this kill's clip: lead-in -> impact (recipe) -> aftermath
+        kb = KeyBuilder(1.0)
+        zoom = Curve().add(0, 1.0)
+        shakes: list[Shake] = []
+        kill_local = None
+        if recipe == "ramp":
+            # Accelerate gently into the shot, snap to slow motion, ease back to real time.
+            r_out = min(0.3, lead * 0.5)
+            r_src = exp_ramp(1.0, 1.7, r_out)
+            calm_src, calm_out = max(0.02, lead - r_src), max(0.02, lead - r_out)
+            kb.keys.append(TimeKey(round(calm_src, 6), round(calm_out, 6), calm_src / calm_out, 1.0))
+            kb.ramp(1.0, 1.7, r_out, pieces=2)
+            kb.keys[-1].src = round(lead, 6)            # the shot, exactly at `lead`
+            kb.keys[-1].out = round(lead, 6)
+            kill_local = lead
+            kb.snap(tz["slow"]).ramp(tz["slow"], tz["slow"] * 1.2, 0.35, pieces=2).ramp(tz["slow"] * 1.2, 1.0, 0.3, pieces=2)
+            zoom.add(kill_local, 1.0).add(kill_local + 0.15, min(zmax, tz["punch"]), "out3").add(kill_local + 0.95, 1.02, "smooth")
+        else:
+            kb.keys.append(TimeKey(round(lead, 6), round(lead, 6), 1.0, 1.0))
+            kill_local = lead
+            if recipe == "hang":
+                hang = max(0.6, tz["hang_beats"] * P * 1.6)
+                kb.snap(tz["slow"]).ramp(tz["slow"], tz["slow"] * 0.9, hang, pieces=3).ramp(tz["slow"] * 0.9, 1.0, 0.4, pieces=2)
+                zoom.add(kill_local, 1.0).add(kill_local + hang, min(zmax, tz["punch"] + 0.06), "smooth")
+                zoom.add(kill_local + hang + 0.6, 1.02, "smooth")
+            elif recipe == "snap":
+                zoom.add(kill_local, 1.0).add(kill_local + 0.06, min(zmax, tz["punch"] + 0.03), "out3")
+                zoom.add(kill_local + 0.5, 1.0, "smooth")
+                shakes.append(Shake(kill_local, tz["shake"], 0.22, 13.0))
+            else:  # punch
+                zoom.add(kill_local, 1.0).add(kill_local + 0.12, min(zmax, tz["punch"]), "out3")
+                zoom.add(kill_local + 0.7, 1.0, "smooth")
+        # Aftermath at real speed (the top event plays out its payoff).
+        after = AFTER if not top else max(AFTER, 1.4)
+        if nxt is not None:
+            after = min(after, max(0.2, (nxt - k) - 0.3 - (kb.src - lead)))
+        after = min(after, duration - k - (kb.src - lead) - 0.02)
+        kb.keys.append(TimeKey(round(kb.src + after, 6), round(kb.out + after, 6), 1.0, 1.0))
+        clip_src_end = (k - lead) + kb.src
+        # ---- where does the next kill land? (on a beat when synced) and how do we get there
+        T_kill = out_t + kill_local
+        if top:
+            # End on the beat after the payoff: hold the last frame-accurate moment, then cut.
+            end_out = out_t + kb.out
+            if synced:
+                end_out = next_beat(end_out + start) - start
+                extra = end_out - (out_t + kb.out)
+                avail = duration - clip_src_end - 0.02
+                if extra > 1e-3:
+                    hold = min(extra, avail)
+                    if hold > 0.02:
+                        kb.keys.append(TimeKey(round(kb.src + hold * 0.6, 6), round(kb.out + extra, 6), 0.6, 0.6))
+                    else:
+                        kb.keys[-1].out = round(kb.keys[-1].out + extra, 6)
+                    clip_src_end = (k - lead) + kb.src
+        clip = Clip(f"kill {i + 1} ({recipe})", round(k - lead, 4), round(clip_src_end, 4), round(out_t, 4), kb.keys,
+                    zoom=zoom, shakes=shakes, interpolate=True, game_gain=1.0)
+        clips.append(clip)
+        # ---- accents (event-motivated, by recipe; nothing continuous)
+        t = T_kill
+        if recipe == "punch":
+            master["flash"].add(t - 0.001, 0.0).add(t, tz["flash"]).add(t + 0.12, 0.0, "out")
+        elif recipe == "snap":
+            master["ca"].add(t - 0.001, 0.0).add(t, tz["split"]).add(t + 0.16, 0.0, "out")
+        elif recipe == "ramp":
+            master["glow"].add(t - 0.001, 0.0).add(t, tz["bloom"] * 0.6).add(t + 0.45, 0.0, "out")
+        elif recipe == "hang":
+            if taste["accents"]["mono"]["max_per_edit"] > 0 and tz.get("mono"):
+                # Black and white while it hangs; colour returns with the payoff.
+                back = t + max(0.6, tz["hang_beats"] * P * 1.6)
+                master["mono"].add(t - 0.001, 0.0).add(t + 0.05, 1.0, "out").add(back - 0.05, 1.0).add(back + 0.2, 0.0, "smooth")
+                master["flash"].add(back - 0.001, 0.0).add(back, tz["flash"] * 0.7).add(back + 0.18, 0.0, "out")
+            master["glow"].add(t - 0.001, 0.0).add(t, tz["bloom"]).add(t + 1.2, 0.0, "smooth")
+            if tz.get("edge_glow"):
+                master["edge"].add(t - 0.001, 0.0).add(t + 0.1, 0.6, "out").add(t + 1.4, 0.0, "smooth")
+            sfx.append(Sfx("hit", round(t, 4), 0.35))
+        notes.append(f"kill {i + 1}: source {k:.3f}s -> {recipe}, at {t:.3f}s"
+                     + (f" (song {t + start:.3f}s)" if synced else ""))
+        out_t = clip.out_end
+        if nxt is None:
+            break
+        # ---- downtime to the next kill's lead-in
+        gap_src = (nxt - LEAD) - clip_src_end            # source between this aftermath and the next lead-in
+        lead_next = LEAD
+        if gap_src <= 0:
+            lead_next = max(0.3, nxt - clip_src_end)
+            gap_src = 0.0
+        rampable = 0 < gap_src <= pace["ramp_downtime_under"]
+        avg_max = pace["downtime_max_speed"] * 0.75     # leaves headroom for the curve's peak
+        earliest = out_t + (gap_src / avg_max if rampable else 0.0) + lead_next
+        if synced:
+            target = next_beat(earliest + start) - start
+        else:
+            target = earliest
+        room = target - out_t - lead_next                # output time available for downtime
+        use_ramp = rampable and room > 0.12
+        if use_ramp:
+            # Speed through it smoothly: up from real time and back down, averaging gap/room.
+            avg = gap_src / room
+            if avg < 1.0:          # more time than footage: give the extra to the lead-in
+                lead_next = min(nxt - clip_src_end, lead_next + (room - gap_src))
+                room = target - out_t - lead_next
+                gap_src = (nxt - lead_next) - clip_src_end
+                avg = gap_src / room if room > 0.05 else 1.0
+            if room > 0.05 and gap_src > 0.05:
+                peak = min(pace["downtime_max_speed"] * 1.5, max(1.05, 2 * avg - 1.0))
+                dkb = KeyBuilder(1.0)
+                half = room / 2
+                dkb.ramp(1.0, peak, half, pieces=3).ramp(peak, 1.0, half, pieces=3)
+                # scale to cover exactly gap_src
+                f = gap_src / dkb.src
+                for key in dkb.keys:
+                    key.src = round(key.src * f, 6)
+                    key.speed_in *= f
+                    key.speed_out *= f
+                dclip = Clip(f"downtime {i + 1}", round(clip_src_end, 4), round(clip_src_end + gap_src, 4), round(out_t, 4),
+                             dkb.keys, motion_blur=3 if peak > 2.2 else 0, interpolate=False, game_gain=0.7)
+                clips.append(dclip)
+                if tz.get("radial", 0) > 0 and peak > 2.5:
+                    mid = out_t + half
+                    master["radial"].add(mid - 0.12, 0.0).add(mid, tz["radial"], "in").add(mid + 0.12, 0.0, "out")
+                sfx.append(Sfx("whoosh", round(out_t + half - 0.3, 4), 0.22))
+                out_t = dclip.out_end
+            lead = target - out_t
+        else:
+            # Hard cut over the downtime (on the beat); the lead-in absorbs the beat slack.
+            lead = min(target - out_t, nxt - clip_src_end - 0.01) if nxt - clip_src_end > 0 else lead_next
+            if target - out_t > lead + 1e-3:
+                # not enough footage before the next kill: let this aftermath run longer
+                extra = target - out_t - lead
+                last = clips[-1]
+                last.keys[-1].out = round(last.keys[-1].out + extra, 6)
+                last.keys[-1].src = round(min(last.keys[-1].src + extra, duration - last.src_in - 0.02), 6)
+                last.src_out = round(last.src_in + last.keys[-1].src, 4)
+                out_t = last.out_end
+            if gap_src > 0:
+                notes.append(f"cut over {gap_src:.2f}s of downtime before kill {i + 2}")
+        lead = max(0.2, lead)
+    end = clips[-1].out_end
+    for c in master.values():
+        c.add(end, c.at(end))
+    texts: list[TextLayer] = []
+    branding = None
+    if taste["branding"].get("enabled"):
+        corner, bands = hud_corner(source, width, height, taste["branding"]["corners"])
+        branding = {k: taste["branding"][k] for k in ("sub", "word", "height", "margin")}
+        branding.update(corner=corner, top=bands.get("top", 0.0), bottom=bands.get("bottom", 0.0))
+    t = taste.get("look", {})
+    look = {"contrast": t.get("contrast", 1.06), "saturation": t.get("saturation", 1.12), "gamma": t.get("gamma", 0.99),
+            "warmth": t.get("warmth", 0.015), "sharpen": t.get("sharpen", 0.45)}
+    tl = Timeline(width, height, fps, source, clips, master, [], texts, sorted(sfx, key=lambda s: s.t),
+                  music={"file": (music or {}).get("file"), "start": round(start, 4), "bpm": (music or {}).get("bpm"),
+                         "drop": (music or {}).get("drop"),
+                         "kills_at": [round(c.out_start + c.out_at(e["t"] - c.src_in), 4)
+                                      for e, c in zip(events, [c for c in clips if c.label.startswith("kill")])]},
+                  notes=notes, look=look, branding=branding)
+    return tl

@@ -208,12 +208,16 @@ def main() -> int:
     eval_parser.add_argument("--encoder", default="auto")
     mont = sub.add_parser("montage", help="Velocity montage edit (reference style) of one clip, synced to a song")
     mont.add_argument("file", type=Path)
-    mont.add_argument("--music", type=Path, required=True, help="the song to sync to (never exported)")
+    mont.add_argument("--music", type=Path, default=None, help="the song to sync to (never exported)")
+    mont.add_argument("--style", choices=["gameplay", "stylized"], default="gameplay",
+                      help="gameplay: the play first, effects as accents (default); stylized: velocity montage")
+    mont.add_argument("--taste", type=Path, default=None, help="a taste profile JSON (partial is fine)")
+    mont.add_argument("--intensity", choices=["restrained", "medium", "aggressive"], default=None)
     mont.add_argument("--output", type=Path, required=True)
     mont.add_argument("--profile", choices=["generic", "valorant", "cs2", "fortnite", "roblox"], default="valorant")
     mont.add_argument("--words", default="", help="intro words, e.g. 'little aggro swiftplay'")
-    mont.add_argument("--aspect", choices=["16:9", "9:16"], default="16:9")
-    mont.add_argument("--fps", type=int, default=60)
+    mont.add_argument("--aspect", choices=["16:9", "9:16"], default=None, help="default: from the taste profile")
+    mont.add_argument("--fps", type=int, default=None)
     mont.add_argument("--timeline", type=Path, default=None, help="render this timeline JSON instead of planning one")
     mont.add_argument("--work", type=Path, default=None)
     mont.add_argument("--preview", action="store_true", help="also write a private copy with the song mixed in")
@@ -263,7 +267,8 @@ def main() -> int:
         elif opts.command == "montage":
             from .montage import montage
             print(json.dumps(montage(opts.file, opts.music, opts.output, profile=opts.profile,
-                                     words=opts.words.split(), aspect=opts.aspect, fps=opts.fps,
+                                     words=opts.words.split(), style=opts.style, taste_path=opts.taste,
+                                     intensity=opts.intensity, aspect=opts.aspect, fps=opts.fps,
                                      timeline=opts.timeline, work=opts.work, preview=opts.preview), indent=1))
         elif opts.command == "study":
             from .study import study
