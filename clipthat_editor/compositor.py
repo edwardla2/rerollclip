@@ -92,14 +92,15 @@ def chunk_video_chain(clip: Clip, k0: int, k1: int, slow: bool, tl: Timeline, sr
     start, end = clip.out_start + a.out, clip.out_start + b.out
     frames = round(end * fps) - round(start * fps)       # boundaries on whole frames
     parts.append(f"setsar=1,format=yuv420p,tpad=stop_mode=clone:stop_duration=0.3,"
-                 f"trim=end_frame={frames},setpts=PTS-STARTPTS[v0]")
+                 f"trim=end_frame={frames},setpts=N/({fps}*TB)[v0]")      # exactly on the frame grid
     return ",".join(parts)
 
 
-def chunk_audio_chain(clip: Clip, k0: int, k1: int, has_audio: bool) -> str:
+def chunk_audio_chain(clip: Clip, k0: int, k1: int, has_audio: bool, fps: int) -> str:
     a, b = clip.keys[k0], clip.keys[k1]
     src_len = b.src - a.src
-    samples = round((clip.out_start + b.out) * 48000) - round((clip.out_start + a.out) * 48000)
+    frames = round((clip.out_start + b.out) * fps) - round((clip.out_start + a.out) * fps)
+    samples = frames * 48000 // fps            # exactly the picture's length
     if not has_audio:
         return f"anullsrc=r=48000:cl=stereo,atrim=end_sample={samples}[a0]"
     ratio = src_len / (samples / 48000)          # > 1: faster than real time
@@ -137,7 +138,7 @@ def render_clips(tl: Timeline, base: Path, encoder_args: list[str], workers: int
     def run(job):
         c, k0, k1, slow, part = job
         graph = (chunk_video_chain(c, k0, k1, slow, tl, info["fps"]) + ";\n"
-                 + chunk_audio_chain(c, k0, k1, info["has_audio"]))
+                 + chunk_audio_chain(c, k0, k1, info["has_audio"], tl.fps))
         script = part.with_suffix(".graph.txt")
         key = f"# {tl.source}|{c.src_in}|{tl.fps}|{encoder_args}\n{graph}"
         if part.exists() and script.exists() and script.read_text() == key:
@@ -146,7 +147,7 @@ def render_clips(tl: Timeline, base: Path, encoder_args: list[str], workers: int
         src_a, src_b = c.src_in + c.keys[k0].src, c.src_in + c.keys[k1].src
         _run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-ss", f"{src_a:.4f}",
               "-t", f"{src_b - src_a + 0.5:.4f}", "-i", tl.source, "-filter_complex_script", str(script),
-              "-map", "[v0]", "-map", "[a0]", "-r", str(tl.fps)] + encoder_args
+              "-map", "[v0]", "-map", "[a0]", "-fps_mode", "passthrough"] + encoder_args
              + ["-threads", "2", "-c:a", "pcm_s16le", str(part)], f"Rendering {c.label}")
         script.write_text(key)
         return part
