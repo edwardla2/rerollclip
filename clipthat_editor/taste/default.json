@@ -7,7 +7,7 @@
     "width": 1080,
     "height": 1920,
     "fps": 60,
-    "framing": "crop"
+    "framing": "full"
   },
   "intensity": "medium",
   "tiers": {
@@ -107,11 +107,11 @@
     "A watermark over the HUD, kill feed or important action"
   ],
   "look": {
-    "contrast": 1.06,
-    "saturation": 1.12,
-    "gamma": 0.99,
-    "warmth": 0.015,
-    "sharpen": 0.45
+    "contrast": 1.0,
+    "saturation": 1.0,
+    "gamma": 1.0,
+    "warmth": 0.0,
+    "sharpen": 0.0
   },
   "mode": "story",
   "story": {
@@ -125,7 +125,7 @@
     "ramp_gap_under": 5.0,
     "ramp_avg": 2.5,
     "max_crop_upscale": 2.2,
-    "feed_inset": true,
+    "feed_inset": false,
     "top_accent": "mono_hang",
     "hang": 0.7,
     "min_lead": 0.6

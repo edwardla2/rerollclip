@@ -100,7 +100,13 @@ def chunk_video_chain(clip: Clip, k0: int, k1: int, slow: bool, tl: Timeline, sr
         parts.append(f"fps={fps}")
     if clip.feed_inset:
         parts.append("split[cam][feedsrc];[cam]null")
-    if clip.framing == "fit":
+    if clip.framing == "full":
+        # The whole game screen, full width, centred; a soft, darkened blurred copy fills the rest.
+        parts.append(f"split[fg][bg];[bg]scale={w // 8}:{h // 8}:force_original_aspect_ratio=increase,"
+                     f"crop={w // 8}:{h // 8},boxblur=4:2,scale={w}:{h},eq=brightness=-0.12[bgb];"
+                     f"[fg]scale={w}:-2:flags=lanczos[fgs];"
+                     f"[bgb][fgs]overlay=(W-w)/2:(H-h)/2,setsar=1")
+    elif clip.framing == "fit":
         # The whole frame, centred, over a soft blurred fill (for sources too small to crop).
         # A centre square fills the width (big enough to read on a phone, keeps the crosshair
         # and the top banner); a dark blurred copy fills the rest.

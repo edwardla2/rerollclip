@@ -712,7 +712,10 @@ def story_compilation(plays: list[dict[str, Any]], music: dict[str, Any] | None,
     for pi, play in enumerate(plays):
         src, dur = play["source"], play["duration"]
         crop_scale = (height / play.get("height", 1080)) if width < height else 1.0
-        framing = "crop" if crop_scale <= cfg["max_crop_upscale"] else "fit"
+        if fmt.get("framing") == "full":
+            framing = "full"         # the whole game screen, blurred fill above and below
+        else:
+            framing = "crop" if crop_scale <= cfg["max_crop_upscale"] else "fit"
         inset = framing == "crop" and cfg.get("feed_inset", True) and play.get("game") == "valorant"
         wins = play_windows(play["kills"], play.get("story", []), dur, cfg)
         # Don't open a window on flat footage (smoke, a wall): start where the picture has detail,

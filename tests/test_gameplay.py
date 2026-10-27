@@ -86,10 +86,17 @@ class StoryTests(unittest.TestCase):
         from clipthat_editor.director import story_compilation
         return story_compilation([dict(p) for p in self.PLAYS], music(), taste_mod.load(branding={"enabled": False}))
 
-    def test_best_play_last_and_low_res_kept_whole_frame(self):
+    def test_best_play_last_and_whole_frame_by_default(self):
         tl = self.plan()
         self.assertEqual(tl.check(), [])
         self.assertEqual(tl.clips[-1].source, "a.mp4")                    # the sharper ace closes
+        self.assertTrue(all(c.framing == "full" and not c.feed_inset for c in tl.clips))   # review v001
+        self.assertEqual(tl.look["saturation"], 1.0)                       # game colours (review v001)
+
+    def test_crop_profile_crops_sharp_clips_and_squares_low_res(self):
+        from clipthat_editor.director import story_compilation
+        t = taste_mod.load(branding={"enabled": False}, format={"framing": "crop"}, story={"feed_inset": True})
+        tl = story_compilation([dict(p) for p in self.PLAYS], music(), t)
         self.assertTrue(all(c.framing == "fit" for c in tl.clips if c.source == "b.mp4"))
         self.assertTrue(all(c.framing == "crop" and c.feed_inset for c in tl.clips if c.source == "a.mp4"))
 
