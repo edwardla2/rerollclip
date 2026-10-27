@@ -2,15 +2,15 @@
 
 - Length: 16.78 s, 1080x1920 @ 60 fps
 - Measured: {'streams': 'stream|width=1080|height=1920|r_frame_rate=60/1; stream|r_frame_rate=0/0; format|duration=16.790000', 'loudness_lufs': '-14.3', 'true_peak_dbfs': '-0.8'}
-- Song (preview only): Legacy (TikTok sound ssstik.io_1793044908730.mp4), 70.3 BPM, starts at 0.0 s of the sound
+- Song (preview only): Legacy (TikTok sound ssstik.io_1793044908730.mp4), 70.3 BPM, starts at 0.0 s of the sound. No drop used: the detector's best candidate (14.09 s) has strength 0.065, below the 0.15 confidence threshold
 - Taste: mode story, intensity medium
 
 ## Changes in this version
 
 - Baseline for external review: story mode (light editing, the play kept in order at real speed)
 - Source: one swiftplay ace (1080p30 clip, 52 s); sound: Legacy (16.8 s TikTok sound, 70 BPM, no drop)
-- Three cuts over dead time (5.6 s, 11.6 s, 9.5 s), each on a beat; no speed ramps
-- One accent: 0.7 s black-and-white slow motion on the final kill, colour returns as the finisher bursts
+- Three cuts over dead time (5.6 s, 11.6 s, 9.5 s), placed on the detected beat grid; real speed (1.0x) everywhere except the final-kill accent
+- One accent (the only speed change): 0.7 s black-and-white slow motion (0.40-0.44x, easing back to 1.0x) on the final kill, colour returns as the finisher bursts
 - Kill-feed inset (rows only) below the round banners; 'made with reroll' bottom-right
 - Known: 16.8 s, over the 10-15 s target, because it fills the whole sound; 9:16 crop upscales a 608-px slice 1.8x
 
@@ -38,3 +38,11 @@
 - trimmed 0.61s off the end to finish with the song
 
 Kills land at (output s): [0.6, 3.8, 6.259, 8.866, 14.779]
+
+## Corrections after review v001 (documentation only; the rendered video is unchanged)
+
+- Speed: "no speed ramps" was wrong; the final-kill accent slows to 0.40x and ramps back to 1.0x.
+- Drop: the timeline recorded the detector's drop candidate (14.091 s) as `drop`; it is now `drop_candidate_s` with
+  its strength (0.065) and marked unused.
+- Track identity: the timeline now separates `title` (Legacy), `source_asset` and `decoded_path`.
+- Evidence for the review is in `evidence/` (frames, motion cadence, side-by-side motion sample, beat alignment).

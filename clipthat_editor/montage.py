@@ -82,7 +82,7 @@ def montage(source: Path, music: Path | None, output: Path, *, profile: str = "v
 
 
 def compile_clips(sources: list[Path], music: Path | None, output: Path, *, profile: str = "valorant",
-                  taste_path: Path | None = None, intensity: str | None = None, work: Path | None = None,
+                  music_title: str | None = None, taste_path: Path | None = None, intensity: str | None = None, work: Path | None = None,
                   preview: bool = False) -> dict[str, Any]:
     """Story mode: several clips into one lightly edited video, best play last."""
     from .beats import analyze_beats
@@ -103,9 +103,14 @@ def compile_clips(sources: list[Path], music: Path | None, output: Path, *, prof
                       "story": ev.get("story", []), "count": ev.get("count"), "height": info["height"],
                       "game": profile if ev["source"].endswith("-kills") else None})
     taste = load(taste_path, intensity=intensity)
-    tl = story_compilation(plays, analyze_beats(song) if song else None, taste)
+    rhythm = analyze_beats(song) if song else None
+    tl = story_compilation(plays, rhythm, taste)
     if music:
-        tl.music["file"] = str(Path(music).resolve())     # the user's sound, not the decoded copy
+        tl.music.update(title=music_title or Path(music).stem, source_asset=str(Path(music).resolve()),
+                        decoded_path=str(song), file=Path(music).name)
+        if rhythm and rhythm.get("drop_strength", 1.0) < 0.15:
+            tl.music["drop_candidate_s"] = tl.music.pop("drop", None)
+            tl.music.update(drop_strength=rhythm["drop_strength"], drop_confidence="low; not used")
     plan = output.with_suffix(".timeline.json")
     tl.save(plan)
     result = render(tl, output, work, preview_music=song if (preview and song) else None)

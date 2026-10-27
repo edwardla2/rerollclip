@@ -1,0 +1,6 @@
+window1 0.05-5.50s: 215 unique frames over 5.45s = 39.4 unique fps (of 60)
+window2 5.60-7.22s: 85 unique frames over 1.62s = 52.5 unique fps (of 60)
+window3 7.31-10.63s: 145 unique frames over 3.320000000000001s = 43.7 unique fps (of 60)
+window4-pre-accent 10.73-14.70s: 171 unique frames over 3.969999999999999s = 43.1 unique fps (of 60)
+window4-slowmo 14.80-15.40s: 36 unique frames over 0.5999999999999996s = 60.0 unique fps (of 60)
+window4-after 15.75-16.70s: 44 unique frames over 0.9499999999999993s = 46.3 unique fps (of 60)

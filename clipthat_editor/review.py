@@ -54,12 +54,27 @@ def _sheet(video: Path, times: list[float], out: Path) -> None:
     shutil.rmtree(tmp)
 
 
+def _speed_summary(tl: Timeline) -> str:
+    """Stated from the keys, so the summary can't claim "no ramps" when there are."""
+    changed = [c for c in tl.clips if any(abs(k.speed_in - 1) > 0.01 or abs(k.speed_out - 1) > 0.01 for k in c.keys)]
+    if not changed:
+        return "real speed (1.0x) throughout"
+    parts = []
+    for c in changed:
+        speeds = [s for k in c.keys for s in (k.speed_in, k.speed_out)]
+        parts.append(f"{c.label} ({c.out_start:.2f}-{c.out_end:.2f} s) {min(speeds):.2f}x-{max(speeds):.2f}x")
+    return "real speed except " + "; ".join(parts)
+
+
 def _summary(tl: Timeline, version: str, changes: list[str], taste: dict[str, Any], probe: dict[str, Any]) -> str:
     lines = [f"# Reroll render {version}", "",
              f"- Length: {tl.duration:.2f} s, {tl.width}x{tl.height} @ {tl.fps} fps",
              f"- Measured: {probe}",
-             f"- Song (preview only): {Path(tl.music.get('file') or '-').name}, {tl.music.get('bpm')} BPM, "
-             f"starts at {tl.music.get('start')} s of the sound",
+             f"- Song (preview only): {tl.music.get('title') or Path(tl.music.get('file') or '-').name}, "
+             f"{tl.music.get('bpm')} BPM, starts at {tl.music.get('start')} s of the sound; "
+             + (f"drop at {tl.music['drop']} s" if tl.music.get('drop') is not None else
+                f"no drop used (candidate {tl.music.get('drop_candidate_s')} s, {tl.music.get('drop_confidence', 'n/a')})"),
+             "- Speed: " + _speed_summary(tl),
              f"- Taste: mode {taste.get('mode')}, intensity {taste.get('intensity')}", "",
              "## Changes in this version", ""] + [f"- {c}" for c in changes] + ["", "## Shots", "",
              "| # | Output | Source | Clip | Speeds | Framing |", "|---|---|---|---|---|---|"]

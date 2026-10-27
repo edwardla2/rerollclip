@@ -1,0 +1,9 @@
+Frame-to-frame change (mean abs, 0-255) in the gameplay area of edit.mp4.
+A repeated frame shows as a near-zero change; 30->60 by duplication gives ~50% near-zero changes.
+
+window 1                                0.05- 5.50s  repeated frames:   52%   median change: 0.08
+window 2                                5.60- 7.22s  repeated frames:   50%   median change: 2.24
+window 3                                7.31-10.63s  repeated frames:   50%   median change: 0.09
+window 4 before accent                 10.73-14.70s  repeated frames:   50%   median change: 1.17
+window 4 slow motion (interpolated)    14.80-15.40s  repeated frames:    0%   median change: 2.74
+window 4 after                         15.75-16.70s  repeated frames:   40%   median change: 2.09

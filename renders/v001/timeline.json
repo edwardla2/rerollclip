@@ -447,17 +447,22 @@
   }
  ],
  "music": {
-  "file": "song.wav",
+  "file": "Legacy (see title/source_asset)",
   "start": 0.0,
   "bpm": 70.3,
-  "drop": 14.091,
   "kills_at": [
    0.6,
    3.8,
    6.259,
    8.866,
    14.779
-  ]
+  ],
+  "title": "Legacy",
+  "source_asset": "ssstik.io_1793044908730.mp4 (TikTok sound download)",
+  "decoded_path": "song.wav",
+  "drop_candidate_s": 14.091,
+  "drop_strength": 0.065,
+  "drop_confidence": "low; not used (song starts at 0)"
  },
  "notes": [
   "play 1: clip.mp4, 5 kills, framing crop + kill feed",
@@ -465,7 +470,8 @@
   "play 1: cut 11.6s of dead time at 7.266s",
   "play 1: cut 9.5s of dead time at 10.679s",
   "accent: final kill of play 1 at 14.779s",
-  "trimmed 0.61s off the end to finish with the song"
+  "trimmed 0.61s off the end to finish with the song",
+  "metadata corrected after review v001 (track identity, drop confidence); render unchanged"
  ],
  "look": {
   "contrast": 1.06,

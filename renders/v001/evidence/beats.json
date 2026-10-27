@@ -1,0 +1,310 @@
+{
+ "track": {
+  "title": "Legacy",
+  "source_asset": "ssstik.io_1793044908730.mp4 (TikTok sound download)",
+  "decoded_path": "/tmp/claude-0/-home-claude/1dc021ce-e3f9-5f7e-926f-4552065ae01b/scratchpad/legacy/song.wav",
+  "duration_s": 16.78,
+  "note": "decoded at the stated sample rate (no half-rate HE-AAC issue on this file)"
+ },
+ "tempo": {
+  "bpm": 70.3,
+  "beat_s": 0.8532,
+  "grid_first_beat_s": 0.44,
+  "beats": [
+   0.44,
+   1.293,
+   2.146,
+   3.0,
+   3.853,
+   4.706,
+   5.559,
+   6.412,
+   7.266,
+   8.119,
+   8.972,
+   9.825,
+   10.679,
+   11.532,
+   12.385,
+   13.238,
+   14.091,
+   14.945,
+   15.798,
+   16.651
+  ]
+ },
+ "drop": {
+  "candidate_s": 14.091,
+  "strength": 0.065,
+  "confidence": "low (strength below 0.15): treated as no drop, song starts at 0",
+  "used": false
+ },
+ "onsets": [
+  {
+   "t": 0.232,
+   "strength": 0.48
+  },
+  {
+   "t": 0.267,
+   "strength": 0.42
+  },
+  {
+   "t": 0.453,
+   "strength": 0.3
+  },
+  {
+   "t": 0.662,
+   "strength": 0.53
+  },
+  {
+   "t": 1.068,
+   "strength": 0.32
+  },
+  {
+   "t": 1.521,
+   "strength": 0.59
+  },
+  {
+   "t": 2.159,
+   "strength": 0.5
+  },
+  {
+   "t": 3.425,
+   "strength": 0.3
+  },
+  {
+   "t": 4.075,
+   "strength": 0.38
+  },
+  {
+   "t": 4.238,
+   "strength": 0.47
+  },
+  {
+   "t": 4.702,
+   "strength": 0.32
+  },
+  {
+   "t": 4.923,
+   "strength": 0.56
+  },
+  {
+   "t": 4.992,
+   "strength": 0.35
+  },
+  {
+   "t": 5.573,
+   "strength": 0.76
+  },
+  {
+   "t": 6.838,
+   "strength": 0.38
+  },
+  {
+   "t": 7.047,
+   "strength": 0.36
+  },
+  {
+   "t": 7.477,
+   "strength": 0.63
+  },
+  {
+   "t": 8.336,
+   "strength": 0.56
+  },
+  {
+   "t": 8.975,
+   "strength": 0.6
+  },
+  {
+   "t": 10.24,
+   "strength": 0.43
+  },
+  {
+   "t": 10.89,
+   "strength": 0.51
+  },
+  {
+   "t": 11.738,
+   "strength": 0.53
+  },
+  {
+   "t": 12.376,
+   "strength": 0.51
+  },
+  {
+   "t": 13.235,
+   "strength": 0.4
+  },
+  {
+   "t": 13.862,
+   "strength": 0.61
+  },
+  {
+   "t": 14.071,
+   "strength": 0.33
+  },
+  {
+   "t": 14.292,
+   "strength": 0.48
+  },
+  {
+   "t": 14.454,
+   "strength": 0.32
+  },
+  {
+   "t": 15.151,
+   "strength": 0.43
+  },
+  {
+   "t": 15.743,
+   "strength": 0.34
+  },
+  {
+   "t": 15.778,
+   "strength": 0.38
+  },
+  {
+   "t": 15.906,
+   "strength": 0.31
+  },
+  {
+   "t": 16.637,
+   "strength": 0.37
+  }
+ ],
+ "alignment": [
+  {
+   "what": "kill",
+   "output_s": 0.6,
+   "song_s": 0.6,
+   "nearest_beat_s": 0.44,
+   "offset_ms": 160,
+   "beat_index": 0,
+   "nearest_onset_s": 0.662,
+   "onset_strength": 0.53,
+   "onset_offset_ms": -62,
+   "intended": "game-timed (kills are not moved onto beats in story mode)"
+  },
+  {
+   "what": "kill",
+   "output_s": 3.8,
+   "song_s": 3.8,
+   "nearest_beat_s": 3.853,
+   "offset_ms": -53,
+   "beat_index": 4,
+   "nearest_onset_s": 4.075,
+   "onset_strength": 0.38,
+   "onset_offset_ms": -275,
+   "intended": "game-timed (kills are not moved onto beats in story mode)"
+  },
+  {
+   "what": "cut",
+   "output_s": 5.559,
+   "song_s": 5.559,
+   "nearest_beat_s": 5.559,
+   "offset_ms": 0,
+   "beat_index": 6,
+   "nearest_onset_s": 5.573,
+   "onset_strength": 0.76,
+   "onset_offset_ms": -14,
+   "intended": "on the beat"
+  },
+  {
+   "what": "kill",
+   "output_s": 6.259,
+   "song_s": 6.259,
+   "nearest_beat_s": 6.412,
+   "offset_ms": -153,
+   "beat_index": 7,
+   "nearest_onset_s": 6.838,
+   "onset_strength": 0.38,
+   "onset_offset_ms": -579,
+   "intended": "game-timed (kills are not moved onto beats in story mode)"
+  },
+  {
+   "what": "cut",
+   "output_s": 7.266,
+   "song_s": 7.266,
+   "nearest_beat_s": 7.266,
+   "offset_ms": 0,
+   "beat_index": 8,
+   "nearest_onset_s": 7.477,
+   "onset_strength": 0.63,
+   "onset_offset_ms": -211,
+   "intended": "on the beat"
+  },
+  {
+   "what": "kill",
+   "output_s": 8.866,
+   "song_s": 8.866,
+   "nearest_beat_s": 8.972,
+   "offset_ms": -106,
+   "beat_index": 10,
+   "nearest_onset_s": 8.975,
+   "onset_strength": 0.6,
+   "onset_offset_ms": -109,
+   "intended": "game-timed (kills are not moved onto beats in story mode)"
+  },
+  {
+   "what": "cut",
+   "output_s": 10.679,
+   "song_s": 10.679,
+   "nearest_beat_s": 10.679,
+   "offset_ms": 0,
+   "beat_index": 12,
+   "nearest_onset_s": 10.89,
+   "onset_strength": 0.51,
+   "onset_offset_ms": -211,
+   "intended": "on the beat"
+  },
+  {
+   "what": "kill",
+   "output_s": 14.779,
+   "song_s": 14.779,
+   "nearest_beat_s": 14.945,
+   "offset_ms": -166,
+   "beat_index": 17,
+   "nearest_onset_s": 14.454,
+   "onset_strength": 0.32,
+   "onset_offset_ms": 325,
+   "intended": "game-timed (kills are not moved onto beats in story mode)"
+  },
+  {
+   "what": "accent start (mono on)",
+   "output_s": 14.829,
+   "song_s": 14.829,
+   "nearest_beat_s": 14.945,
+   "offset_ms": -116,
+   "beat_index": 17,
+   "nearest_onset_s": 15.151,
+   "onset_strength": 0.43,
+   "onset_offset_ms": -322,
+   "intended": "accent tied to the final kill"
+  },
+  {
+   "what": "colour back",
+   "output_s": 15.429,
+   "song_s": 15.429,
+   "nearest_beat_s": 15.798,
+   "offset_ms": -369,
+   "beat_index": 18,
+   "nearest_onset_s": 15.151,
+   "onset_strength": 0.43,
+   "onset_offset_ms": 278,
+   "intended": "accent tied to the final kill"
+  },
+  {
+   "what": "end",
+   "output_s": 16.78,
+   "song_s": 16.78,
+   "nearest_beat_s": 16.651,
+   "offset_ms": 129,
+   "beat_index": 19,
+   "nearest_onset_s": 16.637,
+   "onset_strength": 0.37,
+   "onset_offset_ms": 143,
+   "intended": "end of the sound (16.78 s)"
+  }
+ ]
+}

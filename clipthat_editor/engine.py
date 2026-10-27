@@ -224,6 +224,7 @@ def main() -> int:
     comp = sub.add_parser("compile", help="Story mode: compile clips into one lightly edited video, best play last")
     comp.add_argument("files", type=Path, nargs="+")
     comp.add_argument("--music", type=Path, default=None, help="the song to time cuts to (never exported)")
+    comp.add_argument("--music-title", default=None, help="the song's name, for the record (e.g. Legacy)")
     comp.add_argument("--output", type=Path, required=True)
     comp.add_argument("--profile", choices=["generic", "valorant", "cs2", "fortnite", "roblox"], default="valorant")
     comp.add_argument("--taste", type=Path, default=None)
@@ -287,6 +288,7 @@ def main() -> int:
         elif opts.command == "compile":
             from .montage import compile_clips
             print(json.dumps(compile_clips(opts.files, opts.music, opts.output, profile=opts.profile,
+                                           music_title=opts.music_title,
                                            taste_path=opts.taste, intensity=opts.intensity, work=opts.work,
                                            preview=opts.preview), indent=1))
         elif opts.command == "release":
