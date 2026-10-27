@@ -230,6 +230,11 @@ def main() -> int:
     comp.add_argument("--intensity", choices=["restrained", "medium", "aggressive"], default=None)
     comp.add_argument("--work", type=Path, default=None)
     comp.add_argument("--preview", action="store_true")
+    rel = sub.add_parser("release", help="Package a finished render for external review as renders/vNNN/")
+    rel.add_argument("output", type=Path, help="the rendered edit (its .timeline.json and PREVIEW are picked up)")
+    rel.add_argument("--changes", action="append", default=[], help="what changed in this version (repeatable)")
+    rel.add_argument("--taste", type=Path, default=None)
+    rel.add_argument("--intensity", choices=["restrained", "medium", "aggressive"], default=None)
     study_parser = sub.add_parser("study", help="Measure reference edits: cuts, shot lengths, beat alignment, flashes, dips")
     study_parser.add_argument("files", type=Path, nargs="+")
     sounds_parser = sub.add_parser("sounds", help="Manage the sound list the engine picks from")
@@ -284,6 +289,16 @@ def main() -> int:
             print(json.dumps(compile_clips(opts.files, opts.music, opts.output, profile=opts.profile,
                                            taste_path=opts.taste, intensity=opts.intensity, work=opts.work,
                                            preview=opts.preview), indent=1))
+        elif opts.command == "release":
+            from .review import latest_feedback, package
+            from .taste import load
+            out = opts.output.resolve()
+            folder = package(out, out.with_suffix(".timeline.json"), opts.changes or ["(none listed)"],
+                             load(opts.taste, intensity=opts.intensity),
+                             preview=out.with_name(out.stem + " PREVIEW" + out.suffix))
+            fb = latest_feedback()
+            print(json.dumps({"ok": True, "version": folder.name, "folder": str(folder),
+                              "latest_feedback": fb[0] if fb else None}, indent=1))
         elif opts.command == "study":
             from .study import study
             print(json.dumps([study(f) for f in opts.files], indent=2))

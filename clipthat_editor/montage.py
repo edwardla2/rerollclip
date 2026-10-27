@@ -104,6 +104,8 @@ def compile_clips(sources: list[Path], music: Path | None, output: Path, *, prof
                       "game": profile if ev["source"].endswith("-kills") else None})
     taste = load(taste_path, intensity=intensity)
     tl = story_compilation(plays, analyze_beats(song) if song else None, taste)
+    if music:
+        tl.music["file"] = str(Path(music).resolve())     # the user's sound, not the decoded copy
     plan = output.with_suffix(".timeline.json")
     tl.save(plan)
     result = render(tl, output, work, preview_music=song if (preview and song) else None)
