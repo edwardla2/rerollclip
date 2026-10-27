@@ -1,0 +1,491 @@
+{
+ "width": 1080,
+ "height": 1920,
+ "fps": 60,
+ "source": "/tmp/claude-0/-home-claude/1dc021ce-e3f9-5f7e-926f-4552065ae01b/scratchpad/real2/clip.mp4",
+ "clips": [
+  {
+   "label": "play 1 window 1",
+   "src_in": 8.7,
+   "src_out": 14.259,
+   "out_start": 0.0,
+   "keys": [
+    {
+     "src": 0.0,
+     "out": 0.0,
+     "speed_in": 1.0,
+     "speed_out": 1.0
+    },
+    {
+     "src": 5.559,
+     "out": 5.559,
+     "speed_in": 1.0,
+     "speed_out": 1.0
+    }
+   ],
+   "zoom": {
+    "keys": [
+     [
+      0,
+      1.0,
+      "linear"
+     ]
+    ]
+   },
+   "rot": {
+    "keys": [
+     [
+      0.0,
+      0.0,
+      "linear"
+     ]
+    ]
+   },
+   "pan_x": {
+    "keys": [
+     [
+      0.0,
+      0.0,
+      "linear"
+     ]
+    ]
+   },
+   "pan_y": {
+    "keys": [
+     [
+      0.0,
+      0.0,
+      "linear"
+     ]
+    ]
+   },
+   "shakes": [],
+   "source": "/tmp/claude-0/-home-claude/1dc021ce-e3f9-5f7e-926f-4552065ae01b/scratchpad/real2/clip.mp4",
+   "framing": "full",
+   "feed_inset": false,
+   "motion_blur": 0,
+   "interpolate": false,
+   "game_gain": 1.0
+  },
+  {
+   "label": "play 1 window 2",
+   "src_in": 19.85,
+   "src_out": 21.557,
+   "out_start": 5.559,
+   "keys": [
+    {
+     "src": 0.0,
+     "out": 0.0,
+     "speed_in": 1.0,
+     "speed_out": 1.0
+    },
+    {
+     "src": 1.707,
+     "out": 1.707,
+     "speed_in": 1.0,
+     "speed_out": 1.0
+    }
+   ],
+   "zoom": {
+    "keys": [
+     [
+      0,
+      1.0,
+      "linear"
+     ]
+    ]
+   },
+   "rot": {
+    "keys": [
+     [
+      0.0,
+      0.0,
+      "linear"
+     ]
+    ]
+   },
+   "pan_x": {
+    "keys": [
+     [
+      0.0,
+      0.0,
+      "linear"
+     ]
+    ]
+   },
+   "pan_y": {
+    "keys": [
+     [
+      0.0,
+      0.0,
+      "linear"
+     ]
+    ]
+   },
+   "shakes": [],
+   "source": "/tmp/claude-0/-home-claude/1dc021ce-e3f9-5f7e-926f-4552065ae01b/scratchpad/real2/clip.mp4",
+   "framing": "full",
+   "feed_inset": false,
+   "motion_blur": 0,
+   "interpolate": false,
+   "game_gain": 1.0
+  },
+  {
+   "label": "play 1 window 3",
+   "src_in": 33.15,
+   "src_out": 36.563,
+   "out_start": 7.266,
+   "keys": [
+    {
+     "src": 0.0,
+     "out": 0.0,
+     "speed_in": 1.0,
+     "speed_out": 1.0
+    },
+    {
+     "src": 3.413,
+     "out": 3.413,
+     "speed_in": 1.0,
+     "speed_out": 1.0
+    }
+   ],
+   "zoom": {
+    "keys": [
+     [
+      0,
+      1.0,
+      "linear"
+     ]
+    ]
+   },
+   "rot": {
+    "keys": [
+     [
+      0.0,
+      0.0,
+      "linear"
+     ]
+    ]
+   },
+   "pan_x": {
+    "keys": [
+     [
+      0.0,
+      0.0,
+      "linear"
+     ]
+    ]
+   },
+   "pan_y": {
+    "keys": [
+     [
+      0.0,
+      0.0,
+      "linear"
+     ]
+    ]
+   },
+   "shakes": [],
+   "source": "/tmp/claude-0/-home-claude/1dc021ce-e3f9-5f7e-926f-4552065ae01b/scratchpad/real2/clip.mp4",
+   "framing": "full",
+   "feed_inset": false,
+   "motion_blur": 0,
+   "interpolate": false,
+   "game_gain": 1.0
+  },
+  {
+   "label": "play 1 window 4",
+   "src_in": 46.1,
+   "src_out": 51.6994,
+   "out_start": 10.679,
+   "keys": [
+    {
+     "src": 0.0,
+     "out": 0.0,
+     "speed_in": 1.0,
+     "speed_out": 1.0
+    },
+    {
+     "src": 4.1,
+     "out": 4.1,
+     "speed_in": 1.0,
+     "speed_out": 0.4
+    },
+    {
+     "src": 4.243389,
+     "out": 4.45,
+     "speed_in": 0.4195235392680607,
+     "speed_out": 0.4195235392680607
+    },
+    {
+     "src": 4.393778,
+     "out": 4.8,
+     "speed_in": 0.44000000000000006,
+     "speed_out": 0.44000000000000006
+    },
+    {
+     "src": 4.475385,
+     "out": 4.95,
+     "speed_in": 0.66332495807108,
+     "speed_out": 0.66332495807108
+    },
+    {
+     "src": 4.598411,
+     "out": 5.1,
+     "speed_in": 1.0,
+     "speed_out": 1.0
+    },
+    {
+     "src": 5.599411,
+     "out": 6.101,
+     "speed_in": 1.0,
+     "speed_out": 1.0
+    }
+   ],
+   "zoom": {
+    "keys": [
+     [
+      0,
+      1.0,
+      "linear"
+     ],
+     [
+      4.1,
+      1.0,
+      "linear"
+     ],
+     [
+      4.22,
+      1.07,
+      "out3"
+     ],
+     [
+      5.4,
+      1.0,
+      "smooth"
+     ]
+    ]
+   },
+   "rot": {
+    "keys": [
+     [
+      0.0,
+      0.0,
+      "linear"
+     ]
+    ]
+   },
+   "pan_x": {
+    "keys": [
+     [
+      0.0,
+      0.0,
+      "linear"
+     ]
+    ]
+   },
+   "pan_y": {
+    "keys": [
+     [
+      0.0,
+      0.0,
+      "linear"
+     ]
+    ]
+   },
+   "shakes": [],
+   "source": "/tmp/claude-0/-home-claude/1dc021ce-e3f9-5f7e-926f-4552065ae01b/scratchpad/real2/clip.mp4",
+   "framing": "full",
+   "feed_inset": false,
+   "motion_blur": 0,
+   "interpolate": true,
+   "game_gain": 1.0
+  }
+ ],
+ "master": {
+  "ca": {
+   "keys": [
+    [
+     0.0,
+     0.0,
+     "linear"
+    ],
+    [
+     16.78,
+     0.0,
+     "linear"
+    ]
+   ]
+  },
+  "glow": {
+   "keys": [
+    [
+     0.0,
+     0.0,
+     "linear"
+    ],
+    [
+     16.78,
+     0.0,
+     "linear"
+    ]
+   ]
+  },
+  "flash": {
+   "keys": [
+    [
+     0.0,
+     0.0,
+     "linear"
+    ],
+    [
+     14.778,
+     0.0,
+     "linear"
+    ],
+    [
+     14.779,
+     0.096,
+     "linear"
+    ],
+    [
+     14.899,
+     0.0,
+     "out"
+    ],
+    [
+     16.78,
+     0.0,
+     "linear"
+    ]
+   ]
+  },
+  "radial": {
+   "keys": [
+    [
+     0.0,
+     0.0,
+     "linear"
+    ],
+    [
+     16.78,
+     0.0,
+     "linear"
+    ]
+   ]
+  },
+  "edge": {
+   "keys": [
+    [
+     0.0,
+     0.0,
+     "linear"
+    ],
+    [
+     16.78,
+     0.0,
+     "linear"
+    ]
+   ]
+  },
+  "exposure": {
+   "keys": [
+    [
+     0.0,
+     0.0,
+     "linear"
+    ],
+    [
+     16.78,
+     0.0,
+     "linear"
+    ]
+   ]
+  },
+  "mono": {
+   "keys": [
+    [
+     0.0,
+     0.0,
+     "linear"
+    ],
+    [
+     14.778,
+     0.0,
+     "linear"
+    ],
+    [
+     14.829,
+     1.0,
+     "out"
+    ],
+    [
+     15.429,
+     1.0,
+     "linear"
+    ],
+    [
+     15.729,
+     0.0,
+     "smooth"
+    ],
+    [
+     16.78,
+     0.0,
+     "linear"
+    ]
+   ]
+  }
+ },
+ "reveals": [],
+ "texts": [],
+ "sfx": [
+  {
+   "name": "hit",
+   "t": 14.779,
+   "gain": 0.3
+  }
+ ],
+ "music": {
+  "file": "legacy.mp4",
+  "start": 0.0,
+  "bpm": 70.3,
+  "kills_at": [
+   0.6,
+   3.8,
+   6.259,
+   8.866,
+   14.779
+  ],
+  "title": "Legacy",
+  "source_asset": "/tmp/claude-0/-home-claude/1dc021ce-e3f9-5f7e-926f-4552065ae01b/scratchpad/legacy/legacy.mp4",
+  "decoded_path": "/tmp/claude-0/-home-claude/1dc021ce-e3f9-5f7e-926f-4552065ae01b/scratchpad/m4/work/song.wav",
+  "drop_candidate_s": 14.091,
+  "drop_strength": 0.065,
+  "drop_confidence": "low; not used"
+ },
+ "notes": [
+  "play 1: clip.mp4, 5 kills, framing full",
+  "play 1: cut 5.6s of dead time at 5.559s",
+  "play 1: cut 11.6s of dead time at 7.266s",
+  "play 1: cut 9.5s of dead time at 10.679s",
+  "accent: final kill of play 1 at 14.779s",
+  "trimmed 0.61s off the end to finish with the song"
+ ],
+ "look": {
+  "contrast": 1.0,
+  "saturation": 1.0,
+  "gamma": 1.0,
+  "warmth": 0.0,
+  "sharpen": 0.0
+ },
+ "branding": {
+  "sub": "made with",
+  "word": "reroll",
+  "height": 0.042,
+  "margin": 0.035,
+  "corner": "bottom-right",
+  "top": 0.0781,
+  "bottom": 0.0885
+ }
+}
