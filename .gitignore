@@ -10,3 +10,4 @@ __pycache__/
 
 # Review renders: videos stay local, everything else is committed
 renders/**/*.mp4
+renders/**/*-review.zip

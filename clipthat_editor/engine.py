@@ -299,7 +299,9 @@ def main() -> int:
                              load(opts.taste, intensity=opts.intensity),
                              preview=out.with_name(out.stem + " PREVIEW" + out.suffix))
             fb = latest_feedback()
-            print(json.dumps({"ok": True, "version": folder.name, "folder": str(folder),
+            from .review import bundle
+            zipped = bundle(folder)
+            print(json.dumps({"ok": True, "version": folder.name, "folder": str(folder), "bundle": str(zipped),
                               "latest_feedback": fb[0] if fb else None}, indent=1))
         elif opts.command == "study":
             from .study import study
