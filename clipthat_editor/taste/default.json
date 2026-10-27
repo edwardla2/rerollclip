@@ -115,7 +115,7 @@
   },
   "mode": "story",
   "story": {
-    "first_lead": 2.5,
+    "first_lead": 3.0,
     "lead": 1.6,
     "after": 1.0,
     "payoff": 2.4,
@@ -128,6 +128,9 @@
     "feed_inset": false,
     "top_accent": "mono_hang",
     "hang": 0.7,
-    "min_lead": 0.6
+    "min_lead": 0.6,
+    "structure": "buildup_drop",
+    "buildup_min": 2.0,
+    "teaser": false
   }
 }

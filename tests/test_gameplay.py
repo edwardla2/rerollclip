@@ -112,12 +112,44 @@ class StoryTests(unittest.TestCase):
         kills_shown = len(tl.music["kills_at"])
         self.assertEqual(kills_shown, 9)                                   # every kill of both plays
 
-    def test_cuts_on_beats_and_one_accent(self):
+    def test_one_accent(self):
+        # (Cuts no longer have to sit on beats: since review v002 the kills do; see StructureTests.)
         tl = self.plan()
-        p, b0 = 60 / 80, music()["beats"][0]
-        for c in tl.clips[:-1]:
-            ph = ((c.out_end + tl.music["start"] - b0) / p) % 1
-            self.assertLess(min(ph, 1 - ph), 0.03, c.label)
         mono = tl.master["mono"]
         on = [i / 60 for i in range(int(tl.duration * 60)) if mono.at(i / 60) > 0.5]
         self.assertTrue(on and on[-1] - on[0] < 1.5)
+
+
+class StructureTests(unittest.TestCase):
+    """Edward's structure (after v002): build-up with nothing happening, the drop on the first
+    kill, then the story with each fight's kill on a beat."""
+    def plan(self, m):
+        from clipthat_editor.director import story_compilation
+        return story_compilation([dict(p) for p in StoryTests.PLAYS], m, taste_mod.load(branding={"enabled": False}))
+
+    def test_buildup_then_first_kill_on_the_drop(self):
+        m = music(bpm=92.0, drop=5.0)
+        m["drop_strength"], m["duration"] = 0.6, 60.0
+        tl = self.plan(m)
+        self.assertEqual(tl.check(), [])
+        first = min(tl.music["kills_at"])
+        self.assertAlmostEqual(first + tl.music["start"], 5.0, delta=0.02)      # first kill on the drop
+        self.assertGreaterEqual(first, 2.0 - 1e-6)                              # a real build-up before it
+
+    def test_each_fights_first_kill_on_a_beat(self):
+        m = music(bpm=92.0, drop=5.0)
+        m["drop_strength"], m["duration"] = 0.6, 60.0
+        tl = self.plan(m)
+        p, b0 = 60 / 92, m["beats"][0]
+        windows = [c for c in tl.clips if "window" in c.label]
+        on = 0
+        for c in windows:
+            play = next(x for x in StoryTests.PLAYS if x["source"] == c.source)
+            k = next((k for k in play["kills"] if c.src_in <= k <= c.src_out), None)
+            if k is None:
+                continue
+            t = c.out_start + c.out_at(k - c.src_in) + tl.music["start"]
+            ph = ((t - b0) / p) % 1
+            on += min(ph, 1 - ph) < 0.03
+        self.assertEqual(on, len([c for c in windows if any(c.src_in <= k <= c.src_out for x in StoryTests.PLAYS
+                                                             if x["source"] == c.source for k in x["kills"])]))

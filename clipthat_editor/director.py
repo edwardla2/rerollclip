@@ -654,6 +654,45 @@ def play_windows(kills: list[float], story: list[float], duration: float, cfg: d
     return merged
 
 
+def _kill_on_beat(wins, wi, play, clips, out_t, start, P, next_beat, cfg, notes) -> None:
+    """Move window wi's start so its first kill lands on a beat: the smallest of (a) starting
+    its lead-in later, (b) starting it earlier (if there's footage), (c) letting the previous
+    real-speed window run on. Changes wins[wi][0] or the previous clip in place."""
+    a, b = wins[wi]
+    k = next((k for k in play["kills"] if a <= k <= b), None)
+    if k is None:
+        return
+    kill_out = out_t + (k - a)
+    back = kill_out - (next_beat(kill_out + start) - start - P)     # to the beat before
+    fwd = next_beat(kill_out + start) - start - kill_out             # to the beat after
+    if fwd < 1e-3 or back < 1e-3:
+        return
+    floor = wins[wi - 1][1] if wi > 0 else 0.0                       # footage this window may reach back to
+    prev = clips[-1] if clips else None
+    prev_real = prev is not None and abs(prev.keys[-1].speed_in - 1) < 1e-3 and prev.source == play["source"] \
+        and wi > 0 and abs(prev.src_out - wins[wi - 1][1]) < 0.05
+    options = []
+    if (k - a) - back >= cfg["min_lead"]:
+        options.append((back, "later"))
+    if a - fwd >= floor - 1e-6:
+        options.append((fwd, "earlier"))
+    if prev_real and prev.src_out + fwd <= a + 1e-6:
+        options.append((fwd, "previous"))
+    if not options:
+        return
+    amount, how = min(options)
+    if how == "later":
+        wins[wi][0] = round(a + back, 4)
+    elif how == "earlier":
+        wins[wi][0] = round(a - fwd, 4)
+    else:
+        key = prev.keys[-1]
+        key.out = round(key.out + fwd, 6)
+        key.src = round(key.src + fwd, 6)
+        prev.src_out = round(prev.src_in + key.src, 4)
+    notes.append(f"kill at source {k:.2f}s put on the beat ({how}, {amount * 1000:.0f} ms)")
+
+
 def story_compilation(plays: list[dict[str, Any]], music: dict[str, Any] | None, taste: dict[str, Any]) -> Timeline:
     """plays: [{"source", "duration", "kills", "story", "count", "height"}]. The best play goes
     last; each keeps its windows in order at real speed; dead time between windows is sped
@@ -690,16 +729,16 @@ def story_compilation(plays: list[dict[str, Any]], music: dict[str, Any] | None,
         while len(plays) > 1 and length(plays) > music["duration"]:
             plays = plays[1:]
 
-    # The song: its drop goes on the first kill of the best play (the last one), and the song
-    # starts wherever that puts it, as long as it lasts the whole edit.
+    # Structure (taste: story.structure = "buildup_drop"): the song's build-up plays over the
+    # setup before the first kill, nothing happening yet; the drop lands on the first kill.
+    # The song starts wherever that puts it, as long as it lasts the whole edit.
     start = 0.0
+    spans = [play_windows(p["kills"], p.get("story", []), p["duration"], cfg) for p in plays]
     if synced:
-        spans = [play_windows(p["kills"], p.get("story", []), p["duration"], cfg) for p in plays]
-        before_best = sum(b - a for w in spans[:-1] for a, b in w)
-        best_first_kill = before_best + (plays[-1]["kills"][0] - spans[-1][0][0])
+        first_kill = plays[0]["kills"][0] - spans[0][0][0]
         total = sum(b - a for w in spans for a, b in w) + P * len(spans) * 2   # beat slack
         # A song without a real drop just starts from the top.
-        start = music["drop"] - best_first_kill if music.get("drop_strength", 1.0) >= 0.15 else 0.0
+        start = music["drop"] - first_kill if music.get("drop_strength", 1.0) >= 0.15 else 0.0
         if music.get("duration"):
             start = min(start, music["duration"] - total)
         start = max(0.0, start)
@@ -721,13 +760,21 @@ def story_compilation(plays: list[dict[str, Any]], music: dict[str, Any] | None,
         # Don't open a window on flat footage (smoke, a wall): start where the picture has detail,
         # keeping at least `min_lead` before the kill that window is for.
         if Path(src).exists():
-            for w_ in wins:
+            for wj, w_ in enumerate(wins):
                 k_next = next((k for k in play["kills"] if k >= w_[0]), None)
-                if k_next is not None:
-                    w_[0] = max(w_[0], min(first_detailed(src, w_[0], k_next - cfg["min_lead"]), k_next - cfg["min_lead"]))
+                if k_next is None:
+                    continue
+                keep = cfg["min_lead"]
+                if pi == 0 and wj == 0:
+                    keep = cfg.get("buildup_min", 2.0)      # the build-up needs time to build
+                w_[0] = max(w_[0], min(first_detailed(src, w_[0], k_next - keep), k_next - keep))
         notes.append(f"play {pi + 1}: {Path(src).name}, {len(play['kills'])} kills, framing {framing}"
                      + (" + kill feed" if inset else ""))
-        for wi, (a, b) in enumerate(wins):
+        for wi in range(len(wins)):
+            if synced and not (pi == 0 and wi == 0):
+                _kill_on_beat(wins, wi, play, clips, out_t, start, P, next_beat, cfg, notes)
+                out_t = clips[-1].out_end if clips else out_t
+            a, b = wins[wi]
             last_of_play = wi == len(wins) - 1
             nxt = wins[wi + 1][0] if not last_of_play else None
             gap = (nxt - b) if nxt is not None else 0.0
@@ -735,16 +782,7 @@ def story_compilation(plays: list[dict[str, Any]], music: dict[str, Any] | None,
             if ramp:
                 b2 = b
             else:
-                # Cut on the beat: let this window run on until the next beat (if there's footage).
-                end_out = out_t + (b - a)
-                if synced:
-                    target = next_beat(end_out + start) - start
-                    room = (nxt if nxt is not None else dur - 0.02) - b
-                    if target - end_out > room:            # not enough footage: trim back to the beat before
-                        target = max(out_t + 0.3, target - P)
-                    b2 = b + (target - end_out)
-                else:
-                    b2 = b
+                b2 = b      # the next window's kill is put on its beat when that window starts
             b2 = max(a + 0.3, min(b2, dur - 0.02))
             kb = KeyBuilder(1.0)
             kb.keys.append(TimeKey(round(b2 - a, 6), round(b2 - a, 6), 1.0, 1.0))
@@ -782,9 +820,12 @@ def story_compilation(plays: list[dict[str, Any]], music: dict[str, Any] | None,
                 avg = cfg["ramp_avg"]
                 room = gap / avg
                 if synced:
-                    target = next_beat(out_t + room + start) - start
+                    # End the skim so the next kill (after its lead-in) lands on a beat.
+                    k_n = next((k for k in play["kills"] if k >= wins[wi + 1][0]), wins[wi + 1][0])
+                    lead_n = k_n - wins[wi + 1][0]
+                    target = next_beat(out_t + room + lead_n + start) - start - lead_n
                     if target - out_t < gap / 4.0:
-                        target = next_beat(target + 0.01 + start) - start
+                        target = next_beat(target + lead_n + 0.01 + start) - start - lead_n
                     room = target - out_t
                 avg = gap / room
                 peak = max(1.05, 2 * avg - 1.0)
