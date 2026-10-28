@@ -153,3 +153,40 @@ class StructureTests(unittest.TestCase):
             on += min(ph, 1 - ph) < 0.03
         self.assertEqual(on, len([c for c in windows if any(c.src_in <= k <= c.src_out for x in StoryTests.PLAYS
                                                              if x["source"] == c.source for k in x["kills"])]))
+
+
+@unittest.skipUnless(__import__("shutil").which("ffmpeg"), "FFmpeg required")
+class EditClipTests(unittest.TestCase):
+    """The one-clip flow the desktop app runs for each new Medal clip."""
+    def test_edits_a_clip_and_reports_progress(self):
+        import json, subprocess, tempfile
+        from pathlib import Path
+        from clipthat_editor.montage import edit_clip
+        from test_analysis import make_clip
+        with tempfile.TemporaryDirectory() as tmp:
+            src = Path(tmp) / "clip.mp4"
+            make_clip(src, 14, [4.0, 9.0])
+            stages = []
+            r = edit_clip(src, Path(tmp) / "out", profile="generic", work=Path(tmp) / "w", size=(270, 480), fps=30,
+                          progress=lambda s, f: stages.append(s))
+            self.assertTrue(r["ok"], r)
+            out = Path(r["output"])
+            self.assertTrue(out.exists() and out.name == "clip (Reroll).mp4")
+            self.assertTrue(Path(r["timeline"]).exists())
+            self.assertEqual(stages[0], "finding plays")
+            self.assertEqual(stages[-1], "done")
+            probe = json.loads(subprocess.run(["ffprobe", "-v", "error", "-show_streams", "-of", "json", str(out)],
+                                              capture_output=True, text=True).stdout)
+            v = next(s for s in probe["streams"] if s["codec_type"] == "video")
+            self.assertEqual((v["width"], v["height"]), (270, 480))
+
+    def test_a_clip_with_nothing_in_it(self):
+        import subprocess, tempfile
+        from pathlib import Path
+        from clipthat_editor.montage import edit_clip
+        with tempfile.TemporaryDirectory() as tmp:
+            src = Path(tmp) / "empty.mp4"
+            subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "color=c=gray:s=320x180:d=3",
+                            "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo:d=3", "-shortest", str(src)], check=True)
+            r = edit_clip(src, Path(tmp) / "out", profile="generic")
+            self.assertEqual((r["ok"], r["reason"]), (False, "no_plays"))

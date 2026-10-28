@@ -1,0 +1,603 @@
+{
+ "width": 1080,
+ "height": 1920,
+ "fps": 60,
+ "source": "/tmp/claude-0/-home-claude/1dc021ce-e3f9-5f7e-926f-4552065ae01b/scratchpad/friend/c4.mp4",
+ "clips": [
+  {
+   "label": "play 1 window 1",
+   "src_in": 11.15,
+   "src_out": 15.15,
+   "out_start": 0.0,
+   "keys": [
+    {
+     "src": 0.0,
+     "out": 0.0,
+     "speed_in": 1.0,
+     "speed_out": 1.0
+    },
+    {
+     "src": 4.0,
+     "out": 4.0,
+     "speed_in": 1.0,
+     "speed_out": 1.0
+    }
+   ],
+   "zoom": {
+    "keys": [
+     [
+      0,
+      1.0,
+      "linear"
+     ]
+    ]
+   },
+   "rot": {
+    "keys": [
+     [
+      0.0,
+      0.0,
+      "linear"
+     ]
+    ]
+   },
+   "pan_x": {
+    "keys": [
+     [
+      0.0,
+      0.0,
+      "linear"
+     ]
+    ]
+   },
+   "pan_y": {
+    "keys": [
+     [
+      0.0,
+      0.0,
+      "linear"
+     ]
+    ]
+   },
+   "shakes": [],
+   "source": "/tmp/claude-0/-home-claude/1dc021ce-e3f9-5f7e-926f-4552065ae01b/scratchpad/friend/c4.mp4",
+   "framing": "full",
+   "feed_inset": false,
+   "motion_blur": 0,
+   "interpolate": false,
+   "game_gain": 1.0
+  },
+  {
+   "label": "play 1 skim 1",
+   "src_in": 15.15,
+   "src_out": 19.25,
+   "out_start": 4.0,
+   "keys": [
+    {
+     "src": 0.0,
+     "out": 0.0,
+     "speed_in": 1.155245236022237,
+     "speed_out": 1.155245236022237
+    },
+    {
+     "src": 0.401391,
+     "out": 0.273333,
+     "speed_in": 1.8338375029429497,
+     "speed_out": 1.8338375029429497
+    },
+    {
+     "src": 1.038559,
+     "out": 0.546667,
+     "speed_in": 2.9110355813103745,
+     "speed_out": 2.9110355813103745
+    },
+    {
+     "src": 2.05,
+     "out": 0.82,
+     "speed_in": 4.620980944088948,
+     "speed_out": 4.620980944088948
+    },
+    {
+     "src": 3.061441,
+     "out": 1.093333,
+     "speed_in": 2.9110355813103745,
+     "speed_out": 2.9110355813103745
+    },
+    {
+     "src": 3.698609,
+     "out": 1.366667,
+     "speed_in": 1.83383750294295,
+     "speed_out": 1.83383750294295
+    },
+    {
+     "src": 4.1,
+     "out": 1.64,
+     "speed_in": 1.155245236022237,
+     "speed_out": 1.155245236022237
+    }
+   ],
+   "zoom": {
+    "keys": [
+     [
+      0.0,
+      1.0,
+      "linear"
+     ]
+    ]
+   },
+   "rot": {
+    "keys": [
+     [
+      0.0,
+      0.0,
+      "linear"
+     ]
+    ]
+   },
+   "pan_x": {
+    "keys": [
+     [
+      0.0,
+      0.0,
+      "linear"
+     ]
+    ]
+   },
+   "pan_y": {
+    "keys": [
+     [
+      0.0,
+      0.0,
+      "linear"
+     ]
+    ]
+   },
+   "shakes": [],
+   "source": "/tmp/claude-0/-home-claude/1dc021ce-e3f9-5f7e-926f-4552065ae01b/scratchpad/friend/c4.mp4",
+   "framing": "full",
+   "feed_inset": false,
+   "motion_blur": 3,
+   "interpolate": false,
+   "game_gain": 0.6
+  },
+  {
+   "label": "play 1 window 2",
+   "src_in": 19.25,
+   "src_out": 22.25,
+   "out_start": 5.64,
+   "keys": [
+    {
+     "src": 0.0,
+     "out": 0.0,
+     "speed_in": 1.0,
+     "speed_out": 1.0
+    },
+    {
+     "src": 3.0,
+     "out": 3.0,
+     "speed_in": 1.0,
+     "speed_out": 1.0
+    }
+   ],
+   "zoom": {
+    "keys": [
+     [
+      0,
+      1.0,
+      "linear"
+     ]
+    ]
+   },
+   "rot": {
+    "keys": [
+     [
+      0.0,
+      0.0,
+      "linear"
+     ]
+    ]
+   },
+   "pan_x": {
+    "keys": [
+     [
+      0.0,
+      0.0,
+      "linear"
+     ]
+    ]
+   },
+   "pan_y": {
+    "keys": [
+     [
+      0.0,
+      0.0,
+      "linear"
+     ]
+    ]
+   },
+   "shakes": [],
+   "source": "/tmp/claude-0/-home-claude/1dc021ce-e3f9-5f7e-926f-4552065ae01b/scratchpad/friend/c4.mp4",
+   "framing": "full",
+   "feed_inset": false,
+   "motion_blur": 0,
+   "interpolate": false,
+   "game_gain": 1.0
+  },
+  {
+   "label": "play 1 skim 2",
+   "src_in": 22.25,
+   "src_out": 26.35,
+   "out_start": 8.64,
+   "keys": [
+    {
+     "src": 0.0,
+     "out": 0.0,
+     "speed_in": 1.1552452360222374,
+     "speed_out": 1.1552452360222374
+    },
+    {
+     "src": 0.401391,
+     "out": 0.273333,
+     "speed_in": 1.8338375029429503,
+     "speed_out": 1.8338375029429503
+    },
+    {
+     "src": 1.038559,
+     "out": 0.546667,
+     "speed_in": 2.911035581310376,
+     "speed_out": 2.911035581310376
+    },
+    {
+     "src": 2.05,
+     "out": 0.82,
+     "speed_in": 4.6209809440889495,
+     "speed_out": 4.6209809440889495
+    },
+    {
+     "src": 3.061441,
+     "out": 1.093333,
+     "speed_in": 2.911035581310376,
+     "speed_out": 2.911035581310376
+    },
+    {
+     "src": 3.698609,
+     "out": 1.366667,
+     "speed_in": 1.8338375029429506,
+     "speed_out": 1.8338375029429506
+    },
+    {
+     "src": 4.1,
+     "out": 1.64,
+     "speed_in": 1.1552452360222374,
+     "speed_out": 1.1552452360222374
+    }
+   ],
+   "zoom": {
+    "keys": [
+     [
+      0.0,
+      1.0,
+      "linear"
+     ]
+    ]
+   },
+   "rot": {
+    "keys": [
+     [
+      0.0,
+      0.0,
+      "linear"
+     ]
+    ]
+   },
+   "pan_x": {
+    "keys": [
+     [
+      0.0,
+      0.0,
+      "linear"
+     ]
+    ]
+   },
+   "pan_y": {
+    "keys": [
+     [
+      0.0,
+      0.0,
+      "linear"
+     ]
+    ]
+   },
+   "shakes": [],
+   "source": "/tmp/claude-0/-home-claude/1dc021ce-e3f9-5f7e-926f-4552065ae01b/scratchpad/friend/c4.mp4",
+   "framing": "full",
+   "feed_inset": false,
+   "motion_blur": 3,
+   "interpolate": false,
+   "game_gain": 0.6
+  },
+  {
+   "label": "play 1 window 3",
+   "src_in": 26.35,
+   "src_out": 31.95,
+   "out_start": 10.28,
+   "keys": [
+    {
+     "src": 0.0,
+     "out": 0.0,
+     "speed_in": 1.0,
+     "speed_out": 1.0
+    },
+    {
+     "src": 3.2,
+     "out": 3.2,
+     "speed_in": 1.0,
+     "speed_out": 0.4
+    },
+    {
+     "src": 3.343389,
+     "out": 3.55,
+     "speed_in": 0.4195235392680607,
+     "speed_out": 0.4195235392680607
+    },
+    {
+     "src": 3.493778,
+     "out": 3.9,
+     "speed_in": 0.44000000000000006,
+     "speed_out": 0.44000000000000006
+    },
+    {
+     "src": 3.575385,
+     "out": 4.05,
+     "speed_in": 0.66332495807108,
+     "speed_out": 0.66332495807108
+    },
+    {
+     "src": 3.698411,
+     "out": 4.2,
+     "speed_in": 1.0,
+     "speed_out": 1.0
+    },
+    {
+     "src": 5.6,
+     "out": 6.101589,
+     "speed_in": 1.0,
+     "speed_out": 1.0
+    }
+   ],
+   "zoom": {
+    "keys": [
+     [
+      0,
+      1.0,
+      "linear"
+     ],
+     [
+      3.2,
+      1.0,
+      "linear"
+     ],
+     [
+      3.32,
+      1.07,
+      "out3"
+     ],
+     [
+      4.5,
+      1.0,
+      "smooth"
+     ]
+    ]
+   },
+   "rot": {
+    "keys": [
+     [
+      0.0,
+      0.0,
+      "linear"
+     ]
+    ]
+   },
+   "pan_x": {
+    "keys": [
+     [
+      0.0,
+      0.0,
+      "linear"
+     ]
+    ]
+   },
+   "pan_y": {
+    "keys": [
+     [
+      0.0,
+      0.0,
+      "linear"
+     ]
+    ]
+   },
+   "shakes": [],
+   "source": "/tmp/claude-0/-home-claude/1dc021ce-e3f9-5f7e-926f-4552065ae01b/scratchpad/friend/c4.mp4",
+   "framing": "full",
+   "feed_inset": false,
+   "motion_blur": 0,
+   "interpolate": true,
+   "game_gain": 1.0
+  }
+ ],
+ "master": {
+  "ca": {
+   "keys": [
+    [
+     0.0,
+     0.0,
+     "linear"
+    ],
+    [
+     16.3816,
+     0.0,
+     "linear"
+    ]
+   ]
+  },
+  "glow": {
+   "keys": [
+    [
+     0.0,
+     0.0,
+     "linear"
+    ],
+    [
+     16.3816,
+     0.0,
+     "linear"
+    ]
+   ]
+  },
+  "flash": {
+   "keys": [
+    [
+     0.0,
+     0.0,
+     "linear"
+    ],
+    [
+     13.479,
+     0.0,
+     "linear"
+    ],
+    [
+     13.48,
+     0.096,
+     "linear"
+    ],
+    [
+     13.6,
+     0.0,
+     "out"
+    ],
+    [
+     16.3816,
+     0.0,
+     "linear"
+    ]
+   ]
+  },
+  "radial": {
+   "keys": [
+    [
+     0.0,
+     0.0,
+     "linear"
+    ],
+    [
+     16.3816,
+     0.0,
+     "linear"
+    ]
+   ]
+  },
+  "edge": {
+   "keys": [
+    [
+     0.0,
+     0.0,
+     "linear"
+    ],
+    [
+     16.3816,
+     0.0,
+     "linear"
+    ]
+   ]
+  },
+  "exposure": {
+   "keys": [
+    [
+     0.0,
+     0.0,
+     "linear"
+    ],
+    [
+     16.3816,
+     0.0,
+     "linear"
+    ]
+   ]
+  },
+  "mono": {
+   "keys": [
+    [
+     0.0,
+     0.0,
+     "linear"
+    ],
+    [
+     13.479,
+     0.0,
+     "linear"
+    ],
+    [
+     13.53,
+     1.0,
+     "out"
+    ],
+    [
+     14.13,
+     1.0,
+     "linear"
+    ],
+    [
+     14.43,
+     0.0,
+     "smooth"
+    ],
+    [
+     16.3816,
+     0.0,
+     "linear"
+    ]
+   ]
+  }
+ },
+ "reveals": [],
+ "texts": [],
+ "sfx": [
+  {
+   "name": "hit",
+   "t": 13.48,
+   "gain": 0.3
+  }
+ ],
+ "music": {
+  "file": null,
+  "start": 0.0,
+  "bpm": null,
+  "drop": null,
+  "kills_at": [
+   3.0,
+   7.64,
+   13.48
+  ]
+ },
+ "notes": [
+  "play 1: c4.mp4, 3 kills, framing full",
+  "accent: final kill of play 1 at 13.480s"
+ ],
+ "look": {
+  "contrast": 1.0,
+  "saturation": 1.0,
+  "gamma": 1.0,
+  "warmth": 0.0,
+  "sharpen": 0.0
+ },
+ "branding": {
+  "sub": "made with",
+  "word": "reroll",
+  "height": 0.042,
+  "margin": 0.035,
+  "corner": "top-left",
+  "top": 0.0625,
+  "bottom": 0.0833
+ }
+}

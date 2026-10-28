@@ -221,6 +221,16 @@ def main() -> int:
     mont.add_argument("--timeline", type=Path, default=None, help="render this timeline JSON instead of planning one")
     mont.add_argument("--work", type=Path, default=None)
     mont.add_argument("--preview", action="store_true", help="also write a private copy with the song mixed in")
+    one = sub.add_parser("edit", help="One clip -> one edit (what the desktop app runs for each new Medal clip)")
+    one.add_argument("file", type=Path)
+    one.add_argument("--out-dir", type=Path, default=None, help="default: a Reroll folder next to the clip")
+    one.add_argument("--profile", choices=["generic", "valorant", "cs2", "fortnite", "roblox"], default="valorant")
+    one.add_argument("--taste", type=Path, default=None)
+    one.add_argument("--work", type=Path, default=None)
+    one.add_argument("--size", default=None, help="WIDTHxHEIGHT, default from the taste profile (1080x1920)")
+    one.add_argument("--fps", type=int, default=None)
+    one.add_argument("--progress", action="store_true",
+                     help="print JSON progress lines ({\"stage\", \"progress\"}) before the result")
     comp = sub.add_parser("compile", help="Story mode: compile clips into one lightly edited video, best play last")
     comp.add_argument("files", type=Path, nargs="+")
     comp.add_argument("--music", default=None,
@@ -286,6 +296,15 @@ def main() -> int:
                                      words=opts.words.split(), style=opts.style, taste_path=opts.taste,
                                      intensity=opts.intensity, aspect=opts.aspect, fps=opts.fps,
                                      timeline=opts.timeline, work=opts.work, preview=opts.preview), indent=1))
+        elif opts.command == "edit":
+            from .montage import edit_clip
+            size = tuple(int(x) for x in opts.size.lower().split("x")) if opts.size else None
+
+            def progress(stage: str, frac: float) -> None:
+                if opts.progress:
+                    print(json.dumps({"stage": stage, "progress": round(frac, 3)}), flush=True)
+            print(json.dumps(edit_clip(opts.file, opts.out_dir, profile=opts.profile, taste_path=opts.taste,
+                                       work=opts.work, size=size, fps=opts.fps, progress=progress)))
         elif opts.command == "compile":
             from .montage import compile_clips
             music = opts.music if opts.music in (None, "generate") else Path(opts.music)

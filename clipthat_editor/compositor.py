@@ -18,7 +18,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import time
-from typing import Any
+from typing import Any, Callable
 
 from .timeline import Clip, Curve, Timeline
 
@@ -167,7 +167,8 @@ def chunk_audio_chain(clip: Clip, k0: int, k1: int, has_audio: bool, fps: int) -
             f"afade=t=out:st={samples / 48000 - fade:.5f}:d={fade:.4f}[a0]")
 
 
-def render_clips(tl: Timeline, base: Path, encoder_args: list[str], workers: int = 2) -> None:
+def render_clips(tl: Timeline, base: Path, encoder_args: list[str], workers: int = 2,
+                 progress: Callable[[str, float], None] | None = None) -> None:
     """Each clip is split where it goes in or out of slow motion; every piece is one FFmpeg run
     (decoding everything at once would hold it all in memory; in-between frames are only
     synthesized where the footage plays slow), two at a time, then joined without
@@ -199,8 +200,17 @@ def render_clips(tl: Timeline, base: Path, encoder_args: list[str], workers: int
         script.write_text(key)
         return part
 
+    done = [0]
+
+    def run_counted(job):
+        part = run(job)
+        done[0] += 1
+        if progress:
+            progress("cutting", done[0] / len(jobs))
+        return part
+
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        parts = list(pool.map(run, jobs))
+        parts = list(pool.map(run_counted, jobs))
     listing = base.with_name("clips.txt")
     listing.write_text("".join(f"file '{p}'\n" for p in parts))
     _run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0", "-i", str(listing),
@@ -493,7 +503,8 @@ def export(master: Path, output: Path, work: Path) -> None:
     _set_loudness("ffmpeg", final, Path(output))
 
 
-def render(tl: Timeline, output: Path, work: Path, preview_music: Path | None = None) -> dict[str, Any]:
+def render(tl: Timeline, output: Path, work: Path, preview_music: Path | None = None,
+           progress: Callable[[str, float], None] | None = None) -> dict[str, Any]:
     """Renders the timeline to `output` (H.264 + AAC, loudness-matched). With preview_music,
     also writes a private copy with the music mixed in at its sync offset (never the export)."""
     from .highlight import _set_loudness
@@ -503,8 +514,11 @@ def render(tl: Timeline, output: Path, work: Path, preview_music: Path | None = 
     work.mkdir(parents=True, exist_ok=True)
     t0 = time.monotonic()
     base = work / "base.mkv"
-    render_clips(tl, base, ["-c:v", "libx264", "-preset", "fast", "-crf", "10", "-pix_fmt", "yuv420p"])
+    render_clips(tl, base, ["-c:v", "libx264", "-preset", "fast", "-crf", "10", "-pix_fmt", "yuv420p"],
+                 progress=progress)
     t1 = time.monotonic()
+    if progress:
+        progress("finishing", 0.0)
     master = work / "master.mkv"
     # The master pass writes the delivery video directly (no second lossy encode).
     render_master(tl, base, master, work, ["-c:v", "libx264", "-preset", "medium", "-crf", "16",

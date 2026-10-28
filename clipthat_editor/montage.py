@@ -158,3 +158,45 @@ def compile_clips(sources: list[Path], music: Path | None, output: Path, *, prof
     result.update(timeline=str(plan), plays=[{k: p[k] for k in ("source", "kills", "story", "count")} for p in plays],
                   notes=tl.notes)
     return result
+
+
+def edit_clip(source: Path, out_dir: Path | None = None, *, profile: str = "valorant",
+              taste_path: Path | None = None, work: Path | None = None, size: tuple[int, int] | None = None,
+              fps: int | None = None, progress=None) -> dict[str, Any]:
+    """The one-clip flow the desktop app calls when Medal saves a clip: story mode, one play,
+    game audio only (the player adds a sound in TikTok). Writes <out_dir>/<clip> (Reroll).mp4
+    and its timeline. Returns {"ok": False, "reason": ...} when there is nothing to edit."""
+    from .compositor import _probe
+    from .director import story_compilation
+    from .events import find_events
+    from .taste import load
+    say = progress or (lambda stage, frac: None)
+    source = Path(source).resolve()
+    out_dir = Path(out_dir).resolve() if out_dir else source.parent / "Reroll"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    output = out_dir / f"{source.stem} (Reroll).mp4"
+    work = Path(work) if work else Path(tempfile.mkdtemp(prefix="reroll-"))
+    say("finding plays", 0.0)
+    ev = find_events(source, profile)
+    if not ev["times"]:
+        return {"ok": False, "reason": "no_plays", "message": "Couldn't find a play in this clip.",
+                "source": str(source)}
+    info = _probe(source)
+    play = {"source": str(source), "duration": _duration(source, "v:0"), "kills": ev["times"],
+            "story": ev.get("story", []), "count": ev.get("count"), "height": info["height"],
+            "game": profile if ev["source"].endswith("-kills") else None}
+    fmt = {}
+    if size:
+        fmt.update(width=size[0], height=size[1])
+    if fps:
+        fmt["fps"] = fps
+    taste = load(taste_path, format=fmt or None)
+    tl = story_compilation([play], None, taste)
+    plan = output.with_suffix(".timeline.json")
+    tl.save(plan)
+    say("planning", 1.0)
+    result = render(tl, output, work, progress=say)
+    say("done", 1.0)
+    result.update(ok=True, timeline=str(plan), kills=ev["times"], kill_count=ev.get("count"),
+                  detector=ev["source"], notes=tl.notes)
+    return result
