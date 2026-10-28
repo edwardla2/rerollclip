@@ -279,21 +279,37 @@ def edge_glow(path: Path, width: int, height: int, color: tuple[int, int, int] =
 
 # ---------------------------------------------------------------- pass 2: master
 
-def master_commands(tl: Timeline, path: Path) -> None:
-    """Per-frame values of the keyframed master effects, as an FFmpeg sendcmd script."""
+def used_effects(tl: Timeline) -> set[str]:
+    """The master effects this timeline actually uses (a curve that is ever non-zero)."""
+    return {k for k, c in tl.master.items() if not c.is_const(0.0)}
+
+
+def master_commands(tl: Timeline, path: Path, used: set[str] | None = None) -> bool:
+    """Per-frame values of the keyframed master effects in use, as an FFmpeg sendcmd script.
+    Returns False when no effect needs per-frame commands."""
+    used = used_effects(tl) if used is None else used
     m = tl.master
     ca, glow, radial, edge = (m.get(k, Curve.const(0.0)) for k in ("ca", "glow", "radial", "edge"))
+    if not used & {"ca", "glow", "radial", "edge"}:
+        return False
     lines = []
     scale = tl.width / 1920
     for i in range(int(math.ceil(tl.duration * tl.fps)) + 1):
         t = i / tl.fps
-        shift = int(round(ca.at(t) * scale))
-        lines.append(f"{t:.4f} rgbashift@ca rh {-shift}, rgbashift@ca bh {shift}, "
-                     f"rgbashift@ca rv {shift // 3}, rgbashift@ca bv {-(shift // 3)}, "
-                     f"blend@gl all_opacity {min(1.0, glow.at(t)):.3f}, "
-                     f"blend@rb all_opacity {min(1.0, radial.at(t)):.3f}, "
-                     f"colorchannelmixer@eg aa {min(1.0, edge.at(t)):.3f};")
+        cmds = []
+        if "ca" in used:
+            shift = int(round(ca.at(t) * scale))
+            cmds += [f"rgbashift@ca rh {-shift}", f"rgbashift@ca bh {shift}",
+                     f"rgbashift@ca rv {shift // 3}", f"rgbashift@ca bv {-(shift // 3)}"]
+        if "glow" in used:
+            cmds.append(f"blend@gl all_opacity {min(1.0, glow.at(t)):.3f}")
+        if "radial" in used:
+            cmds.append(f"blend@rb all_opacity {min(1.0, radial.at(t)):.3f}")
+        if "edge" in used:
+            cmds.append(f"colorchannelmixer@eg aa {min(1.0, edge.at(t)):.3f}")
+        lines.append(f"{t:.4f} " + ", ".join(cmds) + ";")
     path.write_text("\n".join(lines))
+    return True
 
 
 def _reveal_filters(tl: Timeline) -> str:
@@ -309,6 +325,11 @@ def _reveal_filters(tl: Timeline) -> str:
         out.append(f"geq=lum='lum(X\\,Y)*{k}':cb='128+(cb(X\\,Y)-128)*{k}':cr='128+(cr(X\\,Y)-128)*{k}'"
                    f":enable='between(t\\,{t0 - 0.02:.4f}\\,{t0 + d + 0.02:.4f})'")
     return ("," + ",".join(out)) if out else ""
+
+
+def _grade_used(look: dict[str, float]) -> bool:
+    neutral = {"contrast": 1.0, "saturation": 1.0, "gamma": 1.0, "warmth": 0.0, "sharpen": 0.0}
+    return any(abs(look.get(k, v) - v) > 1e-6 for k, v in neutral.items())
 
 
 def _grade(look: dict[str, float]) -> str:
@@ -363,13 +384,20 @@ def render_master(tl: Timeline, base: Path, output: Path, work: Path, encoder_ar
     w, h, fps = tl.width, tl.height, tl.fps
     inputs = ["-i", str(base)]
     graph = []
+    # Only the stages this edit uses are built (a disabled stage still costs a full-frame
+    # pass on every frame); the output is the same either way.
+    used = used_effects(tl)
     cmd = work / "master.cmd"
-    master_commands(tl, cmd)
+    has_cmds = master_commands(tl, cmd, used)
     flash = tl.master.get("flash", Curve.const(0.0))
     exposure = tl.master.get("exposure", Curve.const(0.0))
     mono = tl.master.get("mono", Curve.const(0.0))
-    hue = "" if mono.is_const(0.0) else f",hue=s='max(0\\,1-({mono.expr()}))'"
-    graph.append(f"[0:v]sendcmd=f='{cmd}',{_grade(tl.look)}{hue},format=rgba[g0]")
+    hue = "" if "mono" not in used else f",hue=s='max(0\\,1-({mono.expr()}))'"
+    head = [f"sendcmd=f='{cmd}'"] if has_cmds else []
+    if _grade_used(tl.look):
+        head.append(_grade(tl.look))
+    head = ",".join(head) if head else "null"
+    graph.append(f"[0:v]{head}{hue}[g0]")
     # Typography, positioned with the footage's motion.
     cur = "g0"
     for j, layer in enumerate(tl.texts):
@@ -385,32 +413,42 @@ def render_master(tl: Timeline, base: Path, output: Path, work: Path, encoder_ar
         graph.append(f"[{k}:v]format=rgba[t{j}]")
         graph.append(f"[{cur}][t{j}]overlay=eof_action=pass:format=auto[g{j + 1}]")
         cur = f"g{j + 1}"
-    # Bloom: highlights blurred and screened back on (computed small, it's soft anyway).
-    graph.append(f"[{cur}]format=gbrp,split[gb][gs]")
-    graph.append(f"[gs]lutrgb=r='clip((val-150)*2.4\\,0\\,255)':g='clip((val-150)*2.4\\,0\\,255)'"
-                 f":b='clip((val-150)*2.4\\,0\\,255)',scale={w // 4}:{h // 4},gblur=sigma=9,"
-                 f"scale={w}:{h}:flags=bicubic[glow]")
-    graph.append("[gb][glow]blend@gl=all_mode=screen:all_opacity=0[bl]")
-    # Radial (zoom) blur: zoomed copies averaged, blended in by keyframe.
-    hw, hh = w // 2, h // 2
-    graph.append(f"[bl]split=2[rs][rz]")
-    graph.append(f"[rz]scale={hw}:{hh},split=4[z0][z1][z2][z3]")
-    for i, s in enumerate((1.04, 1.085, 1.135)):
-        zw, zh = int(hw * s) // 2 * 2, int(hh * s) // 2 * 2
-        graph.append(f"[z{i + 1}]scale={zw}:{zh},crop={hw}:{hh}[zz{i + 1}]")
-    graph.append(f"[z0][zz1][zz2][zz3]mix=inputs=4:weights='1 1 1 1',scale={w}:{h}:flags=bicubic[rb]")
-    # In FFmpeg's "normal" blend, opacity weights the first input; at 0 the second shows.
-    graph.append("[rb][rs]blend@rb=all_mode=normal:all_opacity=0[rbo]")
-    # Colour split, then exposure (flashes) and the edge glow.
-    graph.append(f"[rbo]rgbashift@ca=rh=0:bh=0:edge=smear,format=yuv444p,"
-                 f"eq=brightness='{flash.expr()}':contrast='1+{exposure.expr()}':eval=frame[ex]")
-    edge = edge_glow(work / "edge.png", w, h)
-    inputs += ["-loop", "1", "-framerate", str(fps), "-t", f"{tl.duration + 0.5:.3f}", "-i", str(edge)]
-    k = _count_inputs(inputs) - 1
-    graph.append(f"[{k}:v]format=rgba,colorchannelmixer@eg=aa=0[edge]")
+    if "glow" in used:
+        # Bloom: highlights blurred and screened back on (computed small, it's soft anyway).
+        graph.append(f"[{cur}]format=gbrp,split[gb][gs]")
+        graph.append(f"[gs]lutrgb=r='clip((val-150)*2.4\\,0\\,255)':g='clip((val-150)*2.4\\,0\\,255)'"
+                     f":b='clip((val-150)*2.4\\,0\\,255)',scale={w // 4}:{h // 4},gblur=sigma=9,"
+                     f"scale={w}:{h}:flags=bicubic[glow]")
+        graph.append("[gb][glow]blend@gl=all_mode=screen:all_opacity=0[bl]")
+        cur = "bl"
+    if "radial" in used:
+        # Radial (zoom) blur: zoomed copies averaged, blended in by keyframe.
+        hw, hh = w // 2, h // 2
+        graph.append(f"[{cur}]format=gbrp,split=2[rs][rz]")
+        graph.append(f"[rz]scale={hw}:{hh},split=4[z0][z1][z2][z3]")
+        for i, s in enumerate((1.04, 1.085, 1.135)):
+            zw, zh = int(hw * s) // 2 * 2, int(hh * s) // 2 * 2
+            graph.append(f"[z{i + 1}]scale={zw}:{zh},crop={hw}:{hh}[zz{i + 1}]")
+        graph.append(f"[z0][zz1][zz2][zz3]mix=inputs=4:weights='1 1 1 1',scale={w}:{h}:flags=bicubic[rb]")
+        # In FFmpeg's "normal" blend, opacity weights the first input; at 0 the second shows.
+        graph.append("[rb][rs]blend@rb=all_mode=normal:all_opacity=0[rbo]")
+        cur = "rbo"
+    chain = []
+    if "ca" in used:
+        chain.append("format=gbrp,rgbashift@ca=rh=0:bh=0:edge=smear")
+    if "flash" in used or "exposure" in used:
+        chain.append(f"format=yuv444p,eq=brightness='{flash.expr()}':contrast='1+{exposure.expr()}':eval=frame")
+    graph.append(f"[{cur}]{','.join(chain) if chain else 'null'}[ex]")
+    cur = "ex"
+    if "edge" in used:
+        edge = edge_glow(work / "edge.png", w, h)
+        inputs += ["-loop", "1", "-framerate", str(fps), "-t", f"{tl.duration + 0.5:.3f}", "-i", str(edge)]
+        k = _count_inputs(inputs) - 1
+        graph.append(f"[{k}:v]format=rgba,colorchannelmixer@eg=aa=0[edge]")
+        graph.append(f"[{cur}][edge]overlay=format=auto:shortest=1[eg]")
+        cur = "eg"
     tail = "[vf]" if tl.branding else "[v]"
-    graph.append(f"[ex][edge]overlay=format=auto:shortest=1{_reveal_filters(tl)},"
-                 f"trim=duration={tl.duration:.4f},format=yuv420p{tail}")
+    graph.append(f"[{cur}]null{_reveal_filters(tl)},trim=duration={tl.duration:.4f},format=yuv420p{tail}")
     if tl.branding:
         png, bx, by = brand_mark(work / "brand.png", tl.branding, w, h)
         inputs += ["-loop", "1", "-framerate", str(fps), "-t", f"{tl.duration + 0.5:.3f}", "-i", str(png)]
@@ -447,8 +485,7 @@ def export(master: Path, output: Path, work: Path) -> None:
     brought to the platform loudness target without clipping."""
     from .highlight import _set_loudness
     final = work / "final.mp4"
-    _run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(master), "-c:v", "libx264",
-          "-preset", "slow", "-crf", "16", "-profile:v", "high", "-pix_fmt", "yuv420p",
+    _run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(master), "-c:v", "copy",
           "-af", "alimiter=limit=0.2:attack=2:release=120:level=false", "-c:a", "aac",
           "-b:a", "192k", "-movflags", "+faststart", str(final)], "Encoding the export")
     _set_loudness("ffmpeg", final, Path(output))
@@ -467,7 +504,9 @@ def render(tl: Timeline, output: Path, work: Path, preview_music: Path | None = 
     render_clips(tl, base, ["-c:v", "libx264", "-preset", "fast", "-crf", "10", "-pix_fmt", "yuv420p"])
     t1 = time.monotonic()
     master = work / "master.mkv"
-    render_master(tl, base, master, work, ["-c:v", "libx264", "-preset", "fast", "-crf", "8", "-pix_fmt", "yuv420p"])
+    # The master pass writes the delivery video directly (no second lossy encode).
+    render_master(tl, base, master, work, ["-c:v", "libx264", "-preset", "medium", "-crf", "16",
+                                           "-profile:v", "high", "-pix_fmt", "yuv420p"])
     t2 = time.monotonic()
     output = Path(output)
     export(master, output, work)
