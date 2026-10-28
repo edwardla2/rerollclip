@@ -397,7 +397,9 @@ def render_master(tl: Timeline, base: Path, output: Path, work: Path, encoder_ar
     if _grade_used(tl.look):
         head.append(_grade(tl.look))
     head = ",".join(head) if head else "null"
-    graph.append(f"[0:v]{head}{hue}[g0]")
+    # Exact frame timestamps: the joined pieces carry millisecond-rounded times, which made
+    # FFmpeg repeat or drop single frames at the joins.
+    graph.append(f"[0:v]setpts=N/({fps}*TB),{head}{hue}[g0]")
     # Typography, positioned with the footage's motion.
     cur = "g0"
     for j, layer in enumerate(tl.texts):
@@ -476,7 +478,7 @@ def render_master(tl: Timeline, base: Path, output: Path, work: Path, encoder_ar
     script = work / "master.graph.txt"
     script.write_text(";\n".join(graph))
     _run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y"] + inputs
-         + ["-filter_complex_script", str(script), "-map", "[v]", "-map", "[a]", "-r", str(fps)]
+         + ["-filter_complex_script", str(script), "-map", "[v]", "-map", "[a]", "-fps_mode", "passthrough"]
          + encoder_args + ["-c:a", "pcm_s16le", str(output)], "Rendering the master")
 
 
