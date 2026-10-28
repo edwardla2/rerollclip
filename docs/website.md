@@ -6,11 +6,12 @@ Hosted on Vercel (free Hobby plan). Nothing to build.
 ## One-time setup
 
 1. **Supabase**: create a project (free tier). SQL editor → run `supabase/waitlist.sql`.
-   Project settings → API: copy the Project URL and the `service_role` key.
+   Settings → API Keys: create/copy a **secret** key (`sb_secret_...`). The Project URL is in the
+   **Connect** dialog (looks like `https://abcd1234.supabase.co`).
 2. **Vercel**: Add New → Project → import `edwardla2/rerollclip`. Leave the framework as "Other";
    `vercel.json` sets the output folder. Before deploying, add Environment Variables:
    - `SUPABASE_URL` = the Project URL
-   - `SUPABASE_SERVICE_ROLE_KEY` = the service_role key (server-only; never put it in the page)
+   - `SUPABASE_SECRET_KEY` = the secret key (server-only; never put it in the page)
 3. Deploy. Every push to the main branch redeploys.
 
 Signups appear in Supabase → Table editor → `waitlist`. Without the env vars the form answers

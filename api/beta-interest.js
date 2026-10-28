@@ -1,6 +1,7 @@
 // Vercel serverless function: saves a waitlist signup to Supabase.
-// Env vars (Vercel project settings): SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
-// The service key stays on the server; the table has row-level security on and no public policies.
+// Env vars (Vercel project settings): SUPABASE_URL and SUPABASE_SECRET_KEY (a secret key, sb_secret_...,
+// from Settings > API Keys; the legacy service_role key in SUPABASE_SERVICE_ROLE_KEY also works).
+// The key stays on the server; the table has row-level security on and no public policies.
 const GAMES = new Set(['', 'valorant', 'cs2', 'fortnite', 'roblox', 'other']);
 const WINDOWS = new Set(['', '11', '10', 'unsure']);
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -20,7 +21,7 @@ module.exports = async function handler(req, res) {
   if (!GAMES.has(game) || !WINDOWS.has(windows)) return res.status(422).json({ detail: 'Pick a game and Windows version from the list.' });
 
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const key = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return res.status(503).json({ detail: 'Signups are not open yet. Try again soon.' });
 
   try {
@@ -29,7 +30,8 @@ module.exports = async function handler(req, res) {
       method: 'POST',
       headers: {
         apikey: key,
-        Authorization: `Bearer ${key}`,
+        // New sb_secret_ keys aren't JWTs and go only in `apikey`; a legacy service_role JWT also needs Bearer.
+        ...(key.startsWith('sb_') ? {} : { Authorization: `Bearer ${key}` }),
         'Content-Type': 'application/json',
         Prefer: 'resolution=merge-duplicates,return=minimal',
       },
