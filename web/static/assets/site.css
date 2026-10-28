@@ -206,3 +206,7 @@ html { scroll-behavior: smooth; }
   .hero { grid-template-columns: 1fr; }
   .hero-video { max-width: none; }
 }
+
+/* List rows: die, title and description share one centre line */
+.list li { align-items: center; }
+.list .n { align-self: stretch; align-items: center; }
