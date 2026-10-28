@@ -40,13 +40,13 @@
         body: JSON.stringify({
           email, consent: true,
           game: document.getElementById('beta-game').value,
-          windows: document.getElementById('beta-windows').value,
+          windows: '',
           website: document.getElementById('beta-website').value,
         })
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Couldn’t save your email. Try again.');
-      show('You’re on the list. We’ll email you when there’s a spot in the beta.', 'ok');
+      show('You’re on the list. We’ll email you when there’s a spot.', 'ok');
       form.reset();
     } catch (error) {
       show(String(error.message || error), 'error');
