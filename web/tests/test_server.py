@@ -58,7 +58,7 @@ def test_landing_claims_guardrails():
     assert "Beta waitlist open" in landing
     assert "not affiliated with or endorsed by Medal" in landing
     assert "The app is in development" in landing
-    assert "Real output." in landing and "/assets/media/demo.mp4" in landing
+    assert "Real output." in landing and "/assets/media/demo-wide.mp4" in landing
     assert "no download yet" in landing
     assert 'id="beta-form"' in landing
     lowered = landing.lower()

@@ -7,7 +7,7 @@
   <meta name="description" content="Reroll is a Windows companion for Medal. It turns a batch of your saved clips into one vertical video, ready to post, automatically. Join the Windows beta waitlist." />
   <meta property="og:title" content="Reroll: your Medal clips, one postable video" />
   <meta property="og:description" content="Clips in, one video out. Reroll finds your plays, cuts the dead time and frames it for TikTok. Windows beta waitlist open." />
-  <meta property="og:image" content="/assets/media/demo-poster.jpg" />
+  <meta property="og:image" content="/assets/media/demo-wide-poster.jpg" />
   <meta property="og:type" content="website" />
   <link rel="preload" href="/assets/fonts/schibsted-grotesk-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
@@ -24,19 +24,19 @@
 
   <main id="main">
     <section class="hero" aria-labelledby="hero-title">
+      <h1 id="hero-title"><span class="line"><span>Clips in.</span></span><span class="line"><span>One video out.</span></span></h1>
       <div class="hero-text">
-        <h1 id="hero-title"><span class="line"><span>Clips in.</span></span><span class="line"><span>One video out.</span></span></h1>
         <p class="lede">Reroll takes the clips Medal saved, finds your plays, cuts the dead time and turns them into one vertical video, best play last. No timeline.</p>
         <a class="cta" href="#beta"><span class="die die-sm" data-face="6" aria-hidden="true"></span>Join the waitlist <span class="arrow" aria-hidden="true">→</span></a>
       </div>
       <figure class="hero-video">
-        <video id="demo-video" src="/assets/media/demo.mp4" poster="/assets/media/demo-poster.jpg" width="540" height="960" autoplay muted loop playsinline preload="metadata" aria-label="Reroll compilation made from four Valorant clips"></video>
+        <video id="demo-video" src="/assets/media/demo-wide.mp4" poster="/assets/media/demo-wide-poster.jpg" width="960" height="540" autoplay muted loop playsinline preload="metadata" aria-label="Reroll compilation made from four Valorant clips"></video>
         <button type="button" class="sound" id="demo-sound" aria-pressed="false">Sound off</button>
         <div class="edit" id="edit-strip" aria-label="The edit: where each clip starts and which stretches were sped up. Click to jump.">
           <div class="edit-track" id="edit-track"><span class="edit-head" id="edit-head"></span></div>
           <div class="edit-meta tnum"><span id="edit-time">0:00 / 1:14</span><span><i class="key key-real"></i>Real speed <i class="key key-fast"></i>Sped up</span></div>
         </div>
-        <figcaption>Real output. Four Valorant clips, 2:15 of footage → 1:14. No manual changes.</figcaption>
+        <figcaption>Real output. Four Valorant clips, 2:15 of footage → 1:14, no manual changes. Shown here without the vertical frame Reroll adds for TikTok.</figcaption>
       </figure>
     </section>
 
