@@ -221,6 +221,21 @@ def main() -> int:
     mont.add_argument("--timeline", type=Path, default=None, help="render this timeline JSON instead of planning one")
     mont.add_argument("--work", type=Path, default=None)
     mont.add_argument("--preview", action="store_true", help="also write a private copy with the song mixed in")
+    lib = sub.add_parser("library", help="The player's clip folder: analyse new clips, make a compilation")
+    lib_sub = lib.add_subparsers(dest="library_command", required=True)
+    for name, helptext in (("scan", "analyse clips that are new since the last scan"),
+                           ("make", "make one video from the recent plays")):
+        q = lib_sub.add_parser(name, help=helptext)
+        q.add_argument("folder", type=Path, help="the Medal clips folder")
+        q.add_argument("--ledger", type=Path, default=None)
+        q.add_argument("--profile", choices=["generic", "valorant", "cs2", "fortnite", "roblox"], default="valorant")
+        q.add_argument("--progress", action="store_true")
+        if name == "make":
+            q.add_argument("--output", type=Path, required=True)
+            q.add_argument("--since", type=float, default=None, help="only clips saved after this Unix time")
+            q.add_argument("--max-plays", type=int, default=5)
+            q.add_argument("--max-seconds", type=float, default=90.0)
+            q.add_argument("--work", type=Path, default=None)
     one = sub.add_parser("edit", help="One clip -> one edit (what the desktop app runs for each new Medal clip)")
     one.add_argument("file", type=Path)
     one.add_argument("--out-dir", type=Path, default=None, help="default: a Reroll folder next to the clip")
@@ -296,6 +311,29 @@ def main() -> int:
                                      words=opts.words.split(), style=opts.style, taste_path=opts.taste,
                                      intensity=opts.intensity, aspect=opts.aspect, fps=opts.fps,
                                      timeline=opts.timeline, work=opts.work, preview=opts.preview), indent=1))
+        elif opts.command == "library":
+            from .library import Library, pick
+            from .montage import compile_plays
+
+            def progress(stage: str, frac: float, item: str = "") -> None:
+                if opts.progress:
+                    print(json.dumps({"stage": stage, "progress": round(frac, 3), "item": item}), flush=True)
+            library = Library(opts.folder, opts.ledger, opts.profile)
+            new = library.scan(progress)
+            if opts.library_command == "scan":
+                plays = library.plays()
+                print(json.dumps({"ok": True, "new": len(new), "clips": len(library.entries), "plays": len(plays),
+                                  "summary": [{"clip": Path(p["source"]).name, "kills": p.get("count") or len(p["kills"]),
+                                               "ace": p.get("ace_at") is not None} for p in plays]}))
+            else:
+                chosen, notes = pick(library.plays(), since=opts.since, max_plays=opts.max_plays,
+                                     max_seconds=opts.max_seconds)
+                if not chosen:
+                    print(json.dumps({"ok": False, "reason": "no_plays", "message": "No plays with kills to make a video from yet."}))
+                else:
+                    r = compile_plays(chosen, opts.output, work=opts.work, progress=progress)
+                    r["notes"] = notes + r["notes"]
+                    print(json.dumps(r))
         elif opts.command == "edit":
             from .montage import edit_clip
             size = tuple(int(x) for x in opts.size.lower().split("x")) if opts.size else None

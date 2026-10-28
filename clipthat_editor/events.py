@@ -272,8 +272,10 @@ def valorant_events(path: Path) -> dict[str, Any]:
                 count = 5
             # Everyone else's kills (teammates', and teammates going down) are the story around yours.
             others = [t for t in onsets if all(abs(t - m) > 0.15 for m in mine)]
+            # Without your kill banners the rows can't be told apart from teammates' kills.
+            confidence = "high" if banners else "low"
             return {"times": mine, "count": count, "feed_rows": len(steps), "banners": banners, "story": others,
-                    "ace_at": ace}
+                    "ace_at": ace, "confidence": confidence}
     times = _banner_kills(path)
     return {"times": times, "count": len(times)}
 
@@ -297,6 +299,10 @@ def _banner_onsets(path: Path) -> list[float]:
     signal = _region_contrast(path, "iw*0.10:ih*0.14:iw*0.45:ih*0.71")
     if not signal:
         return []
+    # Known weakness (2026-10-28): this level is relative to the clip's typical contrast, so a
+    # clip trimmed to leave out quiet footage can lift it above faint banners. Every threshold
+    # tried that fixed that broke 360p footage (banners close together never re-arm); kept the
+    # rule that is right on all four frame-verified clips. Recheck on real Medal files.
     base = median(signal)
     high = max(8.0, base * 3.0, 0.45 * max(signal))
     low = max(4.0, high * 0.45)

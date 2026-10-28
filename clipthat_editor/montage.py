@@ -203,3 +203,20 @@ def edit_clip(source: Path, out_dir: Path | None = None, *, profile: str = "valo
     result.update(ok=True, timeline=str(plan), kills=ev["times"], kill_count=ev.get("count"),
                   detector=ev["source"], notes=tl.notes)
     return result
+
+
+def compile_plays(plays: list[dict[str, Any]], output: Path, *, taste_path: Path | None = None,
+                  work: Path | None = None, progress=None) -> dict[str, Any]:
+    """Story compilation from already-analysed plays (see library.py), game audio only."""
+    from .director import story_compilation
+    from .taste import load
+    output = Path(output).resolve()
+    output.parent.mkdir(parents=True, exist_ok=True)
+    work = Path(work) if work else Path(tempfile.mkdtemp(prefix="reroll-"))
+    taste = load(taste_path)
+    tl = story_compilation([dict(p) for p in plays], None, taste)
+    plan = output.with_suffix(".timeline.json")
+    tl.save(plan)
+    result = render(tl, output, work, progress=progress)
+    result.update(ok=True, timeline=str(plan), plays=[p["source"] for p in plays], notes=tl.notes)
+    return result
