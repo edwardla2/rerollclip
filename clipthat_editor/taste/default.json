@@ -132,6 +132,11 @@
     "structure": "buildup_drop",
     "buildup_min": 2.0,
     "teaser": false,
-    "gaps": "real"
+    "gaps": "dead",
+    "long_edit": 30.0,
+    "dead_keep": 1.5,
+    "dead_cut_over": 6.0,
+    "dead_speed": 2.0,
+    "action_pad": 0.75
   }
 }

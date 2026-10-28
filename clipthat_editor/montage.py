@@ -118,9 +118,11 @@ def compile_clips(sources: list[Path], music: Path | None, output: Path, *, prof
         src = Path(src).resolve()
         ev = find_events(src, profile)
         info = _probe(src)
+        from .events import action_times
         plays.append({"source": str(src), "duration": _duration(src, "v:0"), "kills": ev["times"],
                       "story": ev.get("story", []), "count": ev.get("count"), "height": info["height"],
-                      "game": profile if ev["source"].endswith("-kills") else None})
+                      "game": profile if ev["source"].endswith("-kills") else None,
+                      "action": action_times(src)})
     taste = load(taste_path, intensity=intensity)
     if generate:
         from .beatmaker import grid
@@ -182,9 +184,10 @@ def edit_clip(source: Path, out_dir: Path | None = None, *, profile: str = "valo
         return {"ok": False, "reason": "no_plays", "message": "Couldn't find a play in this clip.",
                 "source": str(source)}
     info = _probe(source)
+    from .events import action_times
     play = {"source": str(source), "duration": _duration(source, "v:0"), "kills": ev["times"],
             "story": ev.get("story", []), "count": ev.get("count"), "height": info["height"],
-            "game": profile if ev["source"].endswith("-kills") else None}
+            "game": profile if ev["source"].endswith("-kills") else None, "action": action_times(source)}
     fmt = {}
     if size:
         fmt.update(width=size[0], height=size[1])

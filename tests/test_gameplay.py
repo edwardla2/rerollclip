@@ -112,14 +112,31 @@ class StoryTests(unittest.TestCase):
         kills_shown = len(tl.music["kills_at"])
         self.assertEqual(kills_shown, 9)                                   # every kill of both plays
 
-    def test_real_speed_everywhere_and_no_accent(self):
-        # Review v004: nothing sped up or slowed down, no black-and-white accent.
-        tl = self.plan()
-        for c in tl.clips:
-            self.assertTrue(all(abs(k.speed_in - 1) < 1e-6 and abs(k.speed_out - 1) < 1e-6 for k in c.keys), c.label)
+    def test_speed_only_where_nothing_happens(self):
+        # Review v004 + clarification: real speed wherever there's action; only truly dead
+        # stretches of a long edit are sped up or cut; no accent.
+        plays = [dict(p) for p in self.PLAYS]
+        plays[0]["action"] = [10.0, 11.0, 13.0, 21.0, 22.0]      # fights around the kills; 26-33 s is dead
+        from clipthat_editor.director import story_compilation
+        tl = story_compilation(plays, music(), taste_mod.load(branding={"enabled": False}))
         self.assertTrue(all(curve.is_const(0.0) for curve in tl.master.values()))
-        for src in ("a.mp4", "b.mp4"):                      # each play is one continuous stretch
-            self.assertEqual(sum(1 for c in tl.clips if c.source == src), 1)
+        for c in tl.clips:
+            fast = any(k.speed_in > 1.001 or k.speed_out > 1.001 for k in c.keys)
+            if fast:
+                for t in plays[0]["action"] + plays[0]["kills"]:
+                    self.assertFalse(c.src_in + 0.01 < t < c.src_out - 0.01, (c.label, t))   # no action sped up
+            self.assertFalse(any(k.speed_in < 0.999 or k.speed_out < 0.999 for k in c.keys))  # no slow motion
+        for c in tl.clips:
+            if "window" in c.label:
+                self.assertGreaterEqual(c.out_dur, 1.0, c.label)
+
+    def test_a_short_edit_plays_straight_through(self):
+        from clipthat_editor.director import story_compilation
+        play = {"source": "c.mp4", "duration": 30.0, "kills": [12.0, 18.0, 22.0], "count": 3, "height": 1080,
+                "game": "valorant", "story": [], "action": [12.0, 18.0, 22.0]}
+        tl = story_compilation([play], None, taste_mod.load(branding={"enabled": False}))
+        self.assertEqual(len(tl.clips), 1)
+        self.assertTrue(all(abs(k.speed_out - 1) < 1e-6 for k in tl.clips[0].keys))
 
 
 class StructureTests(unittest.TestCase):

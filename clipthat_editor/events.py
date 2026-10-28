@@ -341,6 +341,33 @@ def audio_hits(path: Path, limit: int = 8) -> list[float]:
     return sorted(round(t, 2) for t in picked)
 
 
+def action_times(path: Path, hop: float = 0.05) -> list[float]:
+    """Moments of action from the game audio: sharp, bright, loud sounds (gunfire, abilities,
+    impacts) well above the clip's typical level. Footsteps, ambience and quiet holding don't
+    register. Measured on real clips: these line up with the fights."""
+    import numpy as np
+    rate = 16000
+    proc = subprocess.run([_ffmpeg(), "-v", "error", "-i", str(path), "-map", "0:a:0", "-ac", "1", "-ar", str(rate),
+                           "-f", "s16le", "-"], capture_output=True)
+    if proc.returncode or not proc.stdout:
+        return []
+    x = np.frombuffer(proc.stdout[: len(proc.stdout) // 2 * 2], np.int16).astype(np.float32) / 32768
+    n = int(rate * hop)
+    m = len(x) // n
+    if m < 10:
+        return []
+    d = np.diff(x, prepend=0.0)[: m * n].reshape(m, n)        # first difference: favours bright sounds
+    db = 20 * np.log10(np.sqrt((d ** 2).mean(1)) + 1e-6)
+    base = float(np.median(db))
+    floor = np.array([db[max(0, i - 6):i + 1].min() for i in range(m)])
+    hits = np.where((db > base + 12) & (db - floor > 8))[0] * hop
+    out: list[float] = []
+    for t in hits:
+        if not out or t - out[-1] > 0.15:
+            out.append(round(float(t), 2))
+    return out
+
+
 DETECTORS = {"valorant": valorant_events}
 
 

@@ -630,10 +630,12 @@ def gameplay_first(source: str, duration: float, kills: list[float], music: dict
 # Story compilation: several plays back to back, lightly edited, the story kept.
 # =====================================================================================
 
-def play_windows(kills: list[float], story: list[float], duration: float, cfg: dict[str, Any]) -> list[list[float]]:
-    """The parts of one clip that tell the play: around each of your kills, and around the
-    other kill-feed events between them (a teammate going down is what makes a clutch).
-    Windows closer than `merge_gap` join; what's left between them is dead time."""
+def play_windows(kills: list[float], story: list[float], duration: float, cfg: dict[str, Any],
+                 action: list[float] | None = None) -> list[list[float]]:
+    """The parts of one clip that tell the play: around each of your kills, around the other
+    kill-feed events leading into them (a teammate going down is what makes a clutch), and
+    around any action (gunfire, abilities) between the first and last kill. Windows closer than
+    `merge_gap` join; what's left between them is truly dead time."""
     if not kills:
         return []
     first, last = kills[0], kills[-1]
@@ -644,14 +646,28 @@ def play_windows(kills: list[float], story: list[float], duration: float, cfg: d
         # trade, the last teammate falling before the 1v1.
         if any(0 <= k - t <= cfg["context_before"] for k in kills):
             wins.append([t - cfg["story_pad"], t + cfg["story_pad"] + 0.2])
+    for t in action or []:
+        if wins[0][0] <= t <= last:
+            wins.append([t - cfg.get("action_pad", 0.75), t + cfg.get("action_pad", 0.75)])
     wins = sorted([max(0.0, a), min(duration - 0.02, b)] for a, b in wins)
-    merged: list[list[float]] = []
-    for a, b in wins:
-        if merged and a - merged[-1][1] <= cfg["merge_gap"]:
-            merged[-1][1] = max(merged[-1][1], b)
-        else:
-            merged.append([a, b])
-    return merged
+    def merge(ws):
+        out: list[list[float]] = []
+        for a, b in sorted(ws):
+            if out and a - out[-1][1] <= cfg["merge_gap"]:
+                out[-1][1] = max(out[-1][1], b)
+            else:
+                out.append([a, b])
+        return out
+    merged = merge(wins)
+    # No blips: a real-speed moment between two sped-up stretches lasts at least min_window.
+    least = cfg.get("min_window", 1.5)
+    grown = []
+    for a, b in merged:
+        if b - a < least:
+            pad = (least - (b - a)) / 2
+            a, b = max(0.0, a - pad), min(duration - 0.02, b + pad)
+        grown.append([a, b])
+    return merge(grown)
 
 
 def _kill_on_beat(wins, wi, play, clips, out_t, start, P, next_beat, cfg, notes) -> None:
@@ -700,10 +716,19 @@ def story_compilation(plays: list[dict[str, Any]], music: dict[str, Any] | None,
     on a moment; one accent on the best moment of the whole video."""
     from .taste import tier
     cfg = dict(taste["story"])
-    if cfg.get("gaps") == "real":
-        # Review v004: never speed footage up; the gaps between fights play in real time, so
-        # each play is one continuous stretch from its build-up to its payoff.
+    plays = [p for p in plays if p["kills"]]
+    # Review v004 + clarification: real speed wherever there's action. Only stretches with truly
+    # no action are sped up (medium) or cut (long), and only in a long edit; a short edit (one
+    # clip) plays straight through.
+    spans = [play_windows(p["kills"], p.get("story", []), p["duration"], cfg, p.get("action")) for p in plays]
+    whole = sum(w[-1][1] - w[0][0] for w in spans if w)
+    long_edit = whole > cfg.get("long_edit", 30.0)
+    if cfg.get("gaps") in ("real", "dead") and not long_edit:
         cfg["merge_gap"] = float("inf")
+    elif cfg.get("gaps") == "dead":
+        cfg["merge_gap"] = cfg.get("dead_keep", 1.5)          # pauses shorter than this stay
+        cfg["ramp_gap_under"] = cfg.get("dead_cut_over", 6.0)  # dead longer than this is cut
+        cfg["ramp_avg"] = cfg.get("dead_speed", 2.0)
     fmt = taste["format"]
     width, height, fps = fmt["width"], fmt["height"], fmt["fps"]
     tz = tier(taste)
@@ -728,7 +753,7 @@ def story_compilation(plays: list[dict[str, Any]], music: dict[str, Any] | None,
     # the weakest plays until it does. The best play always stays.
     if synced and music.get("duration"):
         def length(ps):
-            return sum(b - a for p_ in ps for a, b in play_windows(p_["kills"], p_.get("story", []), p_["duration"], cfg)) \
+            return sum(b - a for p_ in ps for a, b in play_windows(p_["kills"], p_.get("story", []), p_["duration"], cfg, p_.get("action"))) \
                 + P * len(ps)
         while len(plays) > 1 and length(plays) > music["duration"]:
             plays = plays[1:]
@@ -737,7 +762,7 @@ def story_compilation(plays: list[dict[str, Any]], music: dict[str, Any] | None,
     # setup before the first kill, nothing happening yet; the drop lands on the first kill.
     # The song starts wherever that puts it, as long as it lasts the whole edit.
     start = 0.0
-    spans = [play_windows(p["kills"], p.get("story", []), p["duration"], cfg) for p in plays]
+    spans = [play_windows(p["kills"], p.get("story", []), p["duration"], cfg, p.get("action")) for p in plays]
     if synced:
         first_kill = plays[0]["kills"][0] - spans[0][0][0]
         total = sum(b - a for w in spans for a, b in w) + P * len(spans) * 2   # beat slack
@@ -760,14 +785,14 @@ def story_compilation(plays: list[dict[str, Any]], music: dict[str, Any] | None,
         else:
             framing = "crop" if crop_scale <= cfg["max_crop_upscale"] else "fit"
         inset = framing == "crop" and cfg.get("feed_inset", True) and play.get("game") == "valorant"
-        wins = play_windows(play["kills"], play.get("story", []), dur, cfg)
+        wins = play_windows(play["kills"], play.get("story", []), dur, cfg, play.get("action"))
         # Don't open a window on flat footage (smoke, a wall): start where the picture has detail,
         # keeping at least `min_lead` before the kill that window is for.
         if Path(src).exists():
             for wj, w_ in enumerate(wins):
                 k_next = next((k for k in play["kills"] if k >= w_[0]), None)
-                if k_next is None:
-                    continue
+                if k_next is None or k_next > w_[1]:
+                    continue        # only a window that leads into a kill opens on its setup
                 keep = cfg["min_lead"]
                 if pi == 0 and wj == 0:
                     keep = cfg.get("buildup_min", 2.0)      # the build-up needs time to build
