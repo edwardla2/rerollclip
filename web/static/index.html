@@ -9,14 +9,15 @@
   <meta property="og:description" content="Clips in, one video out. Reroll finds your plays, cuts the dead time and frames it for TikTok. Windows beta waitlist open." />
   <meta property="og:image" content="/assets/media/demo-poster.jpg" />
   <meta property="og:type" content="website" />
-  <link rel="preload" href="/assets/fonts/space-grotesk-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/assets/fonts/schibsted-grotesk-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="/assets/tokens.css" />
   <link rel="stylesheet" href="/assets/site.css" />
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
   <header class="bar">
-    <a class="mark" href="/">reroll</a>
+    <a class="mark" href="/" id="logo"><span class="die" data-face="2" aria-hidden="true"></span>reroll</a>
     <span class="bar-mid">For Medal · Windows · Beta waitlist open</span>
     <a class="bar-cta" href="#beta">Join the waitlist →</a>
   </header>
@@ -26,7 +27,7 @@
       <div class="hero-text">
         <h1 id="hero-title"><span class="line"><span>Clips in.</span></span><span class="line"><span>One video out.</span></span></h1>
         <p class="lede">Reroll takes the clips Medal saved, finds your plays, cuts the dead time and turns them into one vertical video, best play last. No timeline.</p>
-        <a class="cta" href="#beta">Join the waitlist <span class="arrow" aria-hidden="true">→</span></a>
+        <a class="cta" href="#beta"><span class="die die-sm" data-face="6" aria-hidden="true"></span>Join the waitlist <span class="arrow" aria-hidden="true">→</span></a>
       </div>
       <figure class="hero-video">
         <video id="demo-video" src="/assets/media/demo.mp4" poster="/assets/media/demo-poster.jpg" width="540" height="960" autoplay muted loop playsinline preload="metadata" aria-label="Reroll compilation made from four Valorant clips"></video>
@@ -42,10 +43,10 @@
     <section class="block" aria-labelledby="does-title">
       <h2 id="does-title" class="label">What it does</h2>
       <ol class="list">
-        <li><span class="n">01</span><strong>Real speed for the action.</strong><span>Fights and kills play as they happened. No slow-mo, no filters.</span></li>
-        <li><span class="n">02</span><strong>Dead time cut.</strong><span>Walking and waiting get trimmed or sped through.</span></li>
-        <li><span class="n">03</span><strong>Best play last.</strong><span>Your biggest moment, like an ace, is the ending.</span></li>
-        <li><span class="n">04</span><strong>Your sound.</strong><span>Exports with game audio, so you add the trending song when you post.</span></li>
+        <li><span class="n"><span class="die die-line" data-face="1" aria-hidden="true"></span></span><strong>Real speed for the action.</strong><span>Fights and kills play as they happened. No slow-mo, no filters.</span></li>
+        <li><span class="n"><span class="die die-line" data-face="2" aria-hidden="true"></span></span><strong>Dead time cut.</strong><span>Walking and waiting get trimmed or sped through.</span></li>
+        <li><span class="n"><span class="die die-line" data-face="3" aria-hidden="true"></span></span><strong>Best play last.</strong><span>Your biggest moment, like an ace, is the ending.</span></li>
+        <li><span class="n"><span class="die die-line" data-face="4" aria-hidden="true"></span></span><strong>Your sound.</strong><span>Exports with game audio, so you add the trending song when you post.</span></li>
       </ol>
     </section>
 
@@ -53,6 +54,7 @@
       <h2 id="beta-title" class="label">Waitlist</h2>
       <div>
         <p class="beta-head">Get into the Windows beta.</p>
+        <p class="beta-sub">I’m letting people in a few at a time, Valorant players first.</p>
         <form class="form" id="beta-form" novalidate>
           <div class="row">
             <label class="visually-hidden" for="beta-email">Email address</label>
@@ -66,7 +68,7 @@
               <option value="roblox">Roblox</option>
               <option value="other">Something else</option>
             </select>
-            <button type="submit" id="beta-submit">Join</button>
+            <button type="submit" id="beta-submit"><span class="die die-sm" id="submit-die" data-face="1" aria-hidden="true"></span>Join</button>
           </div>
           <label class="consent"><input type="checkbox" id="beta-consent" required /><span>Store my email so Reroll can invite me to the beta. Delete it any time by asking.</span></label>
           <div class="hp" aria-hidden="true"><label>Website <input type="text" name="website" id="beta-website" tabindex="-1" autocomplete="off" /></label></div>

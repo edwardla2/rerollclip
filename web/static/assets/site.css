@@ -160,3 +160,32 @@ a { color: inherit; }
   .hero h1 .line > span, .lede, .cta, .hero-video { animation: none; }
   .js .reveal.pending { transform: none; opacity: 1; }
 }
+
+/* ---- Type: Schibsted Grotesk (SIL OFL, fonts/OFL-SchibstedGrotesk.txt), self-hosted ---- */
+@font-face { font-family: "Schibsted Grotesk"; font-weight: 400; font-display: swap; src: url("/assets/fonts/schibsted-grotesk-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Schibsted Grotesk"; font-weight: 500; font-display: swap; src: url("/assets/fonts/schibsted-grotesk-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Schibsted Grotesk"; font-weight: 700; font-display: swap; src: url("/assets/fonts/schibsted-grotesk-latin-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Schibsted Grotesk"; font-weight: 800; font-display: swap; src: url("/assets/fonts/schibsted-grotesk-latin-800-normal.woff2") format("woff2"); }
+body, button, input, select { font-family: "Schibsted Grotesk", ui-sans-serif, system-ui, "Segoe UI", sans-serif; }
+.hero h1, .beta-head, .list strong { font-weight: 800; letter-spacing: -0.045em; }
+.mark { display: inline-flex; align-items: center; gap: 9px; font-weight: 800; }
+
+/* ---- The die: Reroll's mark. Faces are drawn by site.js from data-face. ---- */
+.die { --size: 26px; --ink: var(--fg); --pip: var(--bg); display: inline-grid; flex: none; width: var(--size); height: var(--size); padding: calc(var(--size) * .14); border-radius: calc(var(--size) * .24); background: var(--ink); grid-template: repeat(3, 1fr) / repeat(3, 1fr); vertical-align: middle; }
+.die i { width: 78%; height: 78%; place-self: center; border-radius: 50%; background: var(--pip); opacity: 0; transform: scale(.4); transition: opacity .12s, transform .12s; }
+.die i.on { opacity: 1; transform: none; }
+.die.rolling { animation: tumble .55s cubic-bezier(.3, 1.4, .5, 1); }
+@keyframes tumble { 0% { transform: rotate(0) scale(1); } 40% { transform: rotate(200deg) scale(.82); } 100% { transform: rotate(360deg) scale(1); } }
+.die-sm { --size: 18px; margin-right: 10px; vertical-align: -3px; }
+.cta .die-sm { --ink: var(--on-accent); --pip: var(--accent); }
+.cta:hover .die-sm { --ink: var(--fg); --pip: var(--bg); }
+.row button .die-sm { --ink: var(--on-accent); --pip: var(--accent); }
+.die-line { --size: 22px; --ink: transparent; --pip: var(--fg); box-shadow: inset 0 0 0 1.5px var(--fg); }
+.list li:hover .die-line { --ink: var(--fg); --pip: var(--bg); }
+.list .n { display: flex; align-items: center; }
+.mark .die { transition: transform .3s; }
+.beta-sub { margin: -14px 0 24px; color: var(--muted); font-size: var(--t-md); }
+.status .die { --size: 16px; margin-right: 8px; vertical-align: -2px; }
+@media (prefers-reduced-motion: reduce) { .die.rolling { animation: none; } }
+.row button { display: inline-flex; align-items: center; justify-content: center; }
+.row button .die-sm { margin-right: 8px; }

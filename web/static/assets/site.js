@@ -1,5 +1,43 @@
 (() => {
   'use strict';
+  // The die: pip layout per face on a 3x3 grid (cells 0..8).
+  const FACES = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function draw(die, face) {
+    if (!die.children.length) for (let i = 0; i < 9; i++) die.appendChild(document.createElement('i'));
+    [...die.children].forEach((pip, i) => pip.classList.toggle('on', FACES[face].includes(i)));
+    die.dataset.face = String(face);
+  }
+  // Roll: flick through random faces, then land on `face`.
+  function roll(die, face, steps = 6) {
+    if (reduced) { draw(die, face); return; }
+    die.classList.remove('rolling'); void die.offsetWidth; die.classList.add('rolling');
+    let n = 0;
+    const t = setInterval(() => {
+      n += 1;
+      if (n >= steps) { clearInterval(t); draw(die, face); return; }
+      let f; do { f = 1 + Math.floor(Math.random() * 6); } while (String(f) === die.dataset.face);
+      draw(die, f);
+    }, 70);
+  }
+  window.rerollDie = roll;
+  document.querySelectorAll('.die').forEach((d) => draw(d, Number(d.dataset.face) || 1));
+
+  // Logo lands on two (the watermark's face) on load and rerolls on hover.
+  const logo = document.querySelector('#logo .die');
+  if (logo) {
+    roll(logo, 2, 9);
+    document.getElementById('logo').addEventListener('mouseenter', () => roll(logo, 2));
+  }
+  // Every other die rerolls to its own face when you hover it or its row/button.
+  document.querySelectorAll('.cta, .list li, .row button').forEach((host) => {
+    const d = host.querySelector('.die');
+    if (d) host.addEventListener('mouseenter', () => roll(d, Number(d.dataset.home || (d.dataset.home = d.dataset.face))));
+  });
+})();
+
+(() => {
+  'use strict';
   const video = document.getElementById('demo-video');
   const sound = document.getElementById('demo-sound');
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -82,7 +120,7 @@
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Couldn’t save your email. Try again.');
-      show('You’re on the list. We’ll email you when there’s a spot.', 'ok');
+      status.innerHTML = '<span class="die" data-face="6" aria-hidden="true"></span>You rolled a six. You’re on the list, and I’ll email you when there’s a spot.'; status.className = 'status ok'; const d6 = status.querySelector('.die'); window.rerollDie && window.rerollDie(d6, 6, 10);
       form.reset();
     } catch (error) {
       show(String(error.message || error), 'error');
