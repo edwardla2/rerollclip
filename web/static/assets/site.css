@@ -189,3 +189,5 @@ body, button, input, select { font-family: "Schibsted Grotesk", ui-sans-serif, s
 @media (prefers-reduced-motion: reduce) { .die.rolling { animation: none; } }
 .row button { display: inline-flex; align-items: center; justify-content: center; }
 .row button .die-sm { margin-right: 8px; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
