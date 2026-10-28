@@ -1,0 +1,14 @@
+renders
+feedback
+desktop
+web-swift
+swift-shared
+examples
+tests
+web/tests
+clipthat_editor
+*.mp4
+!web/static/assets/media/*.mp4
+web/static/studio.html
+web/static/assets/studio.css
+web/static/assets/studio.js

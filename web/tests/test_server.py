@@ -53,15 +53,16 @@ def test_studio_page_served():
 
 
 def test_landing_claims_guardrails():
-    """Guardrails: the landing page may only claim what ships. Today that's a waitlist."""
+    """Guardrails: the landing page may only claim what ships. Today that's a waitlist and a real demo."""
     landing = request("GET", "/").text
-    assert "Windows beta coming soon" in landing
+    assert "Windows beta waitlist open" in landing
     assert "not affiliated with or endorsed by Medal" in landing
     assert "The Windows app is in development" in landing
-    assert "Illustration of the idea, not real output" in landing
+    assert "Real output, not a mock-up" in landing and "/assets/media/demo.mp4" in landing
+    assert "There’s no download yet" in landing
     assert 'id="beta-form"' in landing
     lowered = landing.lower()
-    for claim in ("download now", 'id="download', "anti-cheat", "macos", "mac app", "ai-powered", "guaranteed"):
+    for claim in ("download now", 'id="download', "anti-cheat", "macos", "mac app", "ai-powered", "guaranteed", "free forever"):
         assert claim not in lowered, claim
 
 

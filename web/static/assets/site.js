@@ -1,5 +1,20 @@
 (() => {
   'use strict';
+  const video = document.getElementById('demo-video');
+  const sound = document.getElementById('demo-sound');
+  if (video && sound) {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { video.removeAttribute('autoplay'); video.pause(); video.controls = true; }
+    sound.addEventListener('click', () => {
+      video.muted = !video.muted;
+      if (!video.muted && video.paused) video.play().catch(() => {});
+      sound.setAttribute('aria-pressed', String(!video.muted));
+      sound.textContent = video.muted ? 'Sound off' : 'Sound on';
+    });
+  }
+})();
+
+(() => {
+  'use strict';
   const form = document.getElementById('beta-form');
   if (!form) return;
   const status = document.getElementById('beta-status');
@@ -26,13 +41,12 @@
           email, consent: true,
           game: document.getElementById('beta-game').value,
           windows: document.getElementById('beta-windows').value,
-          gpu: document.getElementById('beta-gpu').value.trim(),
           website: document.getElementById('beta-website').value,
         })
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Couldn’t save your email. Try again.');
-      show('You’re on the list. We’ll email you when there’s a spot in the Windows beta.', 'ok');
+      show('You’re on the list. We’ll email you when there’s a spot in the beta.', 'ok');
       form.reset();
     } catch (error) {
       show(String(error.message || error), 'error');

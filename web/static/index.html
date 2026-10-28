@@ -4,8 +4,12 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0d0e11" />
-  <title>Reroll: Medal captures the moment. Reroll makes it worth posting.</title>
-  <meta name="description" content="Reroll is a Windows companion for Medal that turns saved gameplay clips into edited vertical highlights automatically. Windows beta coming soon." />
+  <title>Reroll: your Medal clips, one postable video</title>
+  <meta name="description" content="Reroll is a Windows companion for Medal. It turns a batch of your saved clips into one vertical video, ready to post, automatically. Join the Windows beta waitlist." />
+  <meta property="og:title" content="Reroll: your Medal clips, one postable video" />
+  <meta property="og:description" content="Four clips in, one video out. Reroll picks your plays, cuts the dead time and frames it for TikTok. Windows beta waitlist open." />
+  <meta property="og:image" content="/assets/media/demo-poster.jpg" />
+  <meta property="og:type" content="website" />
   <link rel="preload" href="/assets/fonts/space-grotesk-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="/assets/tokens.css" />
   <link rel="stylesheet" href="/assets/site.css" />
@@ -23,82 +27,97 @@
         </svg><span>reroll<span class="dot">.</span></span>
       </a>
       <ul class="nav-links">
+        <li><a href="#edit">What it does</a></li>
         <li><a href="#how">How it works</a></li>
-        <li><a href="#local">On your PC</a></li>
         <li><a href="#status">Status</a></li>
       </ul>
-      <a class="btn btn-primary nav-cta" href="#beta">Join the beta</a>
+      <a class="btn btn-primary nav-cta" href="#beta">Join the waitlist</a>
     </nav>
   </header>
 
   <main id="main">
     <section class="hero" aria-labelledby="hero-title">
       <div class="hero-copy">
-        <p class="eyebrow"><span class="pulse" aria-hidden="true"></span>Windows beta coming soon</p>
-        <h1 id="hero-title">Medal captures the moment. <span class="gold">Reroll makes it worth&nbsp;posting.</span></h1>
-        <p class="lede">Turn saved gameplay clips into vertical highlights automatically. No manual timeline editing.</p>
+        <p class="eyebrow"><span class="pulse" aria-hidden="true"></span>Windows beta waitlist open</p>
+        <h1 id="hero-title">Your Medal clips in. <span class="gold">One video worth posting&nbsp;out.</span></h1>
+        <p class="lede">Reroll takes the clips Medal already saved, finds your plays, cuts the dead time and puts it all together as one vertical video, best play last. You never touch a timeline.</p>
         <div class="hero-actions">
-          <a class="btn btn-primary btn-lg" href="#beta">Join the beta</a>
-          <a class="btn btn-ghost btn-lg" href="#how">How it works</a>
+          <a class="btn btn-primary btn-lg" href="#beta">Join the waitlist</a>
+          <a class="btn btn-ghost btn-lg" href="#edit">What it does</a>
         </div>
-        <p class="hero-note">Works with locally saved Medal clips. Independent software, not affiliated with or endorsed by Medal.</p>
+        <p class="hero-note">For Windows and Valorant first. Independent software, not affiliated with or endorsed by Medal.</p>
       </div>
 
-      <figure class="flow" aria-label="Illustration: a landscape Medal clip becomes a vertical highlight">
-        <div class="clip-raw">
-          <div class="shot shot-wide" aria-hidden="true"><span class="xhair"></span></div>
-          <div class="clip-meta"><span>Saved Medal clip</span><span class="tnum">0:30 · 16:9</span></div>
+      <figure class="demo" aria-labelledby="demo-cap">
+        <div class="demo-in">
+          <p class="demo-label">In: 4 saved clips <span class="tnum">· 2:15</span></p>
+          <ul class="clips" aria-label="The four clips that went in">
+            <li><img src="/assets/media/clip1.jpg" alt="Clip 1" width="480" height="270" loading="lazy" /><span class="tnum">0:31</span></li>
+            <li><img src="/assets/media/clip2.jpg" alt="Clip 2" width="480" height="270" loading="lazy" /><span class="tnum">0:42</span></li>
+            <li><img src="/assets/media/clip3.jpg" alt="Clip 3" width="480" height="270" loading="lazy" /><span class="tnum">0:29</span></li>
+            <li><img src="/assets/media/clip4.jpg" alt="Clip 4, an ace" width="480" height="270" loading="lazy" /><span class="tnum">0:34</span></li>
+          </ul>
+          <div class="demo-arrow" aria-hidden="true"><span></span></div>
         </div>
-        <div class="flow-arrow" aria-hidden="true"><span></span></div>
-        <div class="phone">
-          <div class="shot shot-tall" aria-hidden="true"><span class="xhair"></span></div>
-          <div class="beats" aria-hidden="true"><i class="b-cut"></i><i class="b-keep"></i><i class="b-peak"></i><i class="b-keep"></i></div>
-          <div class="clip-meta"><span>Reroll edit</span><span class="tnum">9:16</span></div>
+        <div class="demo-out">
+          <p class="demo-label">Out: 1 video <span class="tnum">· 1:14 · 9:16</span></p>
+          <div class="phone">
+            <video id="demo-video" src="/assets/media/demo.mp4" poster="/assets/media/demo-poster.jpg" width="540" height="960" autoplay muted loop playsinline preload="metadata" aria-label="Reroll compilation made from the four clips"></video>
+            <button type="button" class="sound" id="demo-sound" aria-pressed="false">Sound off</button>
+          </div>
         </div>
-        <figcaption>Illustration of the idea, not real output. Real before-and-after edits come with the beta.</figcaption>
+        <figcaption id="demo-cap">Real output, not a mock-up: a tester’s four Valorant clips, edited by Reroll with no manual changes. Game audio only.</figcaption>
       </figure>
     </section>
 
-    <section class="intro" aria-labelledby="intro-title">
-      <h2 id="intro-title">Your gameplay clips shouldn’t sit in a folder forever.</h2>
-      <p>Reroll is a Windows companion for Medal that turns saved gameplay clips into edited vertical highlights, automatically.</p>
+    <section class="intro" id="edit" aria-labelledby="edit-title">
+      <h2 id="edit-title">What Reroll does to your clips</h2>
+      <p>The edit is meant to be postable as it comes out. It keeps the play the way it happened and leaves the rest to you.</p>
+      <dl class="rules">
+        <div><dt>Keeps the play at real speed</dt><dd>Fights, abilities and kills play exactly as they happened. No slow-mo, no filters.</dd></div>
+        <div><dt>Cuts the dead time</dt><dd>Walking, waiting and rotating get trimmed or sped through, so the video moves.</dd></div>
+        <div><dt>Saves the best for last</dt><dd>Your biggest play, like an ace, comes last, so the video ends on its high point.</dd></div>
+        <div><dt>Shows the whole screen</dt><dd>The full game frame in the middle with a blurred fill above and below. Your HUD and kill feed stay readable.</dd></div>
+        <div><dt>Skips repeats</dt><dd>If the same play got saved twice, it goes in once.</dd></div>
+        <div><dt>Leaves the music to you</dt><dd>Exports with game audio, so you can add a trending sound when you post. A generated beat is optional.</dd></div>
+      </dl>
     </section>
 
     <section class="how" id="how" aria-labelledby="how-title">
-      <h2 id="how-title">Made for your next highlight</h2>
+      <h2 id="how-title">How it works</h2>
       <ol class="steps">
-        <li><h3>Keep recording with Medal</h3><p>No new recorder, no new habits. Clip the way you already do.</p></li>
-        <li><h3>Reroll finds the clip</h3><p>It watches the capture folder you choose and picks up each clip once Medal has finished saving it.</p></li>
-        <li><h3>Get a 9:16 edit</h3><p>Reroll trims to the moment and frames it vertically. You don’t build a timeline.</p></li>
-        <li><h3>Review and export</h3><p>Watch the edit, then export the MP4 for TikTok, YouTube Shorts or Instagram Reels.</p></li>
+        <li><h3>Clip with Medal</h3><p>Nothing changes about how you play or record. Reroll reads the clips Medal saves to your PC.</p></li>
+        <li><h3>Make my video</h3><p>One click. Reroll picks your recent plays and builds the video on your PC.</p></li>
+        <li><h3>Post it</h3><p>Watch it, then export a 1080×1920 MP4 for TikTok, YouTube Shorts or Reels.</p></li>
       </ol>
     </section>
 
     <section class="local" id="local" aria-labelledby="local-title">
       <div class="local-intro">
-        <h2 id="local-title">Built to run on your PC</h2>
-        <p>This is how the Windows app is being built. We’ll confirm each point on real gaming PCs before the beta ships.</p>
+        <h2 id="local-title">Runs on your PC</h2>
+        <p>This is how the Windows app is being built. We’ll check each point on real gaming PCs before the beta ships.</p>
       </div>
       <dl class="local-list">
-        <div><dt>Clips stay on your computer</dt><dd>Edits are made locally from the files Medal already saved. No upload, no account needed for editing.</dd></div>
-        <div><dt>It reads files, nothing more</dt><dd>Reroll reads your saved clips. It doesn’t connect to Medal’s app or your game.</dd></div>
-        <div><dt>Light while you play</dt><dd>Editing runs at low priority in the background. We’re measuring the impact on frame rate before we make any promises.</dd></div>
+        <div><dt>Clips stay on your computer</dt><dd>Videos are made from the files Medal already saved. Nothing is uploaded, and you don’t need an account to edit.</dd></div>
+        <div><dt>It only reads files</dt><dd>Reroll reads your saved clips. It doesn’t connect to Medal’s app or to your game.</dd></div>
+        <div><dt>No subscription</dt><dd>No cloud and no monthly plan in the beta.</dd></div>
       </dl>
     </section>
 
     <section class="status" id="status" aria-labelledby="status-title">
       <h2 id="status-title">Where Reroll is today</h2>
       <ul class="status-list">
+        <li><span class="tag tag-ok">Working</span>The editing engine. The video above is its output.</li>
         <li><span class="tag tag-dev">In development</span>The Windows app. There’s no download yet.</li>
-        <li><span class="tag tag-dev">Being validated</span>Editing quality and compatibility, on real clips and real hardware, before the beta.</li>
+        <li><span class="tag tag-dev">Valorant first</span>Reroll reads Valorant’s kill feed to find your plays. More games after the beta.</li>
         <li><span class="tag tag-no">Not planned for the beta</span>Mac, cloud storage, subscriptions, posting straight to social apps.</li>
       </ul>
     </section>
 
     <section class="beta" id="beta" aria-labelledby="beta-title">
       <div class="beta-copy">
-        <h2 id="beta-title">Join the Windows beta</h2>
-        <p>We’ll invite testers in small groups. Your game and hardware help us pick a mix of setups. We’ll only use your email to invite you.</p>
+        <h2 id="beta-title">Join the Windows beta waitlist</h2>
+        <p>We’ll invite testers in small groups, starting with Valorant players. We only use your email to invite you, and you can ask us to delete it at any time.</p>
       </div>
       <form class="beta-form" id="beta-form" novalidate>
         <label for="beta-email">Email address</label>
@@ -125,11 +144,9 @@
             </select>
           </div>
         </div>
-        <label for="beta-gpu">Graphics card <span class="optional">(optional)</span></label>
-        <input id="beta-gpu" type="text" name="gpu" placeholder="e.g. RTX 3060, RX 6700 XT" maxlength="80" autocomplete="off" />
         <label class="consent"><input type="checkbox" id="beta-consent" required /><span>Store my email and answers so Reroll can invite me to the Windows beta.</span></label>
         <div class="hp" aria-hidden="true"><label>Website <input type="text" name="website" id="beta-website" tabindex="-1" autocomplete="off" /></label></div>
-        <button type="submit" class="btn btn-primary btn-lg" id="beta-submit">Join the beta</button>
+        <button type="submit" class="btn btn-primary btn-lg" id="beta-submit">Join the waitlist</button>
         <p id="beta-status" class="beta-status" role="status" aria-live="polite"></p>
       </form>
     </section>
@@ -137,7 +154,7 @@
 
   <footer class="foot">
     <span class="wordmark wordmark-sm"><span>reroll<span class="dot">.</span></span></span>
-    <p>Reroll is independent software, not affiliated with or endorsed by Medal. The Windows app is in development; editing quality and compatibility are being validated before the beta.</p>
+    <p>Reroll is independent software, not affiliated with or endorsed by Medal or Riot Games. The Windows app is in development. Gameplay in the demo is used with the player’s permission.</p>
   </footer>
   <script src="/assets/site.js" defer></script>
 </body>
