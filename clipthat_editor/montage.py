@@ -77,6 +77,24 @@ def montage(source: Path, music: Path | None, output: Path, *, profile: str = "v
     plan = output.with_suffix(".timeline.json")
     tl.save(plan)
     result = render(tl, output, work, preview_music=song if (preview and song) else None)
+    if generate:
+        # Compose the track to the finished edit: the drop where the planner put it (on the
+        # first kill), accent hits on every kill, the length of the edit. It's original, so
+        # this version carries it in the export.
+        from .beatmaker import make
+        from .compositor import _run
+        drop_out = rhythm["drop"] - tl.music["start"]
+        beat = make(drop_out, tl.duration, list(tl.music.get("kills_at", [])), work / "reroll-beat.wav")
+        with_beat = output.with_name(output.stem + " (with beat)" + output.suffix)
+        _run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(output), "-i", str(beat),
+              "-filter_complex", "[0:a]volume=0.55[g];[1:a]aresample=48000,volume=0.8[m];"
+              "[g][m]amix=inputs=2:duration=first:normalize=0,alimiter=limit=0.89:level=false[a]",
+              "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
+              "-movflags", "+faststart", str(with_beat)], "Mixing the beat")
+        tl.music.update(file="Reroll beat", title="Reroll beat (original, generated)", start=0.0,
+                        drop_at_output=round(drop_out, 3), track=str(beat))
+        tl.save(plan)
+        result.update(with_beat=str(with_beat), beat=str(beat))
     result.update(timeline=str(plan), events=events, notes=tl.notes)
     return result
 
@@ -93,7 +111,8 @@ def compile_clips(sources: list[Path], music: Path | None, output: Path, *, prof
     output = Path(output).resolve()
     work = Path(work) if work else Path(tempfile.mkdtemp(prefix="reroll-"))
     work.mkdir(parents=True, exist_ok=True)
-    song = decoded_audio(Path(music), work) if music else None
+    generate = str(music) == "generate"          # Reroll composes its own beat for the edit
+    song = decoded_audio(Path(music), work) if (music and not generate) else None
     plays = []
     for src in sources:
         src = Path(src).resolve()
@@ -103,9 +122,13 @@ def compile_clips(sources: list[Path], music: Path | None, output: Path, *, prof
                       "story": ev.get("story", []), "count": ev.get("count"), "height": info["height"],
                       "game": profile if ev["source"].endswith("-kills") else None})
     taste = load(taste_path, intensity=intensity)
-    rhythm = analyze_beats(song) if song else None
+    if generate:
+        from .beatmaker import grid
+        rhythm = grid(drop=8.0)                     # plan against the beat's exact grid
+    else:
+        rhythm = analyze_beats(song) if song else None
     tl = story_compilation(plays, rhythm, taste)
-    if music:
+    if music and not generate:
         tl.music.update(title=music_title or Path(music).stem, source_asset=str(Path(music).resolve()),
                         decoded_path=str(song), file=Path(music).name)
         if rhythm and rhythm.get("drop_strength", 1.0) < 0.15:
@@ -114,6 +137,24 @@ def compile_clips(sources: list[Path], music: Path | None, output: Path, *, prof
     plan = output.with_suffix(".timeline.json")
     tl.save(plan)
     result = render(tl, output, work, preview_music=song if (preview and song) else None)
+    if generate:
+        # Compose the track to the finished edit: the drop where the planner put it (on the
+        # first kill), accent hits on every kill, the length of the edit. It's original, so
+        # this version carries it in the export.
+        from .beatmaker import make
+        from .compositor import _run
+        drop_out = rhythm["drop"] - tl.music["start"]
+        beat = make(drop_out, tl.duration, list(tl.music.get("kills_at", [])), work / "reroll-beat.wav")
+        with_beat = output.with_name(output.stem + " (with beat)" + output.suffix)
+        _run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(output), "-i", str(beat),
+              "-filter_complex", "[0:a]volume=0.55[g];[1:a]aresample=48000,volume=0.8[m];"
+              "[g][m]amix=inputs=2:duration=first:normalize=0,alimiter=limit=0.89:level=false[a]",
+              "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
+              "-movflags", "+faststart", str(with_beat)], "Mixing the beat")
+        tl.music.update(file="Reroll beat", title="Reroll beat (original, generated)", start=0.0,
+                        drop_at_output=round(drop_out, 3), track=str(beat))
+        tl.save(plan)
+        result.update(with_beat=str(with_beat), beat=str(beat))
     result.update(timeline=str(plan), plays=[{k: p[k] for k in ("source", "kills", "story", "count")} for p in plays],
                   notes=tl.notes)
     return result

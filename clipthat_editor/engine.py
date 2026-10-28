@@ -223,7 +223,8 @@ def main() -> int:
     mont.add_argument("--preview", action="store_true", help="also write a private copy with the song mixed in")
     comp = sub.add_parser("compile", help="Story mode: compile clips into one lightly edited video, best play last")
     comp.add_argument("files", type=Path, nargs="+")
-    comp.add_argument("--music", type=Path, default=None, help="the song to time cuts to (never exported)")
+    comp.add_argument("--music", default=None,
+                      help="a song file to time cuts to (never exported), or 'generate' for Reroll's own beat")
     comp.add_argument("--music-title", default=None, help="the song's name, for the record (e.g. Legacy)")
     comp.add_argument("--output", type=Path, required=True)
     comp.add_argument("--profile", choices=["generic", "valorant", "cs2", "fortnite", "roblox"], default="valorant")
@@ -287,7 +288,8 @@ def main() -> int:
                                      timeline=opts.timeline, work=opts.work, preview=opts.preview), indent=1))
         elif opts.command == "compile":
             from .montage import compile_clips
-            print(json.dumps(compile_clips(opts.files, opts.music, opts.output, profile=opts.profile,
+            music = opts.music if opts.music in (None, "generate") else Path(opts.music)
+            print(json.dumps(compile_clips(opts.files, music, opts.output, profile=opts.profile,
                                            music_title=opts.music_title,
                                            taste_path=opts.taste, intensity=opts.intensity, work=opts.work,
                                            preview=opts.preview), indent=1))
