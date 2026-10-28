@@ -102,3 +102,61 @@ a { color: inherit; }
 
 /* Bar and footer rules stop at the content edge, like the block rules */
 .bar, .foot { width: calc(100% - 2 * var(--gutter)); max-width: calc(1320px - 2 * var(--gutter)); padding-left: 0; padding-right: 0; }
+
+/* ---- Motion ---- */
+/* Sticky top bar */
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); }
+
+/* Load: headline lines rise out of a mask, then lede, button and video follow */
+.hero h1 .line { display: block; overflow: hidden; padding-bottom: .06em; margin-bottom: -.06em; }
+.hero h1 .line > span { display: inline-block; animation: rise .9s cubic-bezier(.2, .7, 0, 1) both; }
+.hero h1 .line:nth-child(2) > span { animation-delay: .09s; }
+.lede, .cta { animation: fadeup .8s .28s cubic-bezier(.2, .7, 0, 1) both; }
+.cta { animation-delay: .36s; }
+.hero-video { animation: unveil 1.1s .15s cubic-bezier(.7, 0, .2, 1) both; }
+@keyframes rise { from { transform: translateY(105%); } }
+@keyframes fadeup { from { opacity: 0; transform: translateY(14px); } }
+@keyframes unveil { from { clip-path: inset(100% 0 0 0); } to { clip-path: inset(0 0 0 0); } }
+
+/* Button: arrow nudges, fill inverts */
+.cta { transition: background-color .2s, color .2s, box-shadow .2s; box-shadow: inset 0 0 0 2px var(--accent); }
+.cta .arrow { display: inline-block; transition: transform .25s cubic-bezier(.2, .7, 0, 1); }
+.cta:hover { opacity: 1; background: var(--bg); color: var(--fg); }
+.cta:hover .arrow { transform: translateX(6px); }
+.bar-cta { transition: letter-spacing .25s; }
+.row button { transition: opacity .2s; }
+.row button:hover { opacity: .8; }
+
+/* Video: click toggles sound */
+.hero-video video { cursor: pointer; }
+
+/* Edit strip: the real cut list of the demo, playhead synced to the video */
+.edit { margin-top: 10px; }
+.edit-track { position: relative; height: 22px; cursor: pointer; display: flex; gap: 1px; }
+.edit-seg { height: 100%; background: var(--fg); opacity: .14; transition: opacity .25s; }
+.edit-seg.fast { background: repeating-linear-gradient(135deg, var(--fg) 0 2px, transparent 2px 5px); opacity: .35; }
+.edit-seg.on { opacity: 1; }
+.edit-seg.fast.on { opacity: 1; }
+.edit-seg.clip-start { box-shadow: -2px 0 0 var(--bg); }
+.edit-head { position: absolute; top: -4px; bottom: -4px; left: 0; width: 2px; background: var(--fg); pointer-events: none; z-index: 1; }
+.edit-meta { display: flex; justify-content: space-between; gap: 12px; margin-top: 8px; font-size: var(--t-xs); color: var(--muted); }
+.key { display: inline-block; width: 10px; height: 10px; margin: 0 5px 0 10px; vertical-align: -1px; }
+.key-real { background: var(--fg); }
+.key-fast { background: repeating-linear-gradient(135deg, var(--fg) 0 2px, transparent 2px 4px); outline: 1px solid var(--fg); outline-offset: -1px; }
+
+/* List rows: hover slides the title and draws the rule across */
+.list li { position: relative; }
+.list li::after { content: ""; position: absolute; left: 0; bottom: -1px; height: 1px; width: 100%; background: var(--fg); transform: scaleX(0); transform-origin: left; transition: transform .5s cubic-bezier(.2, .7, 0, 1); }
+.list li:hover::after { transform: scaleX(1); }
+.list strong { transition: transform .35s cubic-bezier(.2, .7, 0, 1); }
+.list li:hover strong { transform: translateX(10px); }
+.list li:hover .n { color: var(--fg); }
+
+/* Scroll: rows settle in as they arrive (visible by default; JS only adds the motion) */
+.js .reveal { transition: transform .8s cubic-bezier(.2, .7, 0, 1), opacity .8s; }
+.js .reveal.pending { transform: translateY(24px); opacity: .001; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hero h1 .line > span, .lede, .cta, .hero-video { animation: none; }
+  .js .reveal.pending { transform: none; opacity: 1; }
+}

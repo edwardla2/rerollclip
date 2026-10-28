@@ -24,13 +24,17 @@
   <main id="main">
     <section class="hero" aria-labelledby="hero-title">
       <div class="hero-text">
-        <h1 id="hero-title">Clips in.<br />One video out.</h1>
+        <h1 id="hero-title"><span class="line"><span>Clips in.</span></span><span class="line"><span>One video out.</span></span></h1>
         <p class="lede">Reroll takes the clips Medal saved, finds your plays, cuts the dead time and turns them into one vertical video, best play last. No timeline.</p>
-        <a class="cta" href="#beta">Join the waitlist</a>
+        <a class="cta" href="#beta">Join the waitlist <span class="arrow" aria-hidden="true">→</span></a>
       </div>
       <figure class="hero-video">
         <video id="demo-video" src="/assets/media/demo.mp4" poster="/assets/media/demo-poster.jpg" width="540" height="960" autoplay muted loop playsinline preload="metadata" aria-label="Reroll compilation made from four Valorant clips"></video>
         <button type="button" class="sound" id="demo-sound" aria-pressed="false">Sound off</button>
+        <div class="edit" id="edit-strip" aria-label="The edit: where each clip starts and which stretches were sped up. Click to jump.">
+          <div class="edit-track" id="edit-track"><span class="edit-head" id="edit-head"></span></div>
+          <div class="edit-meta tnum"><span id="edit-time">0:00 / 1:14</span><span><i class="key key-real"></i>Real speed <i class="key key-fast"></i>Sped up</span></div>
+        </div>
         <figcaption>Real output. Four Valorant clips, 2:15 of footage → 1:14. No manual changes.</figcaption>
       </figure>
     </section>
