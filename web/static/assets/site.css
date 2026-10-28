@@ -191,3 +191,5 @@ body, button, input, select { font-family: "Schibsted Grotesk", ui-sans-serif, s
 .row button .die-sm { margin-right: 8px; }
 html { scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+.cta { display: inline-flex; align-items: center; gap: 10px; }
+.cta .die-sm { margin: 0; vertical-align: 0; }
