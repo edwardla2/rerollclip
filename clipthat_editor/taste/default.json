@@ -126,11 +126,12 @@
     "ramp_avg": 2.5,
     "max_crop_upscale": 2.2,
     "feed_inset": false,
-    "top_accent": "mono_hang",
+    "top_accent": "none",
     "hang": 0.7,
     "min_lead": 0.6,
     "structure": "buildup_drop",
     "buildup_min": 2.0,
-    "teaser": false
+    "teaser": false,
+    "gaps": "real"
   }
 }

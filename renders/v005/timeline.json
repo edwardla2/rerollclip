@@ -1,0 +1,205 @@
+{
+ "width": 1080,
+ "height": 1920,
+ "fps": 60,
+ "source": "/tmp/claude-0/-home-claude/1dc021ce-e3f9-5f7e-926f-4552065ae01b/scratchpad/friend/c4.mp4",
+ "clips": [
+  {
+   "label": "play 1 window 1",
+   "src_in": 11.15,
+   "src_out": 33.7,
+   "out_start": 0.0,
+   "keys": [
+    {
+     "src": 0.0,
+     "out": 0.0,
+     "speed_in": 1.0,
+     "speed_out": 1.0
+    },
+    {
+     "src": 22.55,
+     "out": 22.55,
+     "speed_in": 1.0,
+     "speed_out": 1.0
+    }
+   ],
+   "zoom": {
+    "keys": [
+     [
+      0,
+      1.0,
+      "linear"
+     ]
+    ]
+   },
+   "rot": {
+    "keys": [
+     [
+      0.0,
+      0.0,
+      "linear"
+     ]
+    ]
+   },
+   "pan_x": {
+    "keys": [
+     [
+      0.0,
+      0.0,
+      "linear"
+     ]
+    ]
+   },
+   "pan_y": {
+    "keys": [
+     [
+      0.0,
+      0.0,
+      "linear"
+     ]
+    ]
+   },
+   "shakes": [],
+   "source": "/tmp/claude-0/-home-claude/1dc021ce-e3f9-5f7e-926f-4552065ae01b/scratchpad/friend/c4.mp4",
+   "framing": "full",
+   "feed_inset": false,
+   "motion_blur": 0,
+   "interpolate": false,
+   "game_gain": 1.0
+  }
+ ],
+ "master": {
+  "ca": {
+   "keys": [
+    [
+     0.0,
+     0.0,
+     "linear"
+    ],
+    [
+     22.55,
+     0.0,
+     "linear"
+    ]
+   ]
+  },
+  "glow": {
+   "keys": [
+    [
+     0.0,
+     0.0,
+     "linear"
+    ],
+    [
+     22.55,
+     0.0,
+     "linear"
+    ]
+   ]
+  },
+  "flash": {
+   "keys": [
+    [
+     0.0,
+     0.0,
+     "linear"
+    ],
+    [
+     22.55,
+     0.0,
+     "linear"
+    ]
+   ]
+  },
+  "radial": {
+   "keys": [
+    [
+     0.0,
+     0.0,
+     "linear"
+    ],
+    [
+     22.55,
+     0.0,
+     "linear"
+    ]
+   ]
+  },
+  "edge": {
+   "keys": [
+    [
+     0.0,
+     0.0,
+     "linear"
+    ],
+    [
+     22.55,
+     0.0,
+     "linear"
+    ]
+   ]
+  },
+  "exposure": {
+   "keys": [
+    [
+     0.0,
+     0.0,
+     "linear"
+    ],
+    [
+     22.55,
+     0.0,
+     "linear"
+    ]
+   ]
+  },
+  "mono": {
+   "keys": [
+    [
+     0.0,
+     0.0,
+     "linear"
+    ],
+    [
+     22.55,
+     0.0,
+     "linear"
+    ]
+   ]
+  }
+ },
+ "reveals": [],
+ "texts": [],
+ "sfx": [],
+ "music": {
+  "file": null,
+  "start": 0.0,
+  "bpm": null,
+  "drop": null,
+  "kills_at": [
+   3.0,
+   10.1,
+   18.4,
+   20.15
+  ]
+ },
+ "notes": [
+  "play 1: c4.mp4, 4 kills, framing full"
+ ],
+ "look": {
+  "contrast": 1.0,
+  "saturation": 1.0,
+  "gamma": 1.0,
+  "warmth": 0.0,
+  "sharpen": 0.0
+ },
+ "branding": {
+  "sub": "made with",
+  "word": "reroll",
+  "height": 0.042,
+  "margin": 0.035,
+  "corner": "top-left",
+  "top": 0.0625,
+  "bottom": 0.0833
+ }
+}

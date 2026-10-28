@@ -215,6 +215,37 @@ def own_kills(onsets: list[float], banners: list[float]) -> list[float]:
     return sorted(set(mine))
 
 
+def ace_onset(path: Path) -> float | None:
+    """When the ACE banner appears. The round banners share its spot (top centre), so: white
+    banner text over a see-through panel (ACE), not over a solid green (WON) or red (LOST) one,
+    held for 0.4 s. Measured on four clips: green behind the text 0.0-0.48 for ACE, 0.76-0.79
+    for WON."""
+    w, h, fps = 48, 24, 10
+    proc = subprocess.run([_ffmpeg(), "-v", "error", "-i", str(path), "-map", "0:v:0",
+                           "-vf", f"fps={fps},crop=iw*0.14:ih*0.09:iw*0.43:ih*0.15,scale={w}:{h}",
+                           "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], capture_output=True)
+    raw, size, n = proc.stdout, w * h * 3, w * h
+    on = []
+    for f in range(len(raw) // size):
+        px = raw[f * size:(f + 1) * size]
+        white = green = red = rest = 0
+        for i in range(0, size, 3):
+            r, g, b = px[i], px[i + 1], px[i + 2]
+            if min(r, g, b) > 190 and max(r, g, b) - min(r, g, b) < 35:
+                white += 1
+            elif min(r, g, b) <= 190:
+                rest += 1
+                green += g > r + 25 and g > b - 5
+                red += r > g + 40 and r > b + 40
+        rest = max(1, rest)
+        on.append(white / n >= 0.12 and green / rest < 0.62 and red / rest < 0.5)
+    hold = int(0.4 * fps)
+    for i in range(len(on) - hold):
+        if all(on[i:i + hold]):
+            return round(i / fps, 2)
+    return None
+
+
 def valorant_events(path: Path) -> dict[str, Any]:
     """Kill moments plus the number of kills (a collateral is one moment but two kills)."""
     teal = _feed_teal(path)
@@ -223,13 +254,26 @@ def valorant_events(path: Path) -> dict[str, Any]:
         banners = _banner_onsets(path)
         onsets = row_onsets(_feed_band(path))
         mine = own_kills(onsets, banners)
+        # The fifth kill of an ace brings up the ACE banner instead of the usual kill banner:
+        # the last feed row just before it is that kill.
+        ace = ace_onset(path)
+        # A real ACE ends the play: it comes after your other kills, not in the middle of them.
+        if ace is not None and mine and ace < max(mine) - 0.5:
+            ace = None
+        if ace is not None:
+            final = [t for t in onsets if ace - 1.5 <= t <= ace + 0.1 and (not mine or t > max(mine) + 0.6)]
+            if final:
+                mine = sorted(mine + [max(final)])
         if mine:
             rows = row_counts(teal, [t for t in steps if any(abs(t - m) <= 0.7 for m in mine)])
             # Five enemies a round: a row landing just after someone else's can read double.
             count = min(5, max(len(mine), sum(rows.values())))
+            if ace is not None:
+                count = 5
             # Everyone else's kills (teammates', and teammates going down) are the story around yours.
             others = [t for t in onsets if all(abs(t - m) > 0.15 for m in mine)]
-            return {"times": mine, "count": count, "feed_rows": len(steps), "banners": banners, "story": others}
+            return {"times": mine, "count": count, "feed_rows": len(steps), "banners": banners, "story": others,
+                    "ace_at": ace}
     times = _banner_kills(path)
     return {"times": times, "count": len(times)}
 

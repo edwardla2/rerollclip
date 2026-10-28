@@ -112,12 +112,14 @@ class StoryTests(unittest.TestCase):
         kills_shown = len(tl.music["kills_at"])
         self.assertEqual(kills_shown, 9)                                   # every kill of both plays
 
-    def test_one_accent(self):
-        # (Cuts no longer have to sit on beats: since review v002 the kills do; see StructureTests.)
+    def test_real_speed_everywhere_and_no_accent(self):
+        # Review v004: nothing sped up or slowed down, no black-and-white accent.
         tl = self.plan()
-        mono = tl.master["mono"]
-        on = [i / 60 for i in range(int(tl.duration * 60)) if mono.at(i / 60) > 0.5]
-        self.assertTrue(on and on[-1] - on[0] < 1.5)
+        for c in tl.clips:
+            self.assertTrue(all(abs(k.speed_in - 1) < 1e-6 and abs(k.speed_out - 1) < 1e-6 for k in c.keys), c.label)
+        self.assertTrue(all(curve.is_const(0.0) for curve in tl.master.values()))
+        for src in ("a.mp4", "b.mp4"):                      # each play is one continuous stretch
+            self.assertEqual(sum(1 for c in tl.clips if c.source == src), 1)
 
 
 class StructureTests(unittest.TestCase):

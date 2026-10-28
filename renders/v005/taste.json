@@ -1,0 +1,137 @@
+{
+  "version": "0.2",
+  "identity": "Gameplay-first, high-impact, selectively stylized",
+  "principle": "A good Reroll edit is something the player would post without re-editing.",
+  "format": {
+    "aspect": "9:16",
+    "width": 1080,
+    "height": 1920,
+    "fps": 60,
+    "framing": "full"
+  },
+  "intensity": "medium",
+  "tiers": {
+    "restrained": {
+      "punch": 1.06,
+      "flash": 0.1,
+      "split": 5,
+      "shake": 0.004,
+      "slow": 0.55,
+      "hang_beats": 0.75,
+      "bloom": 0.25,
+      "edge_glow": false,
+      "mono": false,
+      "radial": 0.0
+    },
+    "medium": {
+      "punch": 1.1,
+      "flash": 0.16,
+      "split": 8,
+      "shake": 0.007,
+      "slow": 0.4,
+      "hang_beats": 1.0,
+      "bloom": 0.4,
+      "edge_glow": false,
+      "mono": true,
+      "radial": 0.35
+    },
+    "aggressive": {
+      "punch": 1.16,
+      "flash": 0.24,
+      "split": 14,
+      "shake": 0.011,
+      "slow": 0.3,
+      "hang_beats": 1.5,
+      "bloom": 0.65,
+      "edge_glow": true,
+      "mono": true,
+      "radial": 0.8
+    }
+  },
+  "pacing": {
+    "lead_in": 0.9,
+    "aftermath": 0.5,
+    "downtime_max_speed": 4.0,
+    "hold_top_event_beats": 2,
+    "sync_to_music": true,
+    "ramp_downtime_under": 4.0
+  },
+  "accents": {
+    "rotate_recipes": [
+      "punch",
+      "ramp",
+      "snap"
+    ],
+    "top_event_recipe": "hang",
+    "mono": {
+      "on": [
+        "top"
+      ],
+      "max_per_edit": 1
+    },
+    "continuous_effects": false
+  },
+  "text": {
+    "mode": "off",
+    "stylized_only": true
+  },
+  "protect": {
+    "zoom_max": 1.18,
+    "regions": [
+      "crosshair",
+      "kill_feed",
+      "kill_banner",
+      "round_banner"
+    ]
+  },
+  "branding": {
+    "enabled": true,
+    "sub": "made with",
+    "word": "reroll",
+    "corners": [
+      "top-left",
+      "top-right",
+      "bottom-left",
+      "bottom-right"
+    ],
+    "height": 0.042,
+    "margin": 0.035
+  },
+  "anti_patterns": [
+    "Every kill triggers the same stock zoom/flash/glitch preset",
+    "Effects obscure the opponent, crosshair, kill result or the climax",
+    "Constant shake or RGB split without dramatic justification",
+    "Multiple stacked transitions competing for attention",
+    "Generic captions, unrequested 3D text, fake achievement overlays",
+    "Speed ramps that interrupt action, blur excessively or feel abrupt",
+    "A watermark over the HUD, kill feed or important action"
+  ],
+  "look": {
+    "contrast": 1.0,
+    "saturation": 1.0,
+    "gamma": 1.0,
+    "warmth": 0.0,
+    "sharpen": 0.0
+  },
+  "mode": "story",
+  "story": {
+    "first_lead": 3.0,
+    "lead": 1.6,
+    "after": 1.0,
+    "payoff": 2.4,
+    "context_before": 4.0,
+    "story_pad": 0.8,
+    "merge_gap": 2.0,
+    "ramp_gap_under": 5.0,
+    "ramp_avg": 2.5,
+    "max_crop_upscale": 2.2,
+    "feed_inset": false,
+    "top_accent": "none",
+    "hang": 0.7,
+    "min_lead": 0.6,
+    "structure": "buildup_drop",
+    "buildup_min": 2.0,
+    "teaser": false,
+    "gaps": "real"
+  }
+}

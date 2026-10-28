@@ -699,7 +699,11 @@ def story_compilation(plays: list[dict[str, Any]], music: dict[str, Any] | None,
     through (short) or cut (long); cuts land on beats by letting the footage before them run
     on a moment; one accent on the best moment of the whole video."""
     from .taste import tier
-    cfg = taste["story"]
+    cfg = dict(taste["story"])
+    if cfg.get("gaps") == "real":
+        # Review v004: never speed footage up; the gaps between fights play in real time, so
+        # each play is one continuous stretch from its build-up to its payoff.
+        cfg["merge_gap"] = float("inf")
     fmt = taste["format"]
     width, height, fps = fmt["width"], fmt["height"], fmt["fps"]
     tz = tier(taste)

@@ -61,3 +61,26 @@ class OwnKillTests(unittest.TestCase):
     def test_without_banners_every_row_counts(self):
         from clipthat_editor.events import own_kills
         self.assertEqual(own_kills([1.0, 2.0], []), [1.0, 2.0])
+
+
+class AceTests(unittest.TestCase):
+    def test_ace_banner_must_end_the_play(self):
+        """An 'ACE' look-alike before your last kill is not the ace (training-mode fire in one clip)."""
+        from clipthat_editor import events
+        orig = (events._feed_teal, events.feed_steps, events._banner_onsets, events._feed_band,
+                events.row_onsets, events.ace_onset, events.row_counts)
+        try:
+            events._feed_teal = lambda p: [1]
+            events.feed_steps = lambda t, merge=0.6: [12.5, 16.4, 19.8]
+            events._banner_onsets = lambda p: [12.6, 16.5, 19.9]
+            events._feed_band = lambda p: []
+            events.row_onsets = lambda b: [12.5, 16.4, 19.8, 25.0]
+            events.row_counts = lambda teal, steps=None: {}
+            events.ace_onset = lambda p: 12.1
+            self.assertEqual(events.valorant_events("x")["count"], 3)
+            events.ace_onset = lambda p: 25.6                 # a real ace: right after a row of yours
+            r = events.valorant_events("x")
+            self.assertEqual((r["times"][-1], r["count"]), (25.0, 5))
+        finally:
+            (events._feed_teal, events.feed_steps, events._banner_onsets, events._feed_band,
+             events.row_onsets, events.ace_onset, events.row_counts) = orig
