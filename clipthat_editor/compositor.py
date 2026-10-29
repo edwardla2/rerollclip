@@ -47,6 +47,34 @@ def _run(args: list[str], what: str) -> None:
         raise RenderError(f"{what} failed ({done.returncode}): {done.stderr[-3000:]}")
 
 
+def _run_with_progress(args: list[str], what: str, seconds: float,
+                       progress: Callable[[str, float], None] | None, stage: str) -> None:
+    """_run, reporting how far FFmpeg has got through `seconds` of output (from -progress)."""
+    if not progress:
+        _run(args, what)
+        return
+    proc = subprocess.Popen(args[:1] + ["-progress", "pipe:1", "-nostats"] + args[1:],
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    import threading
+    err: list[str] = []
+    reader = threading.Thread(target=lambda: err.append(proc.stderr.read()), daemon=True)
+    reader.start()
+    last = -1.0
+    for line in proc.stdout:
+        if line.startswith("out_time_us="):
+            try:
+                frac = min(1.0, max(0.0, int(line.split("=", 1)[1]) / 1e6 / max(seconds, 0.001)))
+            except ValueError:
+                continue
+            if frac - last >= 0.01:
+                progress(stage, round(frac, 3))
+                last = frac
+    proc.wait()
+    reader.join(timeout=5)
+    if proc.returncode:
+        raise RenderError(f"{what} failed ({proc.returncode}): {''.join(err)[-3000:]}")
+
+
 def _probe(path: Path) -> dict[str, Any]:
     out = subprocess.run(["ffprobe", "-v", "error", "-show_streams", "-show_format", "-of", "json", str(path)],
                          capture_output=True, text=True, check=True).stdout
@@ -402,7 +430,8 @@ def _count_inputs(args: list[str]) -> int:
     return sum(1 for a in args if a == "-i")
 
 
-def render_master(tl: Timeline, base: Path, output: Path, work: Path, encoder_args: list[str]) -> None:
+def render_master(tl: Timeline, base: Path, output: Path, work: Path, encoder_args: list[str],
+                  progress: Callable[[str, float], None] | None = None) -> None:
     from .typography import render_layer
     w, h, fps = tl.width, tl.height, tl.fps
     inputs = ["-i", str(base)]
@@ -500,9 +529,10 @@ def render_master(tl: Timeline, base: Path, output: Path, work: Path, encoder_ar
                  f"atrim=duration={tl.duration:.4f}[a]")
     script = work / "master.graph.txt"
     script.write_text(";\n".join(graph))
-    _run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y"] + inputs
-         + ["-filter_complex_script", str(script), "-map", "[v]", "-map", "[a]", "-fps_mode", "passthrough"]
-         + encoder_args + ["-c:a", "pcm_s16le", str(output)], "Rendering the master")
+    _run_with_progress(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y"] + inputs
+                       + ["-filter_complex_script", str(script), "-map", "[v]", "-map", "[a]", "-fps_mode", "passthrough"]
+                       + encoder_args + ["-c:a", "pcm_s16le", str(output)], "Rendering the master",
+                       tl.duration, progress, "finishing")
 
 
 def export(master: Path, output: Path, work: Path) -> None:
@@ -535,7 +565,7 @@ def render(tl: Timeline, output: Path, work: Path, preview_music: Path | None = 
     master = work / "master.mkv"
     # The master pass writes the delivery video directly (no second lossy encode).
     render_master(tl, base, master, work, ["-c:v", "libx264", "-preset", "medium", "-crf", "16",
-                                           "-profile:v", "high", "-pix_fmt", "yuv420p"])
+                                           "-profile:v", "high", "-pix_fmt", "yuv420p"], progress=progress)
     t2 = time.monotonic()
     output = Path(output)
     export(master, output, work)

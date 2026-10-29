@@ -331,8 +331,12 @@ def main() -> int:
             if opts.library_command == "scan":
                 plays = library.plays()
                 print(json.dumps({"ok": True, "new": len(new), "clips": len(library.entries), "plays": len(plays),
-                                  "summary": [{"clip": Path(p["source"]).name, "kills": p.get("count") or len(p["kills"]),
-                                               "ace": p.get("ace_at") is not None} for p in plays]}))
+                                  "summary": [{"clip": Path(p["source"]).name, "path": p["source"],
+                                               "kills": p.get("count") or len(p["kills"]),
+                                               "ace": p.get("ace_at") is not None, "saved_at": p.get("mtime"),
+                                               "duration": p.get("duration"),
+                                               "confidence": p.get("confidence", "high")}
+                                              for p in sorted(plays, key=lambda q: q.get("mtime", 0), reverse=True)]}))
             else:
                 chosen, notes = pick(library.plays(), since=opts.since, max_plays=opts.max_plays,
                                      max_seconds=opts.max_seconds)

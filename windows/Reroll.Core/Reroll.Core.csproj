@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Everything the Windows app does that isn't drawing the window: settings, finding the
+       Medal folder, watching it, and running the engine. No Windows-only APIs, so it builds and
+       is tested on Linux too. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Reroll.Core</RootNamespace>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Reroll.Core.Tests" />
+  </ItemGroup>
+</Project>

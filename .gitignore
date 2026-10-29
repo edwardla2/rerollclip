@@ -15,3 +15,7 @@ packaging/ffmpeg/
 build/
 dist/
 *.spec
+windows/**/bin/
+windows/**/obj/
+out/
+shots/

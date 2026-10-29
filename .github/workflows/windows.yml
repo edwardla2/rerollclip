@@ -1,0 +1,165 @@
+name: Windows
+
+# 1. engine: builds reroll-engine.exe (the editing engine + FFmpeg, no Python needed), runs its
+#    self-test, uploads it.
+# 2. app: tests Reroll.Core, builds the WinUI 3 app with the engine inside, launches it to take
+#    screenshots of each screen, and uploads the app zip and the screenshots.
+on:
+  push:
+    branches: [main]
+    paths: ["clipthat_editor/**", "packaging/**", "windows/**", ".github/workflows/windows.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FFMPEG_VERSION: "7.1.1"
+
+jobs:
+  engine:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Python packages
+        run: python -m pip install -r packaging/requirements-windows.txt
+
+      - name: FFmpeg (Gyan.dev essentials build, includes libx264)
+        run: |
+          $zip = "$env:RUNNER_TEMP\ffmpeg.zip"
+          $url = "https://github.com/GyanD/codexffmpeg/releases/download/$env:FFMPEG_VERSION/ffmpeg-$env:FFMPEG_VERSION-essentials_build.zip"
+          Invoke-WebRequest $url -OutFile $zip
+          "sha256 $((Get-FileHash $zip -Algorithm SHA256).Hash)"
+          Expand-Archive $zip -DestinationPath "$env:RUNNER_TEMP\ff"
+          $root = (Get-ChildItem "$env:RUNNER_TEMP\ff" -Directory | Select-Object -First 1).FullName
+          New-Item -ItemType Directory -Force packaging\ffmpeg | Out-Null
+          Copy-Item "$root\bin\ffmpeg.exe", "$root\bin\ffprobe.exe" packaging\ffmpeg\
+          Copy-Item "$root\LICENSE" packaging\ffmpeg\LICENSE.txt
+          & packaging\ffmpeg\ffmpeg.exe -hide_banner -version | Select-Object -First 1
+          echo "::notice title=FFmpeg::$((& packaging\ffmpeg\ffmpeg.exe -hide_banner -version | Select-Object -First 1))"
+
+      - name: Build reroll-engine.exe
+        run: |
+          pyinstaller --noconfirm --clean --console --name reroll-engine `
+            --paths . --collect-submodules clipthat_editor `
+            --add-data "clipthat_editor/assets:clipthat_editor/assets" `
+            --add-data "clipthat_editor/taste:clipthat_editor/taste" `
+            --add-data "clipthat_editor/sounds.json:clipthat_editor" `
+            --exclude-module matplotlib --exclude-module pandas --exclude-module pytest --exclude-module _pytest `
+            --exclude-module tkinter --exclude-module IPython --exclude-module setuptools --exclude-module pkg_resources `
+            --exclude-module lxml `
+            packaging\reroll_engine.py
+          Copy-Item -Recurse packaging\ffmpeg dist\reroll-engine\ffmpeg
+          $mb = [math]::Round(((Get-ChildItem dist\reroll-engine -Recurse | Measure-Object Length -Sum).Sum / 1MB), 1)
+          echo "::notice title=Size::reroll-engine folder is $mb MB"
+
+      - name: Self-test (temp folder)
+        run: |
+          $out = & dist\reroll-engine\reroll-engine.exe selftest
+          $out
+          $r = $out | Out-String | ConvertFrom-Json
+          if (-not $r.ok) { echo "::error title=Self-test::$($r.failed)"; exit 1 }
+          if ($r.ffmpeg -notlike "*reroll-engine\ffmpeg\*") { echo "::error title=Self-test::used $($r.ffmpeg), not the bundled FFmpeg"; exit 1 }
+          echo "::notice title=Self-test::ok in $($r.seconds_taken)s, $($r.render.width)x$($r.render.height), $($r.render.seconds)s video"
+
+      - name: Self-test (folder with a space and an apostrophe)
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP "Edward's clips"
+          $out = & dist\reroll-engine\reroll-engine.exe selftest --work "$dir"
+          $out
+          $r = $out | Out-String | ConvertFrom-Json
+          if (-not $r.ok) { echo "::error title=Self-test (odd path)::$($r.failed)"; exit 1 }
+
+      - name: Zip
+        run: Compress-Archive dist\reroll-engine reroll-engine-windows-x64.zip
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: reroll-engine-windows-x64
+          path: reroll-engine-windows-x64.zip
+          retention-days: 30
+
+  app:
+    needs: engine
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v7
+        with:
+          name: reroll-engine-windows-x64
+          path: ${{ runner.temp }}
+
+      - name: Engine and FFmpeg for the tests
+        run: |
+          Expand-Archive "$env:RUNNER_TEMP\reroll-engine-windows-x64.zip" -DestinationPath "$env:RUNNER_TEMP\eng"
+          echo "$env:RUNNER_TEMP\eng\reroll-engine\ffmpeg" >> $env:GITHUB_PATH
+          python -m pip install -r requirements.txt
+
+      - name: Core tests
+        run: |
+          dotnet run --project windows/Reroll.Core.Tests -c Release 2>&1 | Tee-Object core-tests.log
+          $code = $LASTEXITCODE
+          echo "::notice title=Core tests::$((Get-Content core-tests.log | Select-Object -Last 1))"
+          Get-Content core-tests.log | Where-Object { $_ -like "FAIL*" } | ForEach-Object { echo "::error title=Core test::$_" }
+          exit $code
+
+      - name: Build the app
+        run: |
+          dotnet publish windows/Reroll.App/Reroll.App.csproj -c Release -r win-x64 -p:Platform=x64 -o out\Reroll
+          Copy-Item -Recurse "$env:RUNNER_TEMP\eng\reroll-engine" out\Reroll\engine\reroll-engine
+          $mb = [math]::Round(((Get-ChildItem out\Reroll -Recurse | Measure-Object Length -Sum).Sum / 1MB), 1)
+          echo "::notice title=App size::Reroll folder is $mb MB"
+
+      - name: Screenshots
+        run: |
+          New-Item -ItemType Directory -Force shots | Out-Null
+          & ffmpeg -v error -y -f lavfi -i "testsrc2=s=1080x1920:r=30:d=3" -c:v libx264 -pix_fmt yuv420p shots\sample.mp4
+          $runs = @(
+            @{ name = "ready";   args = @("--demo") },
+            @{ name = "working"; args = @("--demo", "--state", "working") },
+            @{ name = "done";    args = @("--demo", "--state", "done", "--video", (Resolve-Path shots\sample.mp4).Path) },
+            @{ name = "error";   args = @("--demo", "--state", "error") },
+            @{ name = "setup";   args = @("--demo", "--state", "setup") },
+            @{ name = "first-run"; args = @() }
+          )
+          foreach ($r in $runs) {
+            $png = (Join-Path (Resolve-Path shots) "$($r.name).png")
+            $p = Start-Process out\Reroll\Reroll.exe -ArgumentList ($r.args + @("--screenshot", "`"$png`"")) -PassThru
+            if (-not $p.WaitForExit(90000)) { $p.Kill(); echo "::error title=Screenshot::$($r.name) timed out" }
+            if (Test-Path $png) { echo "::notice title=Screenshot::$($r.name) ok" }
+            elseif (Test-Path "$png.error.txt") { echo "::error title=Screenshot $($r.name)::$((Get-Content "$png.error.txt" -Raw).Substring(0, 300))" }
+            else { echo "::error title=Screenshot::$($r.name) produced nothing (exit $($p.ExitCode))" }
+          }
+          if (-not (Test-Path shots\ready.png)) { exit 1 }
+
+      - name: Zip
+        run: Compress-Archive out\Reroll Reroll-windows-x64.zip
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Reroll-windows-x64
+          path: Reroll-windows-x64.zip
+          retention-days: 30
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: screenshots
+          path: shots/*.png
+          retention-days: 30
