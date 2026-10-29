@@ -265,7 +265,9 @@ def valorant_events(path: Path) -> dict[str, Any]:
             if final:
                 mine = sorted(mine + [max(final)])
         if mine:
-            rows = row_counts(teal, [t for t in steps if any(abs(t - m) <= 0.7 for m in mine)])
+            # A single row's size comes from every step in the clip; sizing it from only the
+            # steps near your kills (as few as one or two) made them read as several rows each.
+            rows = {t: n for t, n in row_counts(teal).items() if any(abs(t - m) <= 0.7 for m in mine)}
             # Five enemies a round: a row landing just after someone else's can read double.
             count = min(5, max(len(mine), sum(rows.values())))
             if ace is not None:
@@ -295,6 +297,31 @@ def _banner_kills(path: Path) -> list[float]:
     return kills
 
 
+BANNER_SYMMETRY = 0.6      # kill banners are mirror-symmetric about the screen's centre line
+
+
+def _banner_symmetry(path: Path) -> list[float]:
+    """How left-right symmetric the banner area is, FPS times a second (0..1).
+
+    The kill banner is an emblem centred on the screen, so its edges mirror about the centre
+    line. Things that also put edges there don't: a sniper or shotgun model swinging through,
+    the scoreboard, ability icons. Measured on real Medal clips (2026-10-28): banners 0.61-0.81,
+    an Operator model and the open scoreboard 0.32-0.56."""
+    import numpy as np
+    w, h = 48, 60
+    proc = subprocess.run([_ffmpeg(), "-v", "error", "-i", str(path), "-map", "0:v:0",
+                           "-vf", f"fps={FPS},crop=iw*0.16:ih*0.20:iw*0.42:ih*0.66,scale={w}:{h},format=gray",
+                           "-f", "rawvideo", "-"], capture_output=True)
+    n = len(proc.stdout) // (w * h)
+    if not n:
+        return []
+    f = np.frombuffer(proc.stdout[: n * w * h], np.uint8).reshape(n, h, w).astype(np.float32)
+    g = np.abs(np.diff(f, axis=2))[:, 1:, :] + np.abs(np.diff(f, axis=1))[:, :, 1:]
+    mean = g.mean((1, 2))
+    sym = 1 - np.abs(g - g[:, :, ::-1]).mean((1, 2)) / (2 * mean + 1e-6)
+    return [round(float(v), 3) for v in sym]
+
+
 def _banner_onsets(path: Path) -> list[float]:
     signal = _region_contrast(path, "iw*0.10:ih*0.14:iw*0.45:ih*0.71")
     if not signal:
@@ -317,6 +344,12 @@ def _banner_onsets(path: Path) -> list[float]:
         if armed and v >= high:
             kills.append(round(i / FPS, 2))
             armed = False
+    # Contrast alone also fires on a gun model or the scoreboard in that spot: keep only onsets
+    # where the area turns symmetric within the banner's first 0.8 s.
+    sym = _banner_symmetry(path)
+    if sym:
+        kills = [t for t in kills
+                 if max(sym[int(round(t * FPS)):int(round(t * FPS)) + 8] or [0.0]) >= BANNER_SYMMETRY]
     return kills
 
 
