@@ -52,11 +52,13 @@
   if (sound) sound.addEventListener('click', () => setMuted(!video.muted));
   video.addEventListener('click', () => setMuted(!video.muted));
 
-  // The demo's real cut list (renders/v006): [start, end, clip, sped up]
-  const SHOTS = [[0, 14.15, 1, 0], [14.15, 17.95, 2, 0], [17.95, 20.05, 2, 1], [20.05, 21.55, 2, 0], [21.55, 23.65, 2, 1],
-    [23.65, 26.3, 2, 0], [26.3, 29.12, 2, 1], [29.12, 33.12, 2, 0], [33.12, 49.83, 3, 0], [49.83, 50.9, 3, 1],
-    [50.9, 54.9, 3, 0], [54.9, 59.8, 4, 0], [59.8, 61.4, 4, 1], [61.4, 64.4, 4, 0], [64.4, 66.45, 4, 1], [66.45, 73.8, 4, 0]];
-  const TOTAL = 73.8;
+  // The demo's real cut list (renders/v007): [start, end, clip, sped up]
+  const SHOTS = [[0, 4.45, 1, 0], [4.45, 6.2, 1, 1], [6.2, 7.7, 1, 0], [7.7, 9.82, 1, 1], [9.82, 12.78, 1, 0],
+    [12.78, 14.18, 1, 1], [14.18, 20.82, 1, 0], [20.82, 24.82, 2, 0], [24.82, 26.93, 2, 1], [26.93, 36.33, 2, 0],
+    [36.33, 39.38, 2, 0], [39.38, 41.6, 2, 1], [41.6, 45.5, 2, 0], [45.5, 50.15, 2, 0], [50.15, 52.23, 2, 1],
+    [52.23, 59.23, 2, 0], [59.23, 76.38, 3, 0], [76.38, 77.2, 3, 1], [77.2, 81.2, 3, 0], [81.2, 86.55, 4, 0],
+    [86.55, 87.6, 4, 1], [87.6, 91.75, 4, 0], [91.75, 93.8, 4, 1], [93.8, 101.15, 4, 0]];
+  const TOTAL = 101.15;
   const track = document.getElementById('edit-track');
   const head = document.getElementById('edit-head');
   const time = document.getElementById('edit-time');
@@ -76,7 +78,7 @@
     head.style.left = `calc(${(t / TOTAL) * 100}% - 1px)`;
     const i = SHOTS.findIndex(([a, b]) => t >= a && t < b);
     if (i !== last) { segs.forEach((s, j) => s.classList.toggle('on', j === i)); last = i; }
-    time.textContent = `${fmt(t)} / 1:14`;
+    time.textContent = `${fmt(t)} / 1:41`;
     requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
