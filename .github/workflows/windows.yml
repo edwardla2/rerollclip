@@ -124,7 +124,12 @@ jobs:
 
       - name: Build the app
         run: |
-          dotnet publish windows/Reroll.App/Reroll.App.csproj -c Release -r win-x64 -p:Platform=x64 -o out\Reroll
+          dotnet publish windows/Reroll.App/Reroll.App.csproj -c Release -r win-x64 -p:Platform=x64 -o out\Reroll 2>&1 | Tee-Object publish.log
+          $code = $LASTEXITCODE
+          Get-Content publish.log | Where-Object { $_ -match ": error " } | Select-Object -First 8 | ForEach-Object {
+            echo "::error title=Build::$($_.Substring(0, [math]::Min(500, $_.Length)))"
+          }
+          if ($code -ne 0) { exit $code }
           Copy-Item -Recurse "$env:RUNNER_TEMP\eng\reroll-engine" out\Reroll\engine\reroll-engine
           $mb = [math]::Round(((Get-ChildItem out\Reroll -Recurse | Measure-Object Length -Sum).Sum / 1MB), 1)
           echo "::notice title=App size::Reroll folder is $mb MB"

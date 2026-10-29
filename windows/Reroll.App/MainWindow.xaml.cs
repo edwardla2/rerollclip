@@ -313,7 +313,8 @@ public sealed partial class MainWindow : Window
         {
             var rtb = new RenderTargetBitmap();
             // --scale 2 renders the window at twice its size (sharp enough for a 1080p video).
-            if (_options.Scale is double k and > 1)
+            var k = _options.Scale ?? 1.0;
+            if (k > 1)
                 await rtb.RenderAsync(Root, (int)(Root.ActualWidth * k), (int)(Root.ActualHeight * k));
             else
                 await rtb.RenderAsync(Root);

@@ -49,8 +49,11 @@ public sealed record Options(string? Screenshot, string? State, bool Demo, strin
             var i = Array.IndexOf(args, name);
             return i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
         }
-        return new Options(Value("--screenshot"), Value("--state"), args.Contains("--demo"), Value("--video"),
-                           double.TryParse(Value("--scale"), System.Globalization.CultureInfo.InvariantCulture, out var k) ? k : null);
+        double? scale = null;
+        if (double.TryParse(Value("--scale"), System.Globalization.NumberStyles.Float,
+                            System.Globalization.CultureInfo.InvariantCulture, out var k))
+            scale = k;
+        return new Options(Value("--screenshot"), Value("--state"), args.Contains("--demo"), Value("--video"), scale);
     }
 }
 
