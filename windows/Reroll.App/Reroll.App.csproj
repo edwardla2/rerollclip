@@ -14,6 +14,9 @@
     <UseWinUI>true</UseWinUI>
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <!-- Unpackaged apps still need the MSIX tooling to compile the XAML (.xbf) and resources (.pri);
+         without it the window's XAML is missing at runtime and loading it fails. -->
+    <EnableMsixTooling>true</EnableMsixTooling>
     <SelfContained>true</SelfContained>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
