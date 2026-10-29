@@ -1,0 +1,4 @@
+# The editing engine (clipthat_editor). FFmpeg must be on PATH.
+numpy>=2.0
+scipy>=1.13
+pillow>=10.0
