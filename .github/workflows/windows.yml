@@ -142,7 +142,10 @@ jobs:
             @{ name = "done";    args = @("--demo", "--state", "done", "--video", (Resolve-Path shots\sample.mp4).Path) },
             @{ name = "error";   args = @("--demo", "--state", "error") },
             @{ name = "setup";   args = @("--demo", "--state", "setup") },
-            @{ name = "first-run"; args = @() }
+            @{ name = "first-run"; args = @() },
+            @{ name = "ready@2x";   args = @("--demo", "--scale", "2") },
+            @{ name = "working@2x"; args = @("--demo", "--state", "working", "--scale", "2") },
+            @{ name = "done@2x";    args = @("--demo", "--state", "done", "--video", (Resolve-Path shots\sample.mp4).Path, "--scale", "2") }
           )
           foreach ($r in $runs) {
             $png = (Join-Path (Resolve-Path shots) "$($r.name).png")

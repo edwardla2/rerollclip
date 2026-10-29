@@ -40,7 +40,7 @@ public partial class App : Application
 
 /// <summary>Command-line options. Normal use has none; the build uses --screenshot to check the
 /// screens on a Windows machine (--demo shows sample plays without running the engine).</summary>
-public sealed record Options(string? Screenshot, string? State, bool Demo, string? Video)
+public sealed record Options(string? Screenshot, string? State, bool Demo, string? Video, double? Scale = null)
 {
     public static Options Parse(string[] args)
     {
@@ -49,7 +49,8 @@ public sealed record Options(string? Screenshot, string? State, bool Demo, strin
             var i = Array.IndexOf(args, name);
             return i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
         }
-        return new Options(Value("--screenshot"), Value("--state"), args.Contains("--demo"), Value("--video"));
+        return new Options(Value("--screenshot"), Value("--state"), args.Contains("--demo"), Value("--video"),
+                           double.TryParse(Value("--scale"), System.Globalization.CultureInfo.InvariantCulture, out var k) ? k : null);
     }
 }
 

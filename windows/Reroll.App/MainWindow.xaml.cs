@@ -312,7 +312,11 @@ public sealed partial class MainWindow : Window
         try
         {
             var rtb = new RenderTargetBitmap();
-            await rtb.RenderAsync(Root);
+            // --scale 2 renders the window at twice its size (sharp enough for a 1080p video).
+            if (_options.Scale is double k and > 1)
+                await rtb.RenderAsync(Root, (int)(Root.ActualWidth * k), (int)(Root.ActualHeight * k));
+            else
+                await rtb.RenderAsync(Root);
             var pixels = await rtb.GetPixelsAsync();
             Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
             using var stream = new Windows.Storage.Streams.InMemoryRandomAccessStream();
