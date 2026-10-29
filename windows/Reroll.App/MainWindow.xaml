@@ -90,12 +90,7 @@
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
                     <Border Width="248" Height="441" Background="{StaticResource InkBrush}" VerticalAlignment="Top">
-                        <MediaPlayerElement x:Name="Player" AreTransportControlsEnabled="True" Stretch="Uniform" AutoPlay="False">
-                            <MediaPlayerElement.TransportControls>
-                                <MediaTransportControls IsCompact="True" IsZoomButtonVisible="False" IsVolumeButtonVisible="True"
-                                                        IsFullWindowButtonVisible="True" />
-                            </MediaPlayerElement.TransportControls>
-                        </MediaPlayerElement>
+                        <MediaPlayerElement x:Name="Player" AreTransportControlsEnabled="False" Stretch="Uniform" AutoPlay="True" Tapped="Player_Tapped" />
                     </Border>
                     <StackPanel Grid.Column="1" Spacing="16">
                         <TextBlock Text="Your video is ready." FontFamily="{StaticResource Display}" FontSize="44"

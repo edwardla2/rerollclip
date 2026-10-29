@@ -226,6 +226,17 @@ public sealed partial class MainWindow : Window
 
     void Cancel_Click(object sender, RoutedEventArgs e) => _making?.Cancel();
 
+    /// <summary>Click the video to pause or play it (no control bar over a small vertical video).</summary>
+    void Player_Tapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
+    {
+        if (Player.MediaPlayer is not { } mp)
+            return;
+        if (mp.PlaybackSession.PlaybackState == Windows.Media.Playback.MediaPlaybackState.Playing)
+            mp.Pause();
+        else
+            mp.Play();
+    }
+
     void Back_Click(object sender, RoutedEventArgs e)
     {
         Player.MediaPlayer?.Pause();
