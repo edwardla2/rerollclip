@@ -43,7 +43,7 @@
                 <StackPanel x:Name="SetupPanel" Spacing="18" Visibility="Collapsed">
                     <TextBlock Text="Where does Medal save your clips?" FontFamily="{StaticResource Display}" FontSize="44"
                                CharacterSpacing="-50" LineHeight="46" TextWrapping="Wrap" />
-                    <TextBlock Style="{StaticResource BodyText}" MaxWidth="520"
+                    <TextBlock Style="{StaticResource BodyText}" MaxWidth="520" HorizontalAlignment="Left"
                                Text="Reroll couldn't find Medal's clip folder. In Medal it's under Settings, PC Storage, Capture Folder Location. Pick that folder and Reroll watches it from now on." />
                     <Button Content="Choose folder" Style="{StaticResource PrimaryButton}" Click="ChangeFolder_Click" Margin="0,8,0,0" />
                 </StackPanel>
@@ -52,7 +52,7 @@
                 <StackPanel x:Name="ReadyPanel" Spacing="18">
                     <TextBlock x:Name="Headline" Text="Looking for your plays." FontFamily="{StaticResource Display}" FontSize="56"
                                CharacterSpacing="-55" LineHeight="56" TextWrapping="Wrap" />
-                    <TextBlock x:Name="Subline" Style="{StaticResource BodyText}" MaxWidth="500"
+                    <TextBlock x:Name="Subline" Style="{StaticResource BodyText}" MaxWidth="500" HorizontalAlignment="Left"
                                Text="Reroll puts your recent plays into one vertical video, best play last. You add the song when you post." />
                     <StackPanel Orientation="Horizontal" Spacing="20" Margin="0,10,0,0">
                         <Button x:Name="MakeButton" Style="{StaticResource PrimaryButton}" Click="Make_Click">
@@ -72,14 +72,14 @@
                     <TextBlock x:Name="WorkingTitle" Text="Making your video." FontFamily="{StaticResource Display}" FontSize="56"
                                CharacterSpacing="-55" LineHeight="56" TextWrapping="Wrap" />
                     <TextBlock x:Name="StageText" Style="{StaticResource BodyText}" Text="Looking for your plays" />
-                    <Grid Height="4" MaxWidth="520" HorizontalAlignment="Stretch" Background="{StaticResource HairlineBrush}">
+                    <Grid Height="4" Width="520" HorizontalAlignment="Left" Background="{StaticResource HairlineBrush}">
                         <Rectangle x:Name="ProgressFill" Fill="{StaticResource InkBrush}" HorizontalAlignment="Left" Width="0" />
                     </Grid>
                     <StackPanel Orientation="Horizontal" Spacing="20">
                         <TextBlock x:Name="PercentText" Style="{StaticResource MutedText}" Text="0%" />
                         <Button x:Name="CancelButton" Content="Cancel" Style="{StaticResource LinkButton}" Click="Cancel_Click" />
                     </StackPanel>
-                    <TextBlock Style="{StaticResource MutedText}" MaxWidth="500"
+                    <TextBlock Style="{StaticResource MutedText}" MaxWidth="500" HorizontalAlignment="Left"
                                Text="This runs on your PC. You can keep playing; Reroll works in the background." />
                 </StackPanel>
 
@@ -90,7 +90,12 @@
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
                     <Border Width="248" Height="441" Background="{StaticResource InkBrush}" VerticalAlignment="Top">
-                        <MediaPlayerElement x:Name="Player" AreTransportControlsEnabled="True" Stretch="Uniform" AutoPlay="False" />
+                        <MediaPlayerElement x:Name="Player" AreTransportControlsEnabled="True" Stretch="Uniform" AutoPlay="False">
+                            <MediaPlayerElement.TransportControls>
+                                <MediaTransportControls IsCompact="True" IsZoomButtonVisible="False" IsVolumeButtonVisible="True"
+                                                        IsFullWindowButtonVisible="True" />
+                            </MediaPlayerElement.TransportControls>
+                        </MediaPlayerElement>
                     </Border>
                     <StackPanel Grid.Column="1" Spacing="16">
                         <TextBlock Text="Your video is ready." FontFamily="{StaticResource Display}" FontSize="44"
