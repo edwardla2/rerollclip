@@ -90,6 +90,8 @@ jobs:
   app:
     needs: engine
     runs-on: windows-latest
+    permissions:
+      contents: write          # to publish the screenshots to the ci-screenshots branch
     defaults:
       run:
         shell: pwsh
@@ -170,6 +172,22 @@ jobs:
           name: Reroll-windows-x64
           path: Reroll-windows-x64.zip
           retention-days: 30
+      - name: Publish screenshots to the ci-screenshots branch
+        if: always() && github.ref == 'refs/heads/main'
+        run: |
+          if (-not (Get-ChildItem shots -Filter *.png -ErrorAction SilentlyContinue)) { exit 0 }
+          $dir = Join-Path $env:RUNNER_TEMP "shots-branch"
+          New-Item -ItemType Directory -Force $dir | Out-Null
+          Copy-Item shots\*.png, shots\*.txt $dir -ErrorAction SilentlyContinue
+          Set-Content (Join-Path $dir "README.md") "Screenshots from the Windows build of ${{ github.sha }} (run ${{ github.run_id }})."
+          Push-Location $dir
+          git init -q -b ci-screenshots
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Windows app screenshots for ${{ github.sha }}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-screenshots
+          Pop-Location
       - uses: actions/upload-artifact@v7
         if: always()
         with:
