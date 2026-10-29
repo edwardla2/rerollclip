@@ -31,6 +31,8 @@ jobs:
           status=${PIPESTATUS[0]}
           summary=$(grep -E "^(Ran [0-9]+ tests|OK|FAILED)" test.log | tail -2 | tr "\n" " ")
           echo "::notice title=Renderer tests::${summary:-no summary line}"
+          # Name each failing test, plus the last line of its traceback, so they show without the raw log.
+          awk '/^(ERROR|FAIL): /{name=$2" "$3; gsub(/[:,]/, "_", name); next} name && /^[A-Za-z.]*(Error|Exception|Failure)/{print "::error title=" name "::" $0; name=""}' test.log
           exit $status
       - name: Web tests
         run: |

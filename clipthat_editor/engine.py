@@ -257,6 +257,9 @@ def main() -> int:
     comp.add_argument("--intensity", choices=["restrained", "medium", "aggressive"], default=None)
     comp.add_argument("--work", type=Path, default=None)
     comp.add_argument("--preview", action="store_true")
+    st = sub.add_parser("selftest", help="Check this machine can run the engine (makes test clips, renders one video)")
+    st.add_argument("--work", type=Path, default=None)
+    st.add_argument("--keep", action="store_true", help="keep the test clips and the rendered video")
     rel = sub.add_parser("release", help="Package a finished render for external review as renders/vNNN/")
     rel.add_argument("output", type=Path, help="the rendered edit (its .timeline.json and PREVIEW are picked up)")
     rel.add_argument("--changes", action="append", default=[], help="what changed in this version (repeatable)")
@@ -284,6 +287,11 @@ def main() -> int:
         if opts.command == "validate":
             data = parse_manifest(opts.manifest.resolve())
             print(json.dumps({"ok": True, "clips": len(data["clips"])}))
+        elif opts.command == "selftest":
+            from .selftest import run as selftest
+            result = selftest(opts.work, opts.keep)
+            print(json.dumps(result, indent=1))
+            return 0 if result["ok"] else 1
         elif opts.command == "analyze":
             from .analysis import analyze
             print(json.dumps(analyze(opts.file, length=opts.length, trigger_offset=opts.trigger_offset)))

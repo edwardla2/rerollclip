@@ -25,6 +25,17 @@ from .timeline import Clip, Curve, Timeline
 ASSETS = Path(__file__).parent / "assets"
 
 
+def filter_path(path: Path) -> str:
+    """A file path inside an FFmpeg filter option ('...' quoted): forward slashes, and the drive
+    colon escaped so Windows paths like C:/Users/... aren't split into options."""
+    return Path(path).resolve().as_posix().replace("'", "'\\''").replace(":", "\\:")
+
+
+def concat_path(path: Path) -> str:
+    """A path for a concat-demuxer list line (file '...'): forward slashes, quotes escaped."""
+    return Path(path).resolve().as_posix().replace("'", "'\\''")
+
+
 class RenderError(RuntimeError):
     pass
 
@@ -212,7 +223,7 @@ def render_clips(tl: Timeline, base: Path, encoder_args: list[str], workers: int
     with ThreadPoolExecutor(max_workers=workers) as pool:
         parts = list(pool.map(run_counted, jobs))
     listing = base.with_name("clips.txt")
-    listing.write_text("".join(f"file '{p}'\n" for p in parts))
+    listing.write_text("".join(f"file '{concat_path(p)}'\n" for p in parts))
     _run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0", "-i", str(listing),
           "-c", "copy", str(base)], "Joining the clips")
 
@@ -403,7 +414,7 @@ def render_master(tl: Timeline, base: Path, output: Path, work: Path, encoder_ar
     exposure = tl.master.get("exposure", Curve.const(0.0))
     mono = tl.master.get("mono", Curve.const(0.0))
     hue = "" if "mono" not in used else f",hue=s='max(0\\,1-({mono.expr()}))'"
-    head = [f"sendcmd=f='{cmd}'"] if has_cmds else []
+    head = [f"sendcmd=f='{filter_path(cmd)}'"] if has_cmds else []
     if _grade_used(tl.look):
         head.append(_grade(tl.look))
     head = ",".join(head) if head else "null"

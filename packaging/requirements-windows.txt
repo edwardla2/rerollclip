@@ -1,0 +1,5 @@
+# Pinned for the packaged engine (python 3.12, Windows x64).
+numpy==2.5.3
+scipy==1.18.1
+pillow==12.3.0
+pyinstaller==6.22.3

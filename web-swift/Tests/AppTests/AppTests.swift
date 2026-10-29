@@ -68,18 +68,19 @@ final class AppTests: XCTestCase {
         }
     }
 
-    /// Guardrails: the landing page may only claim what ships. Today that's a waitlist.
+    /// Guardrails: the landing page may only claim what ships. Today that's a waitlist and a real demo.
     func testLandingPageClaims() async throws {
         try await start()
         try await app.test(.GET, "/") { res async in
             let page = res.body.string
-            XCTAssertTrue(page.contains("Windows beta coming soon"))
+            XCTAssertTrue(page.contains("Beta waitlist open"))
             XCTAssertTrue(page.contains("not affiliated with or endorsed by Medal"))
-            XCTAssertTrue(page.contains("The Windows app is in development"))
-            XCTAssertTrue(page.contains("Illustration of the idea, not real output"))
+            XCTAssertTrue(page.contains("The app is in development"))
+            XCTAssertTrue(page.contains("no download yet"))
+            XCTAssertTrue(page.contains("Real output.") && page.contains("/assets/media/demo-wide.mp4"))
             XCTAssertTrue(page.contains("id=\"beta-form\""))
             let lowered = page.lowercased()
-            for claim in ["download now", "id=\"download", "anti-cheat", "macos", "mac app", "ai-powered", "guaranteed"] {
+            for claim in ["download now", "id=\"download", "anti-cheat", "macos", "mac app", "ai-powered", "guaranteed", "free forever"] {
                 XCTAssertFalse(lowered.contains(claim), claim)
             }
         }
