@@ -210,3 +210,9 @@ html { scroll-behavior: smooth; }
 /* List rows: die, title and description share one centre line */
 .list li { align-items: center; }
 .list .n { align-self: stretch; align-items: center; }
+
+/* Waitlist row: email + Join (no game choice) */
+.row { grid-template-columns: minmax(0, 1fr) auto; }
+@media (max-width: 520px) { .row { grid-template-columns: 1fr; } .row input { border-right: 0; } }
+.row input { border-right: 1px solid var(--rule); }
+@media (max-width: 520px) { .row input { border-right: 0; border-bottom: 1px solid var(--rule); } }

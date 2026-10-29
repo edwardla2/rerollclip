@@ -115,7 +115,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email, consent: true,
-          game: document.getElementById('beta-game').value,
+          game: '',
           windows: '',
           website: document.getElementById('beta-website').value,
         })
