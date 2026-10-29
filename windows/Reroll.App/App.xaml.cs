@@ -6,12 +6,35 @@ public partial class App : Application
 {
     MainWindow? _window;
 
-    public App() => InitializeComponent();
+    public App()
+    {
+        // Anything that escapes gets written down: %LOCALAPPDATA%\Reroll\crash.txt (and next to the
+        // screenshot during build checks), so a crash on a tester's PC can be read afterwards.
+        UnhandledException += (_, e) => CrashLog.Write(e.Exception);
+        AppDomain.CurrentDomain.UnhandledException += (_, e) => CrashLog.Write(e.ExceptionObject as Exception);
+        try
+        {
+            InitializeComponent();
+        }
+        catch (Exception e)
+        {
+            CrashLog.Write(e);
+            throw;
+        }
+    }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        _window = new MainWindow(Options.Parse(Environment.GetCommandLineArgs().Skip(1).ToArray()));
-        _window.Activate();
+        try
+        {
+            _window = new MainWindow(Options.Parse(Environment.GetCommandLineArgs().Skip(1).ToArray()));
+            _window.Activate();
+        }
+        catch (Exception e)
+        {
+            CrashLog.Write(e);
+            throw;
+        }
     }
 }
 
@@ -27,5 +50,29 @@ public sealed record Options(string? Screenshot, string? State, bool Demo, strin
             return i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
         }
         return new Options(Value("--screenshot"), Value("--state"), args.Contains("--demo"), Value("--video"));
+    }
+}
+
+static class CrashLog
+{
+    public static void Write(Exception? e)
+    {
+        var text = $"{DateTime.Now:O}\n{e}\n";
+        var targets = new List<string>
+        {
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Reroll", "crash.txt"),
+        };
+        if (Options.Parse(Environment.GetCommandLineArgs().Skip(1).ToArray()).Screenshot is { } shot)
+            targets.Add(shot + ".error.txt");
+        foreach (var t in targets)
+        {
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(t))!);
+                File.AppendAllText(t, text);
+            }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
     }
 }

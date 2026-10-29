@@ -126,6 +126,9 @@ jobs:
           Copy-Item -Recurse "$env:RUNNER_TEMP\eng\reroll-engine" out\Reroll\engine\reroll-engine
           $mb = [math]::Round(((Get-ChildItem out\Reroll -Recurse | Measure-Object Length -Sum).Sum / 1MB), 1)
           echo "::notice title=App size::Reroll folder is $mb MB"
+          $pri = (Get-ChildItem out\Reroll -Filter *.pri | ForEach-Object Name) -join ", "
+          $xbf = (Get-ChildItem out\Reroll -Recurse -Filter *.xbf | Measure-Object).Count
+          echo "::notice title=App resources::pri: $pri; xbf files: $xbf"
 
       - name: Screenshots
         run: |
@@ -144,9 +147,19 @@ jobs:
             $p = Start-Process out\Reroll\Reroll.exe -ArgumentList ($r.args + @("--screenshot", "`"$png`"")) -PassThru
             if (-not $p.WaitForExit(90000)) { $p.Kill(); echo "::error title=Screenshot::$($r.name) timed out" }
             if (Test-Path $png) { echo "::notice title=Screenshot::$($r.name) ok" }
-            elseif (Test-Path "$png.error.txt") { echo "::error title=Screenshot $($r.name)::$((Get-Content "$png.error.txt" -Raw).Substring(0, 300))" }
+            elseif (Test-Path "$png.error.txt") {
+              $t = (Get-Content "$png.error.txt" -Raw) -replace "`r?`n", " | "
+              echo "::error title=Screenshot $($r.name)::$($t.Substring(0, [math]::Min(900, $t.Length)))"
+            }
             else { echo "::error title=Screenshot::$($r.name) produced nothing (exit $($p.ExitCode))" }
           }
+          $crash = Join-Path $env:LOCALAPPDATA "Reroll\crash.txt"
+          if (Test-Path $crash) { Copy-Item $crash shots\crash.txt }
+          Get-WinEvent -FilterHashtable @{ LogName = "Application"; Level = 2 } -MaxEvents 5 -ErrorAction SilentlyContinue |
+            Where-Object { $_.Message -like "*Reroll*" } | Select-Object -First 2 | ForEach-Object {
+              $m = $_.Message -replace "`r?`n", " | "
+              echo "::error title=Windows event log::$($m.Substring(0, [math]::Min(900, $m.Length)))"
+            }
           if (-not (Test-Path shots\ready.png)) { exit 1 }
 
       - name: Zip
@@ -161,5 +174,7 @@ jobs:
         if: always()
         with:
           name: screenshots
-          path: shots/*.png
+          path: |
+            shots/*.png
+            shots/*.txt
           retention-days: 30
