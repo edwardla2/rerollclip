@@ -7,7 +7,14 @@
   <meta name="description" content="Reroll is a Windows companion for Medal. It turns a batch of your saved clips into one vertical video, ready to post, automatically. Join the Windows beta waitlist." />
   <meta property="og:title" content="Reroll: your Medal clips, one postable video" />
   <meta property="og:description" content="Clips in, one video out. Reroll finds your plays, cuts the dead time and frames it for TikTok. Windows beta waitlist open." />
-  <meta property="og:image" content="/assets/media/demo-wide-poster.jpg" />
+  <meta property="og:image" content="https://reroll-ten.vercel.app/assets/media/demo-wide-poster.jpg" />
+  <meta property="og:image:width" content="1080" />
+  <meta property="og:image:height" content="608" />
+  <meta property="og:url" content="https://reroll-ten.vercel.app/" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Reroll: your Medal clips, one postable video" />
+  <meta name="twitter:image" content="https://reroll-ten.vercel.app/assets/media/demo-wide-poster.jpg" />
+  <link rel="canonical" href="https://reroll-ten.vercel.app/" />
   <meta property="og:type" content="website" />
   <link rel="preload" href="/assets/fonts/schibsted-grotesk-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
@@ -30,7 +37,10 @@
         <a class="cta" href="#beta"><span class="die die-sm" data-face="6" aria-hidden="true"></span>Join the waitlist <span class="arrow" aria-hidden="true">→</span></a>
       </div>
       <figure class="hero-video">
-        <video id="demo-video" src="/assets/media/demo-wide.mp4" poster="/assets/media/demo-wide-poster.jpg" width="1080" height="608" autoplay muted loop playsinline preload="metadata" aria-label="Reroll compilation made from four Valorant clips"></video>
+        <video id="demo-video" poster="/assets/media/demo-wide-poster.jpg" width="1080" height="608" autoplay muted loop playsinline preload="metadata" aria-label="Reroll compilation made from four Valorant clips">
+          <source src="/assets/media/demo-wide-720.mp4" type="video/mp4" media="(max-width: 800px)" />
+          <source src="/assets/media/demo-wide.mp4" type="video/mp4" />
+        </video>
         <button type="button" class="sound" id="demo-sound" aria-pressed="false">Sound off</button>
         <div class="edit" id="edit-strip" aria-label="The edit: where each clip starts and which stretches were sped up. Click to jump.">
           <div class="edit-track" id="edit-track"><span class="edit-head" id="edit-head"></span></div>
@@ -70,7 +80,7 @@
             </select>
             <button type="submit" id="beta-submit"><span class="die die-sm" id="submit-die" data-face="1" aria-hidden="true"></span>Join</button>
           </div>
-          <label class="consent"><input type="checkbox" id="beta-consent" required /><span>Store my email so Reroll can invite me to the beta. Delete it any time by asking.</span></label>
+          <label class="consent"><input type="checkbox" id="beta-consent" required /><span>Store my email so Reroll can invite me to the beta. To have it deleted, email w6771505@gmail.com.</span></label>
           <div class="hp" aria-hidden="true"><label>Website <input type="text" name="website" id="beta-website" tabindex="-1" autocomplete="off" /></label></div>
           <p id="beta-status" class="status" role="status" aria-live="polite"></p>
         </form>

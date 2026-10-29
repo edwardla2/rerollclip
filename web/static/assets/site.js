@@ -142,6 +142,12 @@
   const io = new IntersectionObserver((entries) => entries.forEach((e) => {
     if (e.isIntersecting) { e.target.classList.remove('pending'); io.unobserve(e.target); }
   }), { rootMargin: '0px 0px -8% 0px' });
+  // Jumping to a section (a "Join the waitlist" link, or a shared #beta link) shows everything at
+  // once, so the form is never caught mid-reveal.
+  const showAll = () => items.forEach((el) => { el.classList.remove('pending'); io.unobserve(el); });
+  if (location.hash) { items.forEach((el) => el.classList.add('reveal')); return; }
+  document.querySelectorAll('a[href^="#"]').forEach((a) => a.addEventListener('click', showAll));
+  window.addEventListener('hashchange', showAll);
   items.forEach((el, i) => {
     el.classList.add('reveal');
     if (el.getBoundingClientRect().top > window.innerHeight) {
