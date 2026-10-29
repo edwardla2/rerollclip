@@ -23,6 +23,7 @@ from typing import Any, Callable
 from .timeline import Clip, Curve, Timeline
 
 ASSETS = Path(__file__).parent / "assets"
+from .audio_track import game_track  # noqa: E402
 
 
 def filter_path(path: Path) -> str:
@@ -54,7 +55,8 @@ def _probe(path: Path) -> dict[str, Any]:
     num, _, den = video.get("avg_frame_rate", "30/1").partition("/")
     return {"width": int(video["width"]), "height": int(video["height"]),
             "fps": float(num) / float(den or 1),
-            "has_audio": any(s["codec_type"] == "audio" for s in data["streams"])}
+            "has_audio": any(s["codec_type"] == "audio" for s in data["streams"]),
+            "audio_track": game_track(path)}
 
 
 # ---------------------------------------------------------------- pass 1: clips
@@ -152,7 +154,7 @@ def chunk_video_chain(clip: Clip, k0: int, k1: int, slow: bool, tl: Timeline, sr
     return ",".join(parts)
 
 
-def chunk_audio_chain(clip: Clip, k0: int, k1: int, has_audio: bool, fps: int) -> str:
+def chunk_audio_chain(clip: Clip, k0: int, k1: int, has_audio: bool, fps: int, track: int = 0) -> str:
     a, b = clip.keys[k0], clip.keys[k1]
     src_len = b.src - a.src
     frames = round((clip.out_start + b.out) * fps) - round((clip.out_start + a.out) * fps)
@@ -172,7 +174,7 @@ def chunk_audio_chain(clip: Clip, k0: int, k1: int, has_audio: bool, fps: int) -
         stages.append(f"atempo={r:.5f}")
         tempo = "," + ",".join(stages)
     fade = min(0.008, samples / 48000 / 4)
-    return (f"[0:a]atrim=duration={src_len:.5f},asetpts=PTS-STARTPTS,aresample=48000,"
+    return (f"[0:a:{track}]atrim=duration={src_len:.5f},asetpts=PTS-STARTPTS,aresample=48000,"
             f"aformat=channel_layouts=stereo{tempo},volume={clip.game_gain:.3f},apad,"
             f"atrim=end_sample={samples},afade=t=in:d={fade:.4f},"
             f"afade=t=out:st={samples / 48000 - fade:.5f}:d={fade:.4f}[a0]")
@@ -197,7 +199,7 @@ def render_clips(tl: Timeline, base: Path, encoder_args: list[str], workers: int
         src = c.source or tl.source
         info = infos.setdefault(src, _probe(Path(src)))
         graph = (chunk_video_chain(c, k0, k1, slow, tl, info["fps"]) + ";\n"
-                 + chunk_audio_chain(c, k0, k1, info["has_audio"], tl.fps))
+                 + chunk_audio_chain(c, k0, k1, info["has_audio"], tl.fps, info.get("audio_track", 0)))
         script = part.with_suffix(".graph.txt")
         key = f"# {src}|{c.src_in}|{tl.fps}|{encoder_args}\n{graph}"
         if part.exists() and script.exists() and script.read_text() == key:

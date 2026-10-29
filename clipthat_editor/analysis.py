@@ -21,6 +21,7 @@ measured before it's described as anything more than a suggestion.
 from __future__ import annotations
 
 from array import array
+from .audio_track import game_track
 import math
 from pathlib import Path
 import re
@@ -69,7 +70,7 @@ def _probe(path: Path) -> tuple[float, bool]:
 
 def audio_loudness(path: Path, frames: int) -> list[float]:
     """RMS level in dBFS for each STEP-long frame (first audio track, mixed to mono)."""
-    proc = subprocess.run([_tool("ffmpeg"), "-v", "error", "-i", str(path), "-map", "0:a:0", "-ac", "1",
+    proc = subprocess.run([_tool("ffmpeg"), "-v", "error", "-i", str(path), "-map", f"0:a:{game_track(path)}", "-ac", "1",
                            "-ar", str(AUDIO_RATE), "-f", "s16le", "-"], capture_output=True)
     if proc.returncode:
         return []

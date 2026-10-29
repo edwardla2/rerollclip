@@ -18,6 +18,8 @@ import subprocess
 from statistics import median
 from typing import Any
 
+from .audio_track import game_track
+
 FPS = 10
 BOX = 40
 
@@ -356,7 +358,7 @@ def _banner_onsets(path: Path) -> list[float]:
 def audio_hits(path: Path, limit: int = 8) -> list[float]:
     """Loud, sudden moments: the biggest rises in short-time loudness."""
     rate, hop = 8000, 0.05
-    proc = subprocess.run([_ffmpeg(), "-v", "error", "-i", str(path), "-map", "0:a:0", "-ac", "1",
+    proc = subprocess.run([_ffmpeg(), "-v", "error", "-i", str(path), "-map", f"0:a:{game_track(path)}", "-ac", "1",
                            "-ar", str(rate), "-f", "s16le", "-"], capture_output=True)
     if proc.returncode or not proc.stdout:
         return []
@@ -386,7 +388,7 @@ def action_times(path: Path, hop: float = 0.05) -> list[float]:
     register. Measured on real clips: these line up with the fights."""
     import numpy as np
     rate = 16000
-    proc = subprocess.run([_ffmpeg(), "-v", "error", "-i", str(path), "-map", "0:a:0", "-ac", "1", "-ar", str(rate),
+    proc = subprocess.run([_ffmpeg(), "-v", "error", "-i", str(path), "-map", f"0:a:{game_track(path)}", "-ac", "1", "-ar", str(rate),
                            "-f", "s16le", "-"], capture_output=True)
     if proc.returncode or not proc.stdout:
         return []
